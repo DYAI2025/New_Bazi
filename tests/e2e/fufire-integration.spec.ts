@@ -1,0 +1,118 @@
+import { test, expect, Page } from "@playwright/test";
+
+const SHOT_DIR = "docs/qa/screenshots/fufire-backend-integration";
+
+async function fillNameDateTime(page: Page) {
+  await page.fill("#input-name", "Test Persona");
+  await page.fill("#input-date", "1990-05-15");
+  await page.fill("#input-time", "14:30");
+}
+
+async function selectBerlin(page: Page) {
+  await page.fill("#input-place", "Ber");
+  // Demo provider returns "Berlin, Deutschland" via /api/places/autocomplete.
+  const option = page.getByRole("button", { name: /Berlin, Deutschland/ });
+  await option.first().waitFor({ state: "visible" });
+  await option.first().click();
+  // Place resolved server-side → coordinates badge appears.
+  await expect(page.getByTestId("place-coords")).toBeVisible();
+}
+
+async function computeProfile(page: Page) {
+  await fillNameDateTime(page);
+  await selectBerlin(page);
+  await page.click("#submit-calculate-btn");
+  await expect(page.getByText("Waage").first()).toBeVisible({ timeout: 15000 });
+}
+
+test("starts empty on the input tab without any demo profile", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("#nav-tab-input")).toBeVisible();
+  // No pre-filled demo identity.
+  await expect(page.locator("#input-name")).toHaveValue("");
+  await expect(page.locator("body")).not.toContainText("Benjamin");
+  // Detail tabs are gated until a profile exists.
+  await expect(page.locator("#nav-tab-overview")).toBeDisabled();
+  await page.screenshot({ path: `${SHOT_DIR}/input-empty.png`, fullPage: true });
+});
+
+test("blocks chart submit until a place is resolved server-side", async ({ page }) => {
+  await page.goto("/");
+  await fillNameDateTime(page);
+  // No place yet → submit button blocked, overview tab still gated.
+  await expect(page.locator("#submit-calculate-btn")).toBeDisabled();
+  await expect(page.locator("#nav-tab-overview")).toBeDisabled();
+  await selectBerlin(page);
+  // Resolved place unlocks the submit button.
+  await expect(page.locator("#submit-calculate-btn")).toBeEnabled();
+  await page.screenshot({ path: `${SHOT_DIR}/input-place-selected.png`, fullPage: true });
+});
+
+test("renders the FuFirE-sourced overview after computing", async ({ page }) => {
+  await page.goto("/");
+  await computeProfile(page);
+  await expect(page.getByText("Test Persona")).toBeVisible();
+  await expect(page.getByText("Waage").first()).toBeVisible();
+  await page.screenshot({ path: `${SHOT_DIR}/overview-fufire-source.png`, fullPage: true });
+});
+
+test("fusion tab explains the coherence index and shows the source", async ({ page }) => {
+  await page.goto("/");
+  await computeProfile(page);
+  await page.click("#nav-tab-fusion");
+  await expect(page.getByText(/Kohärenzindex/).first()).toBeVisible();
+  await expect(page.getByTestId("fusion-source")).toContainText("fufire");
+  await page.screenshot({ path: `${SHOT_DIR}/fusion-tab.png`, fullPage: true });
+});
+
+test("western tab shows house data", async ({ page }) => {
+  await page.goto("/");
+  await computeProfile(page);
+  await page.click("#nav-tab-western");
+  await expect(page.getByText(/Haus|Häuser|Identität/).first()).toBeVisible();
+  await page.screenshot({ path: `${SHOT_DIR}/houses-section.png`, fullPage: true });
+});
+
+test("methodology shows the capability matrix with status + source", async ({ page }) => {
+  await page.goto("/");
+  await computeProfile(page);
+  await page.click("#nav-tab-methode");
+  await expect(page.getByTestId("overall-source")).toContainText("FuFirE");
+  await expect(page.getByText("server-used").first()).toBeVisible();
+  // Capability matrix shows upstream FuFirE endpoints.
+  await expect(page.getByText("/v1/calculate/bazi").first()).toBeVisible();
+  await page.screenshot({ path: `${SHOT_DIR}/methodology-capabilities.png`, fullPage: true });
+});
+
+test("shows a safe error (no secret leak) when FuFirE key is missing", async ({ page }) => {
+  await page.goto("/");
+  // Simulate the upstream config gap as the real server would report it.
+  await page.route("**/api/azodiac/profile", (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({
+        error: "missing_fufire_key",
+        message: "FuFirE-API-Schluessel ist serverseitig nicht konfiguriert."
+      })
+    })
+  );
+  await fillNameDateTime(page);
+  await selectBerlin(page);
+  await page.click("#submit-calculate-btn");
+  const err = page.getByTestId("profile-error");
+  await expect(err).toBeVisible();
+  await expect(err).toContainText("nicht konfiguriert");
+  // No secret material on screen.
+  await expect(page.locator("body")).not.toContainText("test-key");
+  await page.screenshot({ path: `${SHOT_DIR}/missing-fufire-secret.png`, fullPage: true });
+});
+
+test("light and dark themes both render the overview", async ({ page }) => {
+  await page.goto("/");
+  await computeProfile(page);
+  await page.click("#theme-toggle");
+  await expect(page.locator("#app-root.bg-stone-100, #app-root").first()).toBeVisible();
+  await expect(page.getByText("Waage").first()).toBeVisible();
+  await page.screenshot({ path: `${SHOT_DIR}/overview-light-theme.png`, fullPage: true });
+});

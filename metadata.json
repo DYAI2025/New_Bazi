@@ -1,0 +1,6 @@
+{
+  "name": "Full Bazodiac FuFire",
+  "description": "Premium Dark Luxury Western and Chinese BaZi Astrology Fusion Application",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
