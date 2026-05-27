@@ -17,8 +17,7 @@ import {
   ProfileServiceResult
 } from "../utils/profileService";
 import { normalizeFuFireProfile } from "../utils/fufireNormalizer";
-import { ProfileViewModel } from "../viewmodels/profileViewModel";
-import { ElementType } from "../types";
+import { compareProfiles } from "../utils/synastry";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -53,56 +52,6 @@ async function resolveProfile(value: ValidatedBirthInput): Promise<ProfileServic
     }
     throw err;
   }
-}
-
-// --- Local-only synastry comparison helpers (clearly labelled, never FuFirE) ---
-
-const GENERATING: Record<string, string> = {
-  [ElementType.WOOD]: ElementType.FIRE,
-  [ElementType.FIRE]: ElementType.EARTH,
-  [ElementType.EARTH]: ElementType.METAL,
-  [ElementType.METAL]: ElementType.WATER,
-  [ElementType.WATER]: ElementType.WOOD
-};
-const CONTROLLING: Record<string, string> = {
-  [ElementType.WOOD]: ElementType.EARTH,
-  [ElementType.EARTH]: ElementType.WATER,
-  [ElementType.WATER]: ElementType.FIRE,
-  [ElementType.FIRE]: ElementType.METAL,
-  [ElementType.METAL]: ElementType.WOOD
-};
-
-function westernElement(sign: string): string {
-  if (["Widder", "Löwe", "Schütze"].includes(sign)) return "Feuer";
-  if (["Stier", "Jungfrau", "Steinbock"].includes(sign)) return "Erde";
-  if (["Zwillinge", "Waage", "Wassermann"].includes(sign)) return "Luft";
-  return "Wasser";
-}
-
-function compareProfiles(a: ProfileViewModel, b: ProfileViewModel) {
-  // BaZi day-master element relationship.
-  const ea = a.bazi.dayMaster.element;
-  const eb = b.bazi.dayMaster.element;
-  let baziScore = 65;
-  if (ea === eb) baziScore = 85;
-  else if (GENERATING[ea] === eb || GENERATING[eb] === ea) baziScore = 78;
-  else if (CONTROLLING[ea] === eb || CONTROLLING[eb] === ea) baziScore = 52;
-
-  // Western sun-sign element resonance.
-  const wa = westernElement(a.western.sunSign);
-  const wb = westernElement(b.western.sunSign);
-  const compatible = (wa === wb) || (["Feuer", "Luft"].includes(wa) && ["Feuer", "Luft"].includes(wb)) || (["Erde", "Wasser"].includes(wa) && ["Erde", "Wasser"].includes(wb));
-  const westernScore = wa === wb ? 82 : compatible ? 70 : 56;
-
-  const score = Math.round((baziScore + westernScore) / 2);
-  const harmonyAnalysis = `Lokaler Vergleich der FuFirE-Profile: BaZi-Tagesmeister ${ea} und ${eb} ergeben ${baziScore}%, die westlichen Sonnenelemente ${wa}/${wb} ${westernScore}%.`;
-  const advice = score >= 75
-    ? "Die Elementeflüsse stützen sich gegenseitig; pflegen Sie gemeinsame Routinen."
-    : score >= 60
-      ? "Unterschiedliche Rhythmen verlangen bewusste Kommunikation und Geduld."
-      : "Gegensätzliche Kontrollzyklen — Reibung ist lehrreich, erfordert aber klare Grenzen.";
-
-  return { score, westernScore, baziScore, harmonyAnalysis, advice };
 }
 
 // --- Daily pulse from FuFirE experience (no local prose fabrication) ---
