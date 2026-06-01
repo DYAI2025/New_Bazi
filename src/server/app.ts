@@ -32,6 +32,27 @@ function hasRealGoogleKey(): boolean {
   return Boolean(key) && key !== "YOUR_API_KEY" && key !== "replace_me" && key !== "MY_GOOGLE_MAPS_PLATFORM_KEY";
 }
 
+
+function logInvalidBirthInput(route: string, errors: unknown): void {
+  const fields = Array.isArray(errors)
+    ? errors
+        .map((error: any) => {
+          const field = error?.field;
+          const side = error?.side;
+
+          if (!field) return null;
+
+          // Normalize to dot-notation: "user.tz", "partner.birthDate"
+          return side ? `${side}.${field}` : String(field);
+        })
+        .filter((value): value is string => Boolean(value))
+    : typeof errors === "string"
+      ? [errors]
+      : [];
+
+  console.warn("invalid_birth_input", { route, fields });
+}
+
 /** Send a typed error, never leaking secrets or stack traces to the browser. */
 function sendError(res: Response, err: any, fallbackStatus = 500): void {
   const status = err && typeof err.httpStatus === "number" ? err.httpStatus : fallbackStatus;
@@ -92,6 +113,7 @@ function detailHandler(method: ChartMethod, key: "western" | "bazi" | "wuxing" |
   return async (req: Request, res: Response): Promise<void> => {
     const { valid, errors, value } = validateBirthInput(req.body || {});
     if (!valid || !value) {
+      logInvalidBirthInput(req.path, errors);
       res.status(400).json({ error: "invalid_birth_input", fields: errors });
       return;
     }
@@ -238,6 +260,7 @@ export function createApp(): Express {
   app.post("/api/azodiac/profile", async (req, res) => {
     const { valid, errors, value } = validateBirthInput(req.body || {});
     if (!valid || !value) {
+      logInvalidBirthInput(req.path, errors);
       res.status(400).json({ error: "invalid_birth_input", fields: errors });
       return;
     }
@@ -261,6 +284,7 @@ export function createApp(): Express {
   app.post("/api/azodiac/daily", async (req, res) => {
     const { valid, errors, value } = validateBirthInput(req.body || {});
     if (!valid || !value) {
+      logInvalidBirthInput(req.path, errors);
       res.status(400).json({ error: "invalid_birth_input", fields: errors });
       return;
     }
@@ -281,6 +305,7 @@ export function createApp(): Express {
     const userV = validateBirthInput(userBirthData || {});
     const partnerV = validateBirthInput(partnerBirthData || {});
     if (!userV.valid || !partnerV.valid || !userV.value || !partnerV.value) {
+      logInvalidBirthInput(req.path, { user: userV.errors, partner: partnerV.errors });
       res.status(400).json({
         error: "invalid_birth_input",
         fields: { user: userV.errors, partner: partnerV.errors }
