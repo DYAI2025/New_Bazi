@@ -35,8 +35,21 @@ function hasRealGoogleKey(): boolean {
 
 function logInvalidBirthInput(route: string, errors: unknown): void {
   const fields = Array.isArray(errors)
-    ? errors.map((error: any) => error?.field).filter(Boolean)
-    : errors;
+    ? errors
+        .map((error: any) => {
+          const field = error?.field;
+          const side = error?.side;
+
+          if (!field) return null;
+
+          // Normalize to dot-notation: "user.tz", "partner.birthDate"
+          return side ? `${side}.${field}` : String(field);
+        })
+        .filter((value): value is string => Boolean(value))
+    : typeof errors === "string"
+      ? [errors]
+      : [];
+
   console.warn("invalid_birth_input", { route, fields });
 }
 
