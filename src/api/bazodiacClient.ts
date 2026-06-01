@@ -121,7 +121,7 @@ export function getUserFacingRequestMessage(error: unknown): string {
       return `Geburtsdaten konnten nicht verarbeitet werden. Bitte prüfe Datum, Uhrzeit, Geburtsort und Zeitzone. Fehlercode: ${error.code || "invalid_birth_input"}.${formatValidationFields(error.fields)}`;
     }
     if (error.status && error.status >= 500) {
-      return `Serverfehler beim Laden des kosmischen Profils. Fehlercode: ${error.code || error.status}.`;
+      return error.message || `Serverfehler beim Laden des kosmischen Profils. Fehlercode: ${error.code || error.status}.`;
     }
     if (error.isNetworkError) {
       return "Verbindung offline. Bitte prüfe Netzwerk, DNS/CORS oder Timeout und versuche es erneut.";
