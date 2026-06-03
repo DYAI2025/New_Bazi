@@ -6,7 +6,7 @@ function normalizeHost(value: string): string | null {
 
   try {
     const parsed = new URL(trimmed.includes("://") ? trimmed : `https://${trimmed}`);
-    return parsed.host || null;
+    return parsed.hostname || null;
   } catch {
     return trimmed.replace(/^https?:\/\//, "").split("/")[0] || null;
   }
