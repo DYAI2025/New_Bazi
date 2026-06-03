@@ -27,7 +27,7 @@ async function startServer() {
     const distPath = path.join(process.cwd(), "dist");
     const indexPath = path.join(distPath, "index.html");
     if (!fs.existsSync(indexPath)) {
-      throw new Error(`Production assets are missing at ${indexPath}. Run npm run build before starting on Railway.`);
+      throw new Error(`Production assets are missing at ${indexPath}. Run npm run build before starting the server.`);
     }
     const express = (await import("express")).default;
     app.use(express.static(distPath));
