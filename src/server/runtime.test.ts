@@ -12,12 +12,13 @@ describe("server runtime detection", () => {
       RAILWAY_PUBLIC_DOMAIN: "preview-newbazi.up.railway.app",
       RAILWAY_STATIC_URL: "https://static-newbazi.up.railway.app/path",
       APP_ALLOWED_HOSTS: "custom.example.com, https://second.example.com/foo",
-      VITE_ALLOWED_HOSTS: "vite.example.com"
+      VITE_ALLOWED_HOSTS: "vite.example.com, https://port.vite.example.com:5173/foo"
     })).toEqual([
       "newbazi-production.up.railway.app",
       "preview-newbazi.up.railway.app",
       "static-newbazi.up.railway.app",
       "vite.example.com",
+      "port.vite.example.com",
       "custom.example.com",
       "second.example.com"
     ]);
