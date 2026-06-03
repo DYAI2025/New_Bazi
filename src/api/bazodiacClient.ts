@@ -141,14 +141,15 @@ export function getUserFacingRequestMessage(error: unknown): string {
       return `Geburtsdaten konnten nicht verarbeitet werden. Bitte prüfe Datum, Uhrzeit, Geburtsort und Zeitzone. Fehlercode: ${error.code || "invalid_birth_input"}.${formatValidationFields(error.fields)}`;
     }
 
-    const code = error.code || "unbekannter_fehler";
-    return `Es ist ein Fehler bei der Anfrage aufgetreten. Bitte versuche es erneut. Fehlercode: ${code}.`;
     if (error.status && error.status >= 500) {
       return error.message || `Serverfehler beim Laden des kosmischen Profils. Fehlercode: ${error.code || error.status}.`;
     }
     if (error.isNetworkError) {
       return "Verbindung offline. Bitte prüfe Netzwerk, DNS/CORS oder Timeout und versuche es erneut.";
     }
+
+    const code = error.code || "unbekannter_fehler";
+    return `Es ist ein Fehler bei der Anfrage aufgetreten. Bitte versuche es erneut. Fehlercode: ${code}.`;
   }
   return error instanceof Error && error.message ? error.message : "Fehler beim Laden des kosmischen Profils.";
 }
