@@ -54,7 +54,7 @@ describe("buildFuFirEPayload", () => {
 });
 
 describe("buildProfile", () => {
-  it("uses /v1/chart and reports source=fufire-chart when chart is complete", async () => {
+  it("uses /chart and reports source=fufire-chart when chart is complete", async () => {
     (FuFirEClient.postChart as any).mockResolvedValue(FULL_CHART);
 
     const result = await buildProfile(INPUT);

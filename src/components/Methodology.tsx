@@ -14,7 +14,7 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 const SOURCE_LABELS: Record<string, string> = {
-  "fufire-chart": "FuFirE /v1/chart",
+  "fufire-chart": "FuFirE /chart",
   "fufire-orchestrated": "FuFirE /v1/calculate/* (orchestriert)",
   "fallback-local": "Lokaler Fallback (explizit aktiviert)",
   missing: "Nicht verfügbar"

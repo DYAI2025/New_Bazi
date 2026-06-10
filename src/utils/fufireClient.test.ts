@@ -48,18 +48,31 @@ describe("FuFirEClient configuration", () => {
 });
 
 describe("FuFirEClient request shape", () => {
-  it("posts to versioned /v1/chart with X-API-Key header and JSON body", async () => {
+  it("posts to UNPREFIXED /chart (engine mounts chart outside /v1) with X-API-Key header and JSON body", async () => {
     const fetchMock = mockFetchOnce(200, { ok: true });
     const payload = { local_datetime: "1990-01-01T12:00:00", tz_id: "Europe/Berlin", geo_lat_deg: 52.5, geo_lon_deg: 13.4 };
     await FuFirEClient.postChart(payload as any);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, opts] = fetchMock.mock.calls[0];
-    expect(url).toBe("https://fufire.example.com/v1/chart");
+    expect(url).toBe("https://fufire.example.com/chart");
     expect(opts.method).toBe("POST");
     expect(opts.headers["X-API-Key"]).toBe("secret-key-123");
     expect(opts.headers["Content-Type"]).toBe("application/json");
     expect(JSON.parse(opts.body)).toEqual(payload);
+  });
+
+  it("chart stays unprefixed even with explicit FUFIRE_API_PATH_PREFIX", async () => {
+    process.env.FUFIRE_API_PATH_PREFIX = "v2";
+    const fetchMock = mockFetchOnce(200, {});
+    await FuFirEClient.postChart({} as any);
+    expect(fetchMock.mock.calls[0][0]).toBe("https://fufire.example.com/chart");
+  });
+
+  it("other endpoints keep the /v1 prefix (chart is the only exception)", async () => {
+    const fetchMock = mockFetchOnce(200, {});
+    await FuFirEClient.postBazi({} as any);
+    expect(fetchMock.mock.calls[0][0]).toBe("https://fufire.example.com/v1/calculate/bazi");
   });
 
   it("keeps release labels out of upstream routes", async () => {

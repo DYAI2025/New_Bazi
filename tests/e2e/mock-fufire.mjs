@@ -1,5 +1,5 @@
 // Minimal mock of the FuFirE upstream for end-to-end tests.
-// Returns a complete /v1/chart so the BFF reports source=fufire-chart.
+// Returns a complete /chart (unprefixed — the real engine mounts chart outside /v1) so the BFF reports source=fufire-chart.
 import http from "node:http";
 
 const PORT = Number(process.env.MOCK_FUFIRE_PORT || 8799);
@@ -78,7 +78,7 @@ const server = http.createServer(async (req, res) => {
 
   await readBody(req);
 
-  if (req.method === "POST" && url === "/v1/chart") {
+  if (req.method === "POST" && url === "/chart") {
     res.writeHead(200);
     res.end(JSON.stringify(CHART));
     return;
