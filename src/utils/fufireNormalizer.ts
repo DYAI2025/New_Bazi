@@ -1,6 +1,6 @@
 import { ElementType, YinYang } from "../types";
 import { ProfileViewModel, HouseMeaning, ElementCardData, ProfileSource } from "../viewmodels/profileViewModel";
-import { calculateAstrologyFusion } from "./astrology";
+import { calculateAstrologyFusion, HEAVENLY_STEMS, EARTHLY_BRANCHES, WESTERN_ZODIAC } from "./astrology";
 
 // Standard meanings for 12 Houses to combine with planet details
 const HOUSE_TEMPLATES = [
@@ -59,11 +59,116 @@ const ELEMENT_COACHING: Record<ElementType, { title: string; keynote: string; fo
 const PLANET_SYMBOLS: Record<string, string> = {
   Sonne: "☉", Moon: "☽", Mond: "☽", Merkur: "☿", Venus: "♀", Mars: "♂",
   Jupiter: "♃", Saturn: "♄", Uranus: "♅", Neptun: "♆", Pluto: "♇",
-  Aszendent: "Asc", MediumCoeli: "MC", Chiron: "⚷", Lilith: "⚸"
+  Aszendent: "Asc", MediumCoeli: "MC", Chiron: "⚷", Lilith: "⚸",
+  Mondknoten: "☊"
 };
 
 function getPlanetSymbol(name: string): string {
   return PLANET_SYMBOLS[name] || "★";
+}
+
+// ---------------------------------------------------------------------------
+// REAL FuFirE shape helpers (fixtures: src/__fixtures__/fufire/)
+//
+// The engine returns:
+// - WesternResponse.bodies   OBJECT  name -> { longitude, zodiac_sign,
+//                                    degree_in_sign, is_retrograde, ... }
+// - WesternResponse.houses   OBJECT  "1".."12" -> cusp longitude (deg)
+// - WesternResponse.angles   OBJECT  { Ascendant, MC, Vertex } -> longitude
+// - ChartResponse.positions  ARRAY   [{ name, longitude_deg, sign_name_de,
+//                                    degree_in_sign, is_retrograde, ... }]
+// - BaziSection.pillars      year/month/day/hour with stem_index/branch_index
+//                            (+ stem/branch pinyin), day_master = stem name
+// - BaziResponse.pillars     year/month/day/hour with GERMAN keys
+//                            { stamm, zweig, tier, element }
+// - WxResponse.wu_xing_vector OBJECT German element -> 0..1 weight
+// - FusionResponse           cosmic_state / harmony_index.harmony_index 0..1
+// ---------------------------------------------------------------------------
+
+/** Engine body/aspect names are English — the UI speaks German. */
+const PLANET_NAMES_DE: Record<string, string> = {
+  Sun: "Sonne", Moon: "Mond", Mercury: "Merkur", Venus: "Venus", Mars: "Mars",
+  Jupiter: "Jupiter", Saturn: "Saturn", Uranus: "Uranus", Neptune: "Neptun",
+  Pluto: "Pluto", Chiron: "Chiron", Lilith: "Lilith",
+  NorthNode: "Mondknoten", TrueNorthNode: "Wahrer Mondknoten",
+  Ascendant: "Aszendent", MC: "MediumCoeli"
+};
+
+function germanPlanetName(name: string): string {
+  return PLANET_NAMES_DE[name] || name;
+}
+
+const ANIMALS_DE: Record<string, string> = {
+  Rat: "Ratte", Ox: "Büffel", Tiger: "Tiger", Rabbit: "Hase", Dragon: "Drache",
+  Snake: "Schlange", Horse: "Pferd", Goat: "Ziege", Monkey: "Affe",
+  Rooster: "Hahn", Dog: "Hund", Pig: "Schwein"
+};
+
+function normalize360(deg: number): number {
+  return ((deg % 360) + 360) % 360;
+}
+
+function signNameDeFromIndex(idx: number): string {
+  const entry = WESTERN_ZODIAC[((Math.trunc(idx) % 12) + 12) % 12];
+  return entry ? entry.name : "Unbekannt";
+}
+
+function signNameDeFromLongitude(lon: number): string {
+  return signNameDeFromIndex(Math.floor(normalize360(lon) / 30));
+}
+
+function signElementDe(signName: string): string {
+  const entry = WESTERN_ZODIAC.find((z) => z.name === signName);
+  return entry ? entry.element : "Unbekannt";
+}
+
+/** Read the real cusp object ("1".."12" -> longitude); null if not that shape. */
+function readHouseCusps(rawHouses: any): number[] | null {
+  if (!rawHouses || typeof rawHouses !== "object" || Array.isArray(rawHouses)) return null;
+  const cusps: number[] = [];
+  for (let i = 1; i <= 12; i++) {
+    const v = rawHouses[String(i)] ?? rawHouses[i];
+    if (typeof v !== "number" || !Number.isFinite(v)) return null;
+    cusps.push(v);
+  }
+  return cusps;
+}
+
+/** Deterministic house placement from server cusps (no fabrication). */
+function houseOfLongitude(lon: number, cusps: number[]): number {
+  const pos = normalize360(lon);
+  for (let h = 0; h < 12; h++) {
+    const start = normalize360(cusps[h]);
+    const span = normalize360(cusps[(h + 1) % 12] - start) || 30;
+    if (normalize360(pos - start) < span) return h + 1;
+  }
+  return 1;
+}
+
+const ASPECT_TYPES_DE: Record<string, { name: string; symbol: string; harmony: "harmonisch" | "spannend" | "neutral" }> = {
+  conjunction: { name: "Konjunktion", symbol: "☌", harmony: "neutral" },
+  opposition: { name: "Opposition", symbol: "☍", harmony: "spannend" },
+  trine: { name: "Trigon", symbol: "△", harmony: "harmonisch" },
+  square: { name: "Quadrat", symbol: "□", harmony: "spannend" },
+  sextile: { name: "Sextil", symbol: "✶", harmony: "harmonisch" },
+  quincunx: { name: "Quincunx", symbol: "⚻", harmony: "spannend" },
+  semisextile: { name: "Halbsextil", symbol: "⚺", harmony: "neutral" }
+};
+
+/** Pinyin lookup tolerant of missing diacritics ("Geng" matches "Gēng"). */
+function normalizePinyin(value: string): string {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+const STEM_BY_NAME = new Map(HEAVENLY_STEMS.map((s) => [normalizePinyin(s.name), s]));
+const BRANCH_BY_NAME = new Map(EARTHLY_BRANCHES.map((b) => [normalizePinyin(b.name), b]));
+
+function lookupStem(value: unknown) {
+  return typeof value === "string" ? STEM_BY_NAME.get(normalizePinyin(value)) : undefined;
+}
+
+function lookupBranch(value: unknown) {
+  return typeof value === "string" ? BRANCH_BY_NAME.get(normalizePinyin(value)) : undefined;
 }
 
 export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSource = "fufire-chart"): ProfileViewModel {
@@ -92,35 +197,121 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
   };
 
   // B. WESTERN ASTROLOGY
-  const rawWest = raw.western || {};
-  const sunSign = rawWest.sunSign || rawWest.sun_sign || "Unbekannt";
-  const moonSign = rawWest.moonSign || rawWest.moon_sign || "Unbekannt";
-  const ascendant = rawWest.ascendant || "Unbekannt";
+  const rawWest = raw.western && typeof raw.western === "object" ? raw.western : {};
 
-  // Map Planets / Positions
-  // FuFirst could return bodies or positions or planets
-  const rawPlanets = rawWest.planets || rawWest.positions || rawWest.bodies || [];
-  const planets = rawPlanets.map((p: any) => {
-    // If degree is returned as a number or from longitude
-    let degree = typeof p.degree === "number" ? p.degree : 0;
-    if (typeof p.longitude === "number" && !p.degree) {
-      degree = p.longitude % 30;
-    }
-    return {
-      name: p.name || "Unbekannter Planet",
-      symbol: p.symbol || getPlanetSymbol(p.name || ""),
-      sign: p.sign || "Unbekannt",
-      house: typeof p.house === "number" ? p.house : 1,
-      degree,
-      element: p.element || "Unbekannt",
-      retrograde: Boolean(p.retrograde)
-    };
-  });
+  // House cusps: REAL WesternResponse/ChartResponse deliver an OBJECT
+  // ("1".."12" -> cusp longitude). Legacy/mock shapes deliver an array.
+  const houseCusps = readHouseCusps(rawWest.houses);
+  const legacyHouses: any[] = Array.isArray(rawWest.houses) ? rawWest.houses : [];
 
-  // Map 12 Houses (with actual missing state fallback if there is zero house list)
-  const rawHouses = rawWest.houses || [];
+  // Planets. Three known shapes, real shapes take precedence over guesses:
+  // 1. REAL WesternResponse.bodies: OBJECT name -> WesternBodyResponse
+  // 2. REAL ChartResponse.positions: ARRAY of Position (sign_name_de etc.)
+  // 3. Legacy/mock/fallback-local: ARRAY of { name, sign, house, degree, ... }
+  let planets: ProfileViewModel["western"]["planets"] = [];
+  if (rawWest.bodies && typeof rawWest.bodies === "object" && !Array.isArray(rawWest.bodies)) {
+    planets = Object.entries(rawWest.bodies)
+      .filter(([, body]) => body && typeof body === "object")
+      .map(([engineName, body]: [string, any]) => {
+        const lon = typeof body.longitude === "number" ? body.longitude : null;
+        const signIndex = typeof body.zodiac_sign === "number"
+          ? body.zodiac_sign
+          : lon !== null ? Math.floor(normalize360(lon) / 30) : null;
+        const sign = signIndex !== null ? signNameDeFromIndex(signIndex) : "Unbekannt";
+        const degree = typeof body.degree_in_sign === "number"
+          ? body.degree_in_sign
+          : lon !== null ? normalize360(lon) % 30 : 0;
+        const name = germanPlanetName(engineName);
+        return {
+          name,
+          symbol: getPlanetSymbol(name),
+          sign,
+          // House placement is derived deterministically from the server's
+          // own cusps; 0 = unknown (never a fabricated "house 1").
+          house: lon !== null && houseCusps ? houseOfLongitude(lon, houseCusps) : 0,
+          degree,
+          element: signElementDe(sign),
+          retrograde: Boolean(body.is_retrograde)
+        };
+      });
+  } else {
+    const rawPlanets: any[] = Array.isArray(rawWest.planets)
+      ? rawWest.planets
+      : Array.isArray(rawWest.positions)
+        ? rawWest.positions
+        : [];
+    planets = rawPlanets
+      .filter((p: any) => p && typeof p === "object")
+      .map((p: any) => {
+        // REAL ChartResponse Position shape
+        if (typeof p.sign_name_de === "string" || typeof p.longitude_deg === "number") {
+          const lon = typeof p.longitude_deg === "number" ? p.longitude_deg : null;
+          const sign = p.sign_name_de
+            || (typeof p.sign_index === "number" ? signNameDeFromIndex(p.sign_index) : "Unbekannt");
+          const name = germanPlanetName(p.name || "Unbekannter Planet");
+          return {
+            name,
+            symbol: getPlanetSymbol(name),
+            sign,
+            house: lon !== null && houseCusps ? houseOfLongitude(lon, houseCusps) : 0,
+            degree: typeof p.degree_in_sign === "number" ? p.degree_in_sign : lon !== null ? normalize360(lon) % 30 : 0,
+            element: signElementDe(sign),
+            retrograde: Boolean(p.is_retrograde)
+          };
+        }
+        // Legacy/mock shape
+        let degree = typeof p.degree === "number" ? p.degree : 0;
+        if (typeof p.longitude === "number" && !p.degree) {
+          degree = p.longitude % 30;
+        }
+        return {
+          name: p.name || "Unbekannter Planet",
+          symbol: p.symbol || getPlanetSymbol(p.name || ""),
+          sign: p.sign || "Unbekannt",
+          house: typeof p.house === "number" ? p.house : 1,
+          degree,
+          element: p.element || "Unbekannt",
+          retrograde: Boolean(p.retrograde ?? p.is_retrograde)
+        };
+      });
+  }
+
+  // Triad: explicit fields (legacy/mock) win, otherwise derived from the
+  // REAL angles/bodies the engine delivered.
+  const angles = rawWest.angles && typeof rawWest.angles === "object" ? rawWest.angles : {};
+  const planetSign = (name: string): string | null =>
+    planets.find((p) => p.name === name)?.sign || null;
+  const sunSign = rawWest.sunSign || rawWest.sun_sign || planetSign("Sonne") || "Unbekannt";
+  const moonSign = rawWest.moonSign || rawWest.moon_sign || planetSign("Mond") || "Unbekannt";
+  const ascendant = rawWest.ascendant
+    || (typeof angles.Ascendant === "number" ? signNameDeFromLongitude(angles.Ascendant) : null)
+    || (houseCusps ? signNameDeFromLongitude(houseCusps[0]) : null)
+    || "Unbekannt";
+
+  // Map 12 Houses (with actual missing state fallback if there is zero house data)
   let houses: HouseMeaning[] = [];
-  if (rawHouses.length === 0) {
+  if (houseCusps) {
+    // REAL cusp object: sign resonance straight from the server's cusp longitudes.
+    houses = HOUSE_TEMPLATES.map((tmpl) => {
+      const cusp = houseCusps[tmpl.number - 1];
+      const cuspSign = signNameDeFromLongitude(cusp);
+      const cuspDeg = normalize360(cusp) % 30;
+      const housePlanets = planets.filter((p) => p.house === tmpl.number);
+      let explanation = tmpl.description;
+      if (housePlanets.length > 0) {
+        const pNames = housePlanets.map((p) => `${p.name} (${p.sign})`).join(" und ");
+        explanation = `In Ihrem ${tmpl.number}. Haus steht die Energie von ${pNames}. ${tmpl.description}`;
+      }
+      return {
+        number: tmpl.number,
+        title: tmpl.title,
+        signResonance: `${cuspSign} (${cuspDeg.toFixed(1)}°)`,
+        governs: tmpl.governs,
+        description: explanation,
+        planets: housePlanets.map((p) => ({ name: p.name, symbol: p.symbol, sign: p.sign, degree: p.degree }))
+      };
+    });
+  } else if (legacyHouses.length === 0) {
     // Display standard template with missing state or source=missing
     houses = HOUSE_TEMPLATES.map((tmpl) => {
       return {
@@ -133,10 +324,10 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
     });
   } else {
     houses = HOUSE_TEMPLATES.map((tmpl) => {
-      const rawH = rawHouses.find((h: any) => h.number === tmpl.number) || {};
+      const rawH = legacyHouses.find((h: any) => h.number === tmpl.number) || {};
       const cuspSign = rawH.sign || rawH.cuspSign || tmpl.signResonance;
       const cuspDeg = typeof rawH.degree === "number" ? rawH.degree : 0;
-      
+
       // Filter planets allocated to this house number list
       const housePlanets = planets.filter((p: any) => p.house === tmpl.number);
 
@@ -163,31 +354,67 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
     });
   }
 
-  // Aspects
-  const rawAspects = rawWest.aspects || [];
-  const aspects = rawAspects.map((asp: any) => ({
-    planet1: asp.planet1 || asp.sourceKey || "Unbekannt",
-    planet2: asp.planet2 || asp.targetKey || "Unbekannt",
-    type: asp.type || "Aspekt",
-    symbol: asp.symbol || "☌",
-    orb: typeof asp.orb === "number" ? asp.orb : 0,
-    harmony: asp.harmony || "neutral",
-    interpretation: asp.interpretation || "Lokale abgeleitete Deutung"
-  }));
+  // Aspects. REAL AspectResponse: { planet1, planet2, type, angle, orb,
+  // exact_angle } with English names/types — translate and derive harmony
+  // from the aspect type. Legacy entries keep their own fields.
+  const rawAspects: any[] = Array.isArray(rawWest.aspects) ? rawWest.aspects : [];
+  const aspects = rawAspects
+    .filter((asp: any) => asp && typeof asp === "object")
+    .map((asp: any) => {
+      const typeInfo = typeof asp.type === "string" ? ASPECT_TYPES_DE[asp.type.toLowerCase()] : undefined;
+      return {
+        planet1: germanPlanetName(asp.planet1 || asp.sourceKey || "Unbekannt"),
+        planet2: germanPlanetName(asp.planet2 || asp.targetKey || "Unbekannt"),
+        type: typeInfo ? typeInfo.name : asp.type || "Aspekt",
+        symbol: asp.symbol || (typeInfo ? typeInfo.symbol : "☌"),
+        orb: typeof asp.orb === "number" ? asp.orb : 0,
+        harmony: asp.harmony || (typeInfo ? typeInfo.harmony : "neutral"),
+        interpretation: asp.interpretation || "Lokale abgeleitete Deutung"
+      };
+    });
 
   // C. BAZI PILLARS
-  const rawBazi = raw.bazi || {};
-  let rawPillars = rawBazi.pillars || {};
-  
-  // Backwards map if pillars are nested or array:
+  const rawBazi = raw.bazi && typeof raw.bazi === "object" ? raw.bazi : {};
+  const rawPillars: any = rawBazi.pillars && typeof rawBazi.pillars === "object" ? rawBazi.pillars : {};
+
+  // REAL shapes use English pillar keys (BaziPillarsResponse/BaziSection:
+  // year/month/day/hour); legacy mocks use German keys (Jahr/Monat/...).
+  const PILLAR_KEY_EN: Record<string, string> = { Jahr: "year", Monat: "month", Tag: "day", Stunde: "hour" };
   const getPillarData = (key: string, backup: any) => {
     if (rawPillars[key]) return rawPillars[key];
+    if (rawPillars[PILLAR_KEY_EN[key]]) return rawPillars[PILLAR_KEY_EN[key]];
     const found = Array.isArray(rawPillars) ? rawPillars.find((p: any) => p.title?.toLowerCase() === key.toLowerCase() || p.pillarKey?.toLowerCase() === key.toLowerCase()) : null;
     return found || backup;
   };
 
   const defaultStem = { name: "Unbekannt", pinyin: "Unbekannt", chinese: "?", element: ElementType.EARTH, yinYang: "Yang" as YinYang };
-  const defaultBranch = { name: "Unbekannt", pinyin: "Unbekannt", chinese: "?", element: ElementType.EARTH, animal: "Unbekannt", hiddenStems: [], yinYang: "Yang" as YinYang };
+  const defaultBranch = { name: "Unbekannt", pinyin: "Unbekannt", chinese: "?", element: ElementType.EARTH, animal: "Unbekannt", hiddenStems: [] as string[], yinYang: "Yang" as YinYang };
+
+  /**
+   * Resolve a REAL flat pillar against the canonical stem/branch tables.
+   * Handles BaziSection ({ stem_index, branch_index, stem, branch, animal })
+   * and BaziResponse ({ stamm, zweig, tier, element }). Returns null for the
+   * legacy nested { stem: {...}, branch: {...} } shape.
+   */
+  type NormalizedStem = { name: string; chinese: string; element: ElementType; yinYang: YinYang; pinyin?: string };
+  type NormalizedBranch = NormalizedStem & { animal: string; hiddenStems: string[] };
+  const resolveRealPillar = (data: any): { stem: NormalizedStem; branch: NormalizedBranch } | null => {
+    if (!data || typeof data !== "object") return null;
+    if (data.stem && typeof data.stem === "object") return null; // legacy nested shape
+    const stem = (typeof data.stem_index === "number" ? HEAVENLY_STEMS[data.stem_index] : undefined)
+      || lookupStem(data.stamm)
+      || lookupStem(data.stem);
+    const branch = (typeof data.branch_index === "number" ? EARTHLY_BRANCHES[data.branch_index] : undefined)
+      || lookupBranch(data.zweig)
+      || lookupBranch(data.branch);
+    if (!stem && !branch) return null;
+    const animalDe = typeof data.tier === "string" ? data.tier
+      : typeof data.animal === "string" ? (ANIMALS_DE[data.animal] || data.animal) : undefined;
+    return {
+      stem: stem || defaultStem,
+      branch: branch ? { ...branch, animal: animalDe || branch.animal } : { ...defaultBranch, animal: animalDe || defaultBranch.animal }
+    };
+  };
 
   const pillarsList = [
     { title: "Kopf/Urahnen", pillarKey: "Jahr", data: getPillarData("Jahr", rawBazi.year || { stem: defaultStem, branch: defaultBranch }) },
@@ -195,17 +422,18 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
     { title: "Partner/Tag", pillarKey: "Tag", data: getPillarData("Tag", rawBazi.day || { stem: defaultStem, branch: defaultBranch }) },
     { title: "Träume/Stunde", pillarKey: "Stunde", data: getPillarData("Stunde", rawBazi.hour || { stem: defaultStem, branch: defaultBranch }) }
   ].map((p) => {
-    const stem = p.data.stem || defaultStem;
-    const branch = p.data.branch || defaultBranch;
+    const real = resolveRealPillar(p.data);
+    const stem = real ? real.stem : (p.data && typeof p.data === "object" && p.data.stem) || defaultStem;
+    const branch = real ? real.branch : (p.data && typeof p.data === "object" && p.data.branch) || defaultBranch;
     return {
       title: p.title,
       pillarKey: p.pillarKey,
       stemChinese: stem.chinese || "",
-      stemPinyin: stem.name || stem.pinyin || "Unbekannt",
+      stemPinyin: stem.name || (stem as any).pinyin || "Unbekannt",
       stemElement: (stem.element as ElementType) || ElementType.EARTH,
       stemPolarity: stem.yinYang || "Yang",
       branchChinese: branch.chinese || "",
-      branchPinyin: branch.name || branch.pinyin || "Unbekannt",
+      branchPinyin: branch.name || (branch as any).pinyin || "Unbekannt",
       branchElement: (branch.element as ElementType) || ElementType.EARTH,
       branchAnimal: branch.animal || "Unbekannt",
       branchPolarity: branch.yinYang || "Yang",
@@ -213,11 +441,15 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
     };
   });
 
-  // Day Master
-  const dmElement = (rawBazi.dayMaster || rawBazi.day_master || ElementType.EARTH) as ElementType;
-  const dmName = rawBazi.dayMasterName || pillarsList[2].stemPinyin;
-  const dmChinese = rawBazi.dayMasterChinese || pillarsList[2].stemChinese;
-  const dmPolarity = rawBazi.dayMasterPolarity || pillarsList[2].stemPolarity;
+  // Day Master. REAL responses deliver a STEM NAME ("Xin" — BaziSection
+  // .day_master / BaziResponse .chinese.day_master), legacy mocks an element.
+  const dmRaw = rawBazi.dayMaster || rawBazi.day_master || rawBazi.chinese?.day_master;
+  const dmStem = lookupStem(dmRaw);
+  const dmIsElement = typeof dmRaw === "string" && (Object.values(ElementType) as string[]).includes(dmRaw);
+  const dmElement = (dmIsElement ? dmRaw : dmStem?.element || pillarsList[2].stemElement || ElementType.EARTH) as ElementType;
+  const dmName = rawBazi.dayMasterName || dmStem?.name || pillarsList[2].stemPinyin;
+  const dmChinese = rawBazi.dayMasterChinese || dmStem?.chinese || pillarsList[2].stemChinese;
+  const dmPolarity = rawBazi.dayMasterPolarity || dmStem?.yinYang || pillarsList[2].stemPolarity;
 
   const baziDayMaster = {
     element: dmElement,
@@ -233,17 +465,35 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
   // D. WU XING DISTRIBUTION
   // Never fabricate a distribution for a real FuFirE source that did not provide one.
   const wuxingAvail = isFallback || Boolean(raw.wuxing);
-  const rawWuxing = raw.wuxing || {};
-  const originDist = rawWuxing.wu_xing_vector || rawWuxing.distribution || {};
+  const rawWuxing = raw.wuxing && typeof raw.wuxing === "object" ? raw.wuxing : {};
+  // REAL shapes: WxResponse.wu_xing_vector (German keys, 0..1 weights) or the
+  // chart's WuXingSection.from_planets (raw weights). Legacy: distribution
+  // already in percent. All are normalized to percentage SHARES below — for
+  // an already-percentual vector (sum 100) that is the identity.
+  const pickVector = (candidate: any): any =>
+    candidate && typeof candidate === "object" && !Array.isArray(candidate) ? candidate : null;
+  const originDist = pickVector(rawWuxing.wu_xing_vector)
+    || pickVector(rawWuxing.distribution)
+    || pickVector(rawWuxing.from_planets)
+    || {};
 
-  // Convert percentages safely; absent section stays at zero (rendered as missing-state).
-  const distribution: Record<ElementType, number> = {
+  const rawWeights: Record<ElementType, number> = {
     [ElementType.WOOD]: originDist[ElementType.WOOD] ?? originDist.Wood ?? 0,
     [ElementType.FIRE]: originDist[ElementType.FIRE] ?? originDist.Fire ?? 0,
     [ElementType.EARTH]: originDist[ElementType.EARTH] ?? originDist.Earth ?? 0,
     [ElementType.METAL]: originDist[ElementType.METAL] ?? originDist.Metal ?? 0,
     [ElementType.WATER]: originDist[ElementType.WATER] ?? originDist.Water ?? 0,
   };
+  const weightTotal = Object.values(rawWeights).reduce(
+    (acc, v) => acc + (typeof v === "number" && Number.isFinite(v) && v > 0 ? v : 0), 0);
+
+  // Percentage shares; absent section stays at zero (rendered as missing-state).
+  const distribution: Record<ElementType, number> = Object.fromEntries(
+    Object.entries(rawWeights).map(([el, v]) => {
+      const safe = typeof v === "number" && Number.isFinite(v) && v > 0 ? v : 0;
+      return [el, weightTotal > 0 ? Math.round((safe / weightTotal) * 1000) / 10 : 0];
+    })
+  ) as Record<ElementType, number>;
 
   const sortedWuXing = Object.entries(distribution).sort((a, b) => b[1] - a[1]);
   const maxElement = sortedWuXing[0][0] as ElementType;
@@ -275,13 +525,28 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
     : "Wu-Xing-Wandlungsphasen wurden von FuFirE nicht geliefert (missing).";
 
   // E. FUSION MATRIX — never fabricate a coherence index for a missing section.
-  const rawFusion = raw.fusion || {};
-  const coherenceIndex = typeof rawFusion.coherenceIndex === "number" ? rawFusion.coherenceIndex : (typeof rawFusion.coherence_index === "number" ? rawFusion.coherence_index : 0);
-  
+  const rawFusion = raw.fusion && typeof raw.fusion === "object" ? raw.fusion : {};
+  // REAL FusionResponse: cosmic_state (0..1) and harmony_index = OBJECT
+  // { harmony_index: 0..1, interpretation, ... }. Legacy: coherenceIndex 0..100.
+  const harmonyObj = rawFusion.harmony_index && typeof rawFusion.harmony_index === "object"
+    ? rawFusion.harmony_index : null;
+  const realCoherence01 = typeof rawFusion.cosmic_state === "number" ? rawFusion.cosmic_state
+    : harmonyObj && typeof harmonyObj.harmony_index === "number" ? harmonyObj.harmony_index
+    : typeof rawFusion.harmony_index === "number" ? rawFusion.harmony_index
+    : null;
+  const coherenceIndex = typeof rawFusion.coherenceIndex === "number" ? rawFusion.coherenceIndex
+    : typeof rawFusion.coherence_index === "number" ? rawFusion.coherence_index
+    : realCoherence01 !== null ? Math.round((realCoherence01 <= 1 ? realCoherence01 * 100 : realCoherence01) * 10) / 10
+    : 0;
+
   // Custom label rating
   let coherenceRating = "Harmonische Ausgewogenheit";
   if (coherenceIndex > 80) coherenceRating = "Exzellente System-Resonanz";
   else if (coherenceIndex < 60) coherenceRating = "Spannungsgeladene Dynamik";
+  // The engine's own interpretation beats any locally derived label.
+  if (harmonyObj && typeof harmonyObj.interpretation === "string" && harmonyObj.interpretation) {
+    coherenceRating = harmonyObj.interpretation;
+  }
 
   const fusion = {
     coherenceIndex,
@@ -299,7 +564,10 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
     wuxingContributors: rawFusion.wuxingContributors || (wuxingAvail ? sortedWuXing.slice(0, 2).map(([el, pct]) => `${el} (${pct}%)`) : []),
     supports: rawFusion.supports || [ `${maxElement} stärkt Willenskraft`, "Häuser-Trigon-Harmonien" ],
     frictions: rawFusion.frictions || [ `Mangel an ${minElement} drosselt Fluss`, "Quadrat-Aspekte erfordern Reflexion" ],
-    integrationText: rawFusion.integrationText || "Durch das Erkennen dieser kosmischen Strömungen verschmelzen beide Philosophien im Alltag.",
+    integrationText: rawFusion.integrationText
+      || (typeof rawFusion.fusion_interpretation === "string" && rawFusion.fusion_interpretation
+        ? rawFusion.fusion_interpretation
+        : "Durch das Erkennen dieser kosmischen Strömungen verschmelzen beide Philosophien im Alltag."),
     source: sectionSource(Boolean(raw.fusion))
   };
 
