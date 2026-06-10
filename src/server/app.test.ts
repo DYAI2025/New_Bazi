@@ -35,18 +35,18 @@ vi.mock("../utils/fufireClient", () => {
 vi.mock("../utils/mapsService", () => {
   class PlacesError extends Error {
     code: string;
-    httpStatus = 503;
+    httpStatus: number;
     constructor(code: string) {
       super(code);
       this.code = code;
+      this.httpStatus = code === "missing_places_key" ? 503 : 502;
     }
   }
   return {
     PlacesError,
     getAutocompletePredictions: vi.fn(),
     getPlaceDetails: vi.fn(),
-    getTimezone: vi.fn(),
-    getGoogleApiKey: vi.fn(() => "real-key")
+    getTimezone: vi.fn()
   };
 });
 
@@ -256,12 +256,12 @@ describe("Places routes", () => {
     expect(res.body[0].description).toBe("Berlin");
   });
 
-  it("maps PlacesError to 503 missing_places_key", async () => {
+  it("maps PlacesError for unresolvable legacy placeIds to 502 places_provider_error", async () => {
     const { PlacesError } = await import("../utils/mapsService");
-    (getPlaceDetails as any).mockRejectedValue(new PlacesError("missing_places_key"));
-    const res = await request(app).post("/api/places/details").send({ placeId: "x" });
-    expect(res.status).toBe(503);
-    expect(res.body.error).toBe("missing_places_key");
+    (getPlaceDetails as any).mockRejectedValue(new PlacesError("places_provider_error"));
+    const res = await request(app).post("/api/places/details").send({ placeId: "ChIJlegacyGoogleId" });
+    expect(res.status).toBe(502);
+    expect(res.body.error).toBe("places_provider_error");
   });
 
   it("POST /api/geocode never returns a default Munich and requires placeId", async () => {

@@ -5,8 +5,7 @@ import { FuFirEClient } from "../utils/fufireClient";
 import {
   getAutocompletePredictions,
   getPlaceDetails,
-  getTimezone,
-  getGoogleApiKey
+  getTimezone
 } from "../utils/mapsService";
 import { validateBirthInput, ValidatedBirthInput } from "../utils/birthInputValidation";
 import {
@@ -26,12 +25,6 @@ import { compareProfiles } from "../utils/synastry";
 function localFallbackEnabled(): boolean {
   return process.env.ENABLE_LOCAL_ASTROLOGY_FALLBACK === "true";
 }
-
-function hasRealGoogleKey(): boolean {
-  const key = (getGoogleApiKey() || "").trim();
-  return Boolean(key) && key !== "YOUR_API_KEY" && key !== "replace_me" && key !== "MY_GOOGLE_MAPS_PLATFORM_KEY";
-}
-
 
 function logInvalidBirthInput(route: string, errors: unknown): void {
   const fields = Array.isArray(errors)
@@ -151,7 +144,6 @@ export function createApp(): Express {
 
   app.get("/api/config", (_req, res) => {
     const fufire = FuFirEClient.isConfigured();
-    const placesConfigured = hasRealGoogleKey();
     res.json({
       status: "operational",
       version: "2.0.0-fufire-bff",
@@ -161,8 +153,9 @@ export function createApp(): Express {
         ...getFuFireConfigSummary()
       },
       places: {
-        provider: "google",
-        apiKeyConfigured: placesConfigured
+        // Keyless providers: Photon (OSM) for search, tz-lookup offline for timezones.
+        provider: "photon+tz-lookup",
+        keyRequired: false
       },
       flags: {
         localAstrologyFallback: localFallbackEnabled(),
@@ -177,7 +170,7 @@ export function createApp(): Express {
         { feature: "daily", appEndpoint: "/api/azodiac/daily", upstream: "/v1/experience/bootstrap + /v1/experience/daily", status: fufire.url && fufire.key ? "server-used" : "missing", source: "fufire" },
         { feature: "synastry", appEndpoint: "/api/azodiac/synastry", upstream: "2× /v1/chart + lokaler Vergleich", status: fufire.url && fufire.key ? "server-used" : "missing", source: "fufire-profiles-local-comparison" },
         { feature: "dayun", appEndpoint: "/api/azodiac/bazi/dayun", upstream: "—", status: "missing-capability", source: "missing" },
-        { feature: "places", appEndpoint: "/api/places/*", upstream: "Google Maps Platform", status: placesConfigured ? "server-used" : "missing", source: "google" }
+        { feature: "places", appEndpoint: "/api/places/*", upstream: "Photon (OSM) + tz-lookup (offline)", status: "server-used", source: "photon" }
       ]
     });
   });

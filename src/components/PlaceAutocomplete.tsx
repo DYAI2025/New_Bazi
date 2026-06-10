@@ -43,10 +43,8 @@ export default function PlaceAutocomplete({ id, label, value, resolved, onResolv
         const preds = await BazodiacClient.searchPlaces(text);
         setPredictions(preds);
         setOpen(true);
-      } catch (err: any) {
-        setError(err?.code === "missing_places_key"
-          ? "Ortssuche ist serverseitig nicht konfiguriert (GOOGLE_MAPS_API_KEY fehlt)."
-          : "Ortssuche fehlgeschlagen.");
+      } catch {
+        setError("Ortssuche fehlgeschlagen.");
         setPredictions([]);
       } finally {
         setLoading(false);
@@ -68,10 +66,8 @@ export default function PlaceAutocomplete({ id, label, value, resolved, onResolv
     try {
       const place = await BazodiacClient.resolvePlace(pred.placeId, pred.description);
       onResolved(place);
-    } catch (err: any) {
-      setError(err?.code === "missing_places_key"
-        ? "Ortsauflösung ist serverseitig nicht konfiguriert."
-        : "Ortsauflösung fehlgeschlagen.");
+    } catch {
+      setError("Ortsauflösung fehlgeschlagen.");
       onClear();
     } finally {
       setLoading(false);
