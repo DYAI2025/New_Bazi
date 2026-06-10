@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 /**
- * Chart payload sent to FuFirE /v1/chart. Field names match the FuFirE
+ * Chart payload sent to FuFirE /chart (unprefixed — see postChart). Field names match the FuFirE
  * contract (geo_lat_deg etc.). Unknown shapes are passed through verbatim
  * for the calculate/* and experience/* endpoints.
  */
@@ -125,11 +125,18 @@ function logUpstreamError(method: "GET" | "POST", endpoint: string, pathPrefix: 
   });
 }
 
-async function request(method: "GET" | "POST", endpoint: string, payload?: unknown): Promise<any> {
+async function request(
+  method: "GET" | "POST",
+  endpoint: string,
+  payload?: unknown,
+  options?: { unprefixed?: boolean }
+): Promise<any> {
   // Resolve config first — throws missing_fufire_* before any network access.
   const baseUrl = getBaseUrl();
   const apiKey = getApiKey();
-  const pathPrefix = getPathPrefixValue();
+  // Unprefixed endpoints hit `${baseUrl}${endpoint}` directly; the empty
+  // pathPrefix flows into logUpstreamError so logs stay honest about the URL.
+  const pathPrefix = options?.unprefixed ? "" : getPathPrefixValue();
   const url = `${baseUrl}${pathPrefix}${endpoint}`;
 
   const controller = new AbortController();
@@ -180,7 +187,12 @@ export class FuFirEClient {
   }
 
   static postChart(payload: FuFirePayload): Promise<any> {
-    return request("POST", "/chart", payload);
+    // The FuFirE engine mounts the chart router OUTSIDE /v1 by design
+    // (internal surface; app.py: "chart and webhooks are internal — not
+    // exposed under /v1/"). No /v1/chart twin exists — verified live
+    // 2026-06-10 (POST /chart → 422 validation, POST /v1/chart → 404).
+    // If the engine ever adds /v1/chart, drop this exception.
+    return request("POST", "/chart", payload, { unprefixed: true });
   }
 
   static postWestern(payload: FuFirePayload): Promise<any> {

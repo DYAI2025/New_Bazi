@@ -8,7 +8,7 @@ export interface ProfileServiceResult {
   source: ProfileSource;
 }
 
-/** Map validated birth input to the FuFirE /v1/chart contract. */
+/** Map validated birth input to the FuFirE /chart contract (chart is mounted outside /v1). */
 export function buildFuFirEPayload(input: ValidatedBirthInput): FuFirePayload {
   return {
     local_datetime: `${input.birthDate}T${input.birthTime}:00`,
@@ -33,7 +33,7 @@ export function pickSection(resp: any, key: string): any {
 }
 
 /**
- * Primary product path. Calls FuFirE /v1/chart; if the chart is missing core
+ * Primary product path. Calls FuFirE /chart (unprefixed); if the chart is missing core
  * sections, orchestrates the matching /v1/calculate/* endpoints and merges.
  * Throws FuFirEError (with httpStatus) on any upstream/config failure — never
  * falls back silently.

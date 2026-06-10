@@ -315,7 +315,7 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
     {
       uiField: "Westliche Triade (Sonne, Mond, Aszendent)",
       appEndpoint: "/api/azodiac/profile",
-      upstreamEndpoint: "/v1/chart",
+      upstreamEndpoint: "/chart",
       status: sectionStatus(Boolean(raw.western)),
       source: sectionSource(Boolean(raw.western)),
       confidence: confidenceFor(Boolean(raw.western), "Astronomische Ephemeriden-Rekonstruktion via FuFirE")
