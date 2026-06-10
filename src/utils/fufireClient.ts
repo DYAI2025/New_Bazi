@@ -1,11 +1,21 @@
 import dotenv from "dotenv";
 
+import type {
+  WesternRequestPayload,
+  BaziRequestPayload,
+  WuxingRequestPayload,
+  FusionRequestPayload,
+  TstRequestPayload,
+  BootstrapRequestPayload,
+  DailyRequestPayload
+} from "./fufirePayloadMappers";
+
 dotenv.config();
 
 /**
  * Chart payload sent to FuFirE /chart (unprefixed — see postChart). Field names match the FuFirE
- * contract (geo_lat_deg etc.). Unknown shapes are passed through verbatim
- * for the calculate/* and experience/* endpoints.
+ * contract (geo_lat_deg etc.). The /v1/calculate/* and /v1/experience/* endpoints use DIFFERENT
+ * request models — see fufirePayloadMappers.ts; never send this chart shape to them (live 422).
  */
 export interface FuFirePayload {
   local_datetime: string; // YYYY-MM-DDTHH:mm:ss
@@ -195,31 +205,31 @@ export class FuFirEClient {
     return request("POST", "/chart", payload, { unprefixed: true });
   }
 
-  static postWestern(payload: FuFirePayload): Promise<any> {
+  static postWestern(payload: WesternRequestPayload): Promise<any> {
     return request("POST", "/calculate/western", payload);
   }
 
-  static postBazi(payload: FuFirePayload): Promise<any> {
+  static postBazi(payload: BaziRequestPayload): Promise<any> {
     return request("POST", "/calculate/bazi", payload);
   }
 
-  static postWuxing(payload: FuFirePayload): Promise<any> {
+  static postWuxing(payload: WuxingRequestPayload): Promise<any> {
     return request("POST", "/calculate/wuxing", payload);
   }
 
-  static postFusion(payload: FuFirePayload): Promise<any> {
+  static postFusion(payload: FusionRequestPayload): Promise<any> {
     return request("POST", "/calculate/fusion", payload);
   }
 
-  static postTst(payload: FuFirePayload): Promise<any> {
+  static postTst(payload: TstRequestPayload): Promise<any> {
     return request("POST", "/calculate/tst", payload);
   }
 
-  static postExperienceBootstrap(payload: FuFirePayload): Promise<any> {
+  static postExperienceBootstrap(payload: BootstrapRequestPayload): Promise<any> {
     return request("POST", "/experience/bootstrap", payload);
   }
 
-  static postExperienceDaily(payload: FuFirePayload): Promise<any> {
+  static postExperienceDaily(payload: DailyRequestPayload): Promise<any> {
     return request("POST", "/experience/daily", payload);
   }
 

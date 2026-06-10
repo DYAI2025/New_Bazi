@@ -155,8 +155,10 @@ describe("Detail endpoints", () => {
 });
 
 describe("POST /api/azodiac/daily", () => {
+  const SECTORS = [0.5, 0.3, 0.7, 0.2, 0.6, 0.4, 0.8, 0.1, 0.55, 0.35, 0.65, 0.45];
+
   it("uses experience bootstrap + daily and never builds local prose", async () => {
-    (FuFirEClient.postExperienceBootstrap as any).mockResolvedValue({ ok: true });
+    (FuFirEClient.postExperienceBootstrap as any).mockResolvedValue({ soulprint_sectors: SECTORS });
     (FuFirEClient.postExperienceDaily as any).mockResolvedValue({
       qiResonance: 64,
       dominantPhase: "Wasser",
@@ -171,8 +173,64 @@ describe("POST /api/azodiac/daily", () => {
     expect(res.body.qiResonance).toBe(64);
   });
 
-  it("treats a daily payload without description as missing", async () => {
+  it("sends BirthInput-wrapped payloads (NOT the chart shape) to bootstrap and daily", async () => {
+    (FuFirEClient.postExperienceBootstrap as any).mockResolvedValue({ soulprint_sectors: SECTORS });
+    (FuFirEClient.postExperienceDaily as any).mockResolvedValue({
+      fusion: { synthesis: "Echte FuFirE-Synthese.", action: "Fokus" }
+    });
+    const res = await request(app).post("/api/azodiac/daily").send(VALID_BODY);
+    expect(res.status).toBe(200);
+
+    const bootstrapPayload = (FuFirEClient.postExperienceBootstrap as any).mock.calls[0][0];
+    expect(bootstrapPayload).toEqual({
+      birth: {
+        date: "1906-10-14",
+        time: "21:15:00",
+        tz: "Europe/Berlin",
+        lat: 52.37,
+        lon: 9.73,
+        place_label: "Linden, Hannover",
+        birth_time_known: true
+      },
+      locale: "de-DE"
+    });
+
+    const dailyPayload = (FuFirEClient.postExperienceDaily as any).mock.calls[0][0];
+    expect(dailyPayload.birth).toEqual(bootstrapPayload.birth);
+    expect(dailyPayload.soulprint_sectors).toEqual(SECTORS);
+    expect(dailyPayload.quiz_sectors).toEqual(SECTORS);
+    expect(dailyPayload.target_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(dailyPayload).not.toHaveProperty("local_datetime");
+    expect(dailyPayload).not.toHaveProperty("tz_id");
+  });
+
+  it("maps the engine DailyResponse fusion text as the daily description", async () => {
+    (FuFirEClient.postExperienceBootstrap as any).mockResolvedValue({ soulprint_sectors: SECTORS });
+    (FuFirEClient.postExperienceDaily as any).mockResolvedValue({
+      date: "2026-06-10",
+      western: { summary: "..." },
+      eastern: { summary: "..." },
+      fusion: { summary: "Kurz.", synthesis: "Heute zaehlt Klarheit.", action: "Fokus" }
+    });
+    const res = await request(app).post("/api/azodiac/daily").send(VALID_BODY);
+    expect(res.status).toBe(200);
+    expect(res.body.available).toBe(true);
+    expect(res.body.source).toBe("fufire");
+    expect(res.body.description).toBe("Heute zaehlt Klarheit.");
+    expect(res.body.coachingKeyword).toBe("Fokus");
+    expect(res.body.date).toBe("2026-06-10");
+  });
+
+  it("returns 502 when bootstrap delivers no valid soulprint sectors (no fabricated ring)", async () => {
     (FuFirEClient.postExperienceBootstrap as any).mockResolvedValue({});
+    const res = await request(app).post("/api/azodiac/daily").send(VALID_BODY);
+    expect(res.status).toBe(502);
+    expect(res.body.error).toBe("fufire_unavailable");
+    expect(FuFirEClient.postExperienceDaily).not.toHaveBeenCalled();
+  });
+
+  it("treats a daily payload without description as missing", async () => {
+    (FuFirEClient.postExperienceBootstrap as any).mockResolvedValue({ soulprint_sectors: SECTORS });
     (FuFirEClient.postExperienceDaily as any).mockResolvedValue({ qiResonance: 50 });
     const res = await request(app).post("/api/azodiac/daily").send(VALID_BODY);
     expect(res.status).toBe(200);

@@ -1,4 +1,10 @@
 import { FuFirEClient, FuFirePayload } from "./fufireClient";
+import {
+  buildWesternPayload,
+  buildBaziPayload,
+  buildWuxingPayload,
+  buildFusionPayload
+} from "./fufirePayloadMappers";
 import { normalizeFuFireProfile, getRawSimulatedProfileFromLocal } from "./fufireNormalizer";
 import { ProfileViewModel, ProfileSource } from "../viewmodels/profileViewModel";
 import type { ValidatedBirthInput } from "./birthInputValidation";
@@ -53,18 +59,20 @@ export async function buildProfile(input: ValidatedBirthInput): Promise<ProfileS
   };
 
   if (needs.western || needs.bazi || needs.wuxing || needs.fusion) {
+    // The /v1/calculate/* endpoints use their OWN request models (date/tz/lon/lat),
+    // not the /chart shape — each call gets its endpoint-specific mapped payload.
     const jobs: Promise<void>[] = [];
     if (needs.western) {
-      jobs.push(FuFirEClient.postWestern(payload).then((r) => { raw.western = pickSection(r, "western"); }));
+      jobs.push(FuFirEClient.postWestern(buildWesternPayload(input)).then((r) => { raw.western = pickSection(r, "western"); }));
     }
     if (needs.bazi) {
-      jobs.push(FuFirEClient.postBazi(payload).then((r) => { raw.bazi = pickSection(r, "bazi"); }));
+      jobs.push(FuFirEClient.postBazi(buildBaziPayload(input)).then((r) => { raw.bazi = pickSection(r, "bazi"); }));
     }
     if (needs.wuxing) {
-      jobs.push(FuFirEClient.postWuxing(payload).then((r) => { raw.wuxing = pickSection(r, "wuxing"); }));
+      jobs.push(FuFirEClient.postWuxing(buildWuxingPayload(input)).then((r) => { raw.wuxing = pickSection(r, "wuxing"); }));
     }
     if (needs.fusion) {
-      jobs.push(FuFirEClient.postFusion(payload).then((r) => { raw.fusion = pickSection(r, "fusion"); }));
+      jobs.push(FuFirEClient.postFusion(buildFusionPayload(input)).then((r) => { raw.fusion = pickSection(r, "fusion"); }));
     }
     await Promise.all(jobs);
     orchestrated = true;
