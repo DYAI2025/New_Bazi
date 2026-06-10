@@ -9,9 +9,17 @@ import {
 } from "../utils/mapsService";
 import { validateBirthInput, ValidatedBirthInput } from "../utils/birthInputValidation";
 import {
+  buildWesternPayload,
+  buildBaziPayload,
+  buildWuxingPayload,
+  buildFusionPayload,
+  buildBootstrapPayload,
+  buildDailyPayload,
+  extractSoulprintSectors
+} from "../utils/fufirePayloadMappers";
+import {
   buildProfile,
   buildLocalFallbackProfile,
-  buildFuFirEPayload,
   pickSection,
   ProfileServiceResult
 } from "../utils/profileService";
@@ -93,13 +101,17 @@ function normalizeDaily(daily: any): {
   const qiResonance = typeof d.qiResonance === "number" ? d.qiResonance
     : typeof d.qi_resonance === "number" ? d.qi_resonance : null;
   const dominantPhase = d.dominantPhase || d.dominant_phase || null;
-  const coachingKeyword = d.coachingKeyword || d.coaching_keyword || null;
-  const description = d.description || d.text || null;
+  // Engine DailyResponse shape: fusion.{synthesis,summary,action} carries the
+  // user-facing daily text (see DailyFusion in the FuFirE OpenAPI spec).
+  const fusion = d.fusion && typeof d.fusion === "object" ? d.fusion : null;
+  const fusionText = fusion ? fusion.synthesis || fusion.summary || null : null;
+  const coachingKeyword = d.coachingKeyword || d.coaching_keyword || (fusion ? fusion.action || null : null);
+  const description = d.description || d.text || fusionText || null;
 
   // Require user-facing text: a bare metric without a description is treated as missing.
-  const available = Boolean(description) && (qiResonance !== null || Boolean(dominantPhase));
+  const available = Boolean(description) && (qiResonance !== null || Boolean(dominantPhase) || Boolean(fusionText));
   return {
-    date: new Date().toISOString().split("T")[0],
+    date: typeof d.date === "string" && d.date ? d.date : new Date().toISOString().split("T")[0],
     qiResonance,
     dominantPhase,
     coachingKeyword,
@@ -112,6 +124,16 @@ function normalizeDaily(daily: any): {
 // --- Detail endpoint factory ---
 
 type ChartMethod = "postWestern" | "postBazi" | "postWuxing" | "postFusion";
+
+// Each /v1/calculate/* endpoint has its own request model (NOT the /chart
+// shape) — pick the matching mapper per upstream method.
+const DETAIL_PAYLOAD_BUILDERS: Record<ChartMethod, (input: ValidatedBirthInput) => unknown> = {
+  postWestern: buildWesternPayload,
+  postBazi: buildBaziPayload,
+  postWuxing: buildWuxingPayload,
+  postFusion: buildFusionPayload
+};
+
 function detailHandler(method: ChartMethod, key: "western" | "bazi" | "wuxing" | "fusion") {
   return async (req: Request, res: Response): Promise<void> => {
     const { valid, errors, value } = validateBirthInput(req.body || {});
@@ -121,7 +143,7 @@ function detailHandler(method: ChartMethod, key: "western" | "bazi" | "wuxing" |
       return;
     }
     try {
-      const payload = buildFuFirEPayload(value);
+      const payload = DETAIL_PAYLOAD_BUILDERS[method](value);
       const resp = await (FuFirEClient[method] as (p: any) => Promise<any>)(payload);
       const raw: any = { [key]: pickSection(resp, key) };
       const vm = normalizeFuFireProfile(raw, value, "fufire-orchestrated");
@@ -292,9 +314,20 @@ export function createApp(): Express {
       return;
     }
     try {
-      const payload = buildFuFirEPayload(value);
-      await FuFirEClient.postExperienceBootstrap(payload);
-      const daily = await FuFirEClient.postExperienceDaily(payload);
+      // BootstrapRequest/DailyRequest wrap a BirthInput — NOT the /chart shape.
+      const bootstrap = await FuFirEClient.postExperienceBootstrap(buildBootstrapPayload(value));
+      // DailyRequest requires the 12-sector soulprint from the bootstrap
+      // response. Never fabricate sectors — missing ring = upstream failure.
+      const sectors = extractSoulprintSectors(bootstrap);
+      if (!sectors) {
+        sendError(res, {
+          code: "fufire_unavailable",
+          httpStatus: 502,
+          message: "FuFirE-Bootstrap lieferte keine gueltigen Soulprint-Sektoren."
+        });
+        return;
+      }
+      const daily = await FuFirEClient.postExperienceDaily(buildDailyPayload(value, sectors));
       res.json(normalizeDaily(daily));
     } catch (err) {
       sendError(res, err);
