@@ -257,11 +257,20 @@ export default function WuXingDetail({ viewModel }: WuXingDetailProps) {
                   </linearGradient>
                 </defs>
 
-                {/* Parent Group with smooth rotational animate from framer-motion */}
-                <motion.g
-                  animate={{ rotate: rotationAngle }}
-                  transition={{ duration: 0.8, ease: "easeInOut" }}
-                  style={{ transformOrigin: "160px 160px" }}
+                {/* Parent group with a smooth CSS rotation.
+                    NOTE: deliberately NOT a motion.g — framer-motion forces
+                    `transform-box: fill-box; transform-origin: 50% 50%` on SVG elements,
+                    which rotates the group around its (animation-dependent) bounding box
+                    instead of the wheel centre and lets the nodes slip off the ring.
+                    `transformBox: "view-box"` makes the px origin resolve in viewBox
+                    coordinates, so the wheel always spins around (160,160). */}
+                <g
+                  style={{
+                    transform: `rotate(${rotationAngle}deg)`,
+                    transformOrigin: "160px 160px",
+                    transformBox: "view-box",
+                    transition: "transform 0.8s ease-in-out",
+                  }}
                 >
                   
                   {/* Ambient Constant Flowing Sheng (Generative) Cycle Line */}
@@ -440,11 +449,17 @@ export default function WuXingDetail({ viewModel }: WuXingDetailProps) {
                     const meta = elementMeta[el];
                     
                     return (
-                      <motion.g
+                      <g
                         key={el}
-                        animate={{ rotate: -rotationAngle }} // Inverse parent rotation to preserve upright labels
-                        transition={{ duration: 0.8, ease: "easeInOut" }}
-                        style={{ transformOrigin: `${pos.x}px ${pos.y}px` }}
+                        // Inverse parent rotation (around the node's own centre, in
+                        // viewBox coordinates) keeps the labels upright. Plain <g> +
+                        // CSS transition for the same reason as the parent group: see note above.
+                        style={{
+                          transform: `rotate(${-rotationAngle}deg)`,
+                          transformOrigin: `${pos.x}px ${pos.y}px`,
+                          transformBox: "view-box",
+                          transition: "transform 0.8s ease-in-out",
+                        }}
                         onClick={() => handleElementClick(el)}
                         className="cursor-pointer"
                       >
@@ -458,6 +473,9 @@ export default function WuXingDetail({ viewModel }: WuXingDetailProps) {
                             stroke={meta.colorHex}
                             strokeWidth={1.5}
                             className="animate-ping opacity-25"
+                            // animate-ping scales via CSS transform; without fill-box the
+                            // SVG circle would scale around the viewBox origin and drift away.
+                            style={{ transformBox: "fill-box", transformOrigin: "center" }}
                           />
                         )}
 
@@ -496,11 +514,11 @@ export default function WuXingDetail({ viewModel }: WuXingDetailProps) {
                         >
                           {meta.name}
                         </text>
-                      </motion.g>
+                      </g>
                     );
                   })}
 
-                </motion.g>
+                </g>
               </svg>
             </div>
           </div>
