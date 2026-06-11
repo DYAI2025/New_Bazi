@@ -74,6 +74,31 @@ const CHART = {
   }
 };
 
+// Synastry has NO own mock route: the BFF resolves BOTH profiles via /chart and
+// compares locally, serving elementalA/elementalB from the two fusion payloads.
+// The partner persona (any birth date other than the primary 1990-05-15) gets a
+// DIFFERENT elemental_comparison so the pair tension has a clear top axis:
+// Metall person-weights 0.282 (A) vs 0.600 (B) → |diff| 0.318 → Struktur↔Fluss,
+// Person-B-Überschuss (Blau).
+const PARTNER_CHART = {
+  ...CHART,
+  fusion: {
+    ...CHART.fusion,
+    harmony_index: {
+      ...CHART.fusion.harmony_index,
+      western_vector: { Holz: 0.45, Feuer: 0.4, Erde: 0.32, Metall: 0.61, Wasser: 0.5 },
+      bazi_vector: { Holz: 0.41, Feuer: 0.46, Erde: 0.4, Metall: 0.59, Wasser: 0.46 }
+    },
+    elemental_comparison: {
+      Holz: { western: 0.45, bazi: 0.41, difference: 0.04 },
+      Feuer: { western: 0.4, bazi: 0.46, difference: -0.06 },
+      Erde: { western: 0.32, bazi: 0.4, difference: -0.08 },
+      Metall: { western: 0.61, bazi: 0.59, difference: 0.02 },
+      Wasser: { western: 0.5, bazi: 0.46, difference: 0.04 }
+    }
+  }
+};
+
 // REAL BootstrapResponse essentials: the BFF refuses to call /v1/experience/daily
 // without a valid 12-sector soulprint ring from bootstrap (mirrors
 // src/__fixtures__/fufire/bootstrap.json).
@@ -172,8 +197,17 @@ const server = http.createServer(async (req, res) => {
   const rawBody = await readBody(req);
 
   if (req.method === "POST" && url === "/chart") {
+    // Partner persona (different birth date) → variant fusion distribution,
+    // so synastry pair tension is non-degenerate. Primary persona unchanged.
+    let isPartner = false;
+    try {
+      const parsed = JSON.parse(rawBody || "{}");
+      isPartner = typeof parsed.local_datetime === "string" && !parsed.local_datetime.startsWith("1990-05-15");
+    } catch {
+      // keep primary chart
+    }
     res.writeHead(200);
-    res.end(JSON.stringify(CHART));
+    res.end(JSON.stringify(isPartner ? PARTNER_CHART : CHART));
     return;
   }
   if (req.method === "POST" && url === "/v1/calculate/western") { res.writeHead(200); res.end(JSON.stringify({ western: CHART.western })); return; }

@@ -354,6 +354,32 @@ describe("POST /api/azodiac/synastry", () => {
     expect(FuFirEClient.postChart).toHaveBeenCalledTimes(2);
     expect(res.body.source).toBe("fufire-profiles-local-comparison");
     expect(typeof res.body.score).toBe("number");
+    // Additive Felder existieren immer; ohne elemental_comparison ehrlich leer.
+    expect(res.body.elementalA).toEqual([]);
+    expect(res.body.elementalB).toEqual([]);
+  });
+
+  it("serves both per-element distributions (elementalA/B) from the two fusion payloads", async () => {
+    const withFusion = (western: number, bazi: number) => ({
+      ...FULL_CHART,
+      fusion: {
+        harmony_index: { harmony_index: 0.9 },
+        elemental_comparison: {
+          Metall: { western, bazi, difference: western - bazi }
+        }
+      }
+    });
+    (FuFirEClient.postChart as any)
+      .mockResolvedValueOnce(withFusion(0.6, 0.2))
+      .mockResolvedValueOnce(withFusion(0.1, 0.3));
+    const res = await request(app).post("/api/azodiac/synastry").send({
+      userBirthData: VALID_BODY,
+      partnerBirthData: { ...VALID_BODY, name: "Karl Jaspers" }
+    });
+    expect(res.status).toBe(200);
+    // Personengewicht = Mittel aus West- und BaZi-Gewicht (fuseElementalWeights).
+    expect(res.body.elementalA).toEqual([{ element: "Metall", weight: 0.4 }]);
+    expect(res.body.elementalB).toEqual([{ element: "Metall", weight: 0.2 }]);
   });
 
   it("returns 400 when a partner profile is invalid", async () => {
