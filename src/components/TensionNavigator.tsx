@@ -27,7 +27,13 @@ interface TensionNavigatorProps {
 
 // ---------------------------------------------------------------------------
 // Geometrie — 1:1 portiert aus docs/concept/spannungsnavigator-testtool.html
-// (Funktionen polar / curvePath / blend). viewBox 0 0 720 720, Zentrum 360, R=240.
+// (Funktionen polar / curvePath / blend). Zentrum 360/360, R=240. Der viewBox ist
+// horizontal auf "-150 0 1020 720" erweitert, damit die seitlich verankerten
+// Pol-Labels (polar R+52, anchor start/end) nicht am Rand clippen — gemessen
+// (getBBox, Chromium, alle 5 Achsen aktiv): x-Extent [-126..773]. WICHTIG: Der
+// viewBox muss horizontal symmetrisch um CX=360 bleiben (-150+1020/2 = 360),
+// weil die zentrierte HTML-Fragekarte als Overlay über dem Container liegt und
+// nur dann mit dem Ringzentrum fluchtet. Alle SVG-Koordinaten bleiben unverändert.
 // WARNUNG (Lehre aus PR #14): KEINE framer-motion-Transforms auf SVG-Elementen —
 // Animationen ausschließlich über CSS-Transitions (opacity / stroke-width).
 // ---------------------------------------------------------------------------
@@ -193,6 +199,8 @@ export default function TensionNavigator({
 
   // Frage des Tages (deterministisch) + Reaktions-Offset (Widerstand: Index+1 mod 3).
   // Paar-Modus: eine kuratierte Paar-Frage je Achse (MVP, Stufe „spürbar").
+  // MISSING für N2: Im Paar-Modus ist questionOffset wirkungslos — PAIR_QUESTIONS
+  // liefert nur 1 Frage pro Achse, „Widerstand" rotiert also keine Alternativfrage.
   const questions = TENSION_QUESTIONS[act.id][current.signalLevel] as readonly string[];
   const baseQuestion = selectQuestion(act.id, current.signalLevel, todayISO);
   const baseIndex = Math.max(0, questions.indexOf(baseQuestion));
@@ -250,7 +258,7 @@ export default function TensionNavigator({
       <div className="glass-card p-4 sm:p-6 rounded-2xl relative overflow-hidden gold-glow-border">
         <div className="relative">
           <svg
-            viewBox="0 0 720 720"
+            viewBox="-150 0 1020 720"
             xmlns="http://www.w3.org/2000/svg"
             role="img"
             aria-label="Spannungsnavigator: Ring der fünf Spannungsachsen"
@@ -483,7 +491,10 @@ export default function TensionNavigator({
           </div>
         </div>
 
-        {/* Reaktions-Buttons unter der Karte (Konzept-Regel 8) */}
+        {/* Reaktions-Buttons unter der Karte (Konzept-Regel 8).
+            Im Kalibrierungs-Zustand verschwinden die Buttons BEWUSST: Das Modell
+            bietet keine Achse mehr an, ein weiteres Durchwechseln per „Passt nicht"
+            soll nicht möglich sein — Reset erst beim Profilwechsel (useEffect auf base). */}
         {!calibration && (
           <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
             {REACTIONS.map((r) => (
@@ -584,8 +595,8 @@ function OriginLayer({ fusion }: { fusion: FusionData }) {
     <div className="space-y-6">
       <p className="text-sm text-stone-400 leading-relaxed">
         Die Fusions-Matrix führt das westliche Grad-Koordinatensystem und die chinesischen
-        Säulen-Einflüsse der Fünf Elemente zusammen. Sie bewertet, wie nahtlos Ihre bewussten
-        Willensimpulse (Sonne/Zodiak) und Ihre primären spirituellen Energieleitungen
+        Säulen-Einflüsse der Fünf Elemente zusammen. Sie bewertet, wie nahtlos deine bewussten
+        Willensimpulse (Sonne/Zodiak) und deine primären spirituellen Energieleitungen
         (Tagesmeister/BaZi) im Alltagsfluss miteinander verschmelzen.
       </p>
 

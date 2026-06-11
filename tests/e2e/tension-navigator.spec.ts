@@ -78,7 +78,11 @@ test("'Passt nicht' switches to the next-strongest pole pair", async ({ page }) 
   await expect(page.getByTestId("tension-kicker")).not.toContainText("Struktur ↔ Fluss");
   await expect(page.getByTestId("tension-question")).not.toHaveText(questionBefore ?? "");
 
-  await page.screenshot({ path: `${SHOT_DIR}/navigator-passt-nicht.png`, fullPage: true });
+  // Container-Screenshot statt fullPage: fullPage stitcht den Sticky-Header
+  // mehrfach über die Karte (Scroll-Stitching-Artefakt). Viewport vorher hoch
+  // genug, damit der Container OHNE Scroll-Stitching in einen Frame passt.
+  await page.setViewportSize({ width: 1280, height: 1600 });
+  await page.getByTestId("tension-navigator").screenshot({ path: `${SHOT_DIR}/navigator-passt-nicht.png` });
 });
 
 test("'Widerstand' shows the Gegenpol footnote (Gegenlesart)", async ({ page }) => {
@@ -91,7 +95,9 @@ test("'Widerstand' shows the Gegenpol footnote (Gegenlesart)", async ({ page }) 
   await expect(page.getByTestId("tension-mode-note")).toBeVisible();
   await expect(page.getByTestId("tension-mode-note")).toContainText("Gegenpol");
 
-  await page.screenshot({ path: `${SHOT_DIR}/navigator-widerstand.png`, fullPage: true });
+  // Container-Screenshot statt fullPage (Sticky-Header-Stitching, s. o.).
+  await page.setViewportSize({ width: 1280, height: 1600 });
+  await page.getByTestId("tension-navigator").screenshot({ path: `${SHOT_DIR}/navigator-widerstand.png` });
 });
 
 test("question is deterministic: reload on the same day shows the same question", async ({ page }) => {
