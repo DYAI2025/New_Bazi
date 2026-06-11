@@ -1,5 +1,6 @@
 import React from "react";
-import { ProfileViewModel, SignalLevel } from "../viewmodels/profileViewModel";
+import { ProfileViewModel, FusionData, SignalLevel } from "../viewmodels/profileViewModel";
+import { Shield, Activity } from "lucide-react";
 import {
   deriveTension,
   type TensionAxisState,
@@ -119,23 +120,33 @@ export default function TensionNavigator({ viewModel }: TensionNavigatorProps) {
 
   const [loop, setLoop] = React.useState<LoopState | null>(null);
   const [copied, setCopied] = React.useState(false);
+  // Herkunft-Layer: öffnet sich bei Reaktion „Trifft" ODER per explizitem
+  // „Herkunft & Methode"-Link (Konzept §12: Premium klappt in Herkunft auf).
+  const [originOpen, setOriginOpen] = React.useState(false);
 
   // Profilwechsel → Reaktions-Loop zurücksetzen.
   React.useEffect(() => {
     setLoop(null);
     setCopied(false);
+    setOriginOpen(false);
   }, [base]);
 
   if (!base) {
+    const fusionMissing = viewModel.fusion.source === "missing";
     return (
       <div id="tension-navigator" className="space-y-8">
         <div
           className="glass-card p-8 rounded-2xl flex flex-col items-center justify-center text-center space-y-4"
-          data-testid="tension-empty"
+          data-testid={fusionMissing ? "fusion-missing" : "tension-empty"}
         >
-          <h3 className="font-serif text-2xl font-bold text-gold-light">Spannungsnavigator</h3>
+          <Activity className="h-10 w-10 text-gold-muted" />
+          <h3 className="font-serif text-2xl font-bold text-gold-light">
+            {fusionMissing ? "Fusions-Matrix nicht verfügbar" : "Spannungsnavigator"}
+          </h3>
           <p className="text-sm text-stone-400 max-w-md">
-            Für dieses Profil liefert das Fusionsfeld keine auswertbare Differenz.
+            {fusionMissing
+              ? `FuFirE hat keine Fusionsdaten geliefert. Es werden bewusst keine erfundenen Kohärenzwerte angezeigt (Quelle: ${viewModel.fusion.source}).`
+              : "Für dieses Profil liefert das Fusionsfeld keine auswertbare Differenz."}
           </p>
         </div>
       </div>
@@ -163,6 +174,8 @@ export default function TensionNavigator({ viewModel }: TensionNavigatorProps) {
       rejectedAxisIds: result.rejectedAxisIds,
       questionOffset: result.questionOffset,
     });
+    // „Trifft" stabilisiert die Achse und öffnet den Herkunft-Layer (Konzept §12).
+    if (reaction === "trifft") setOriginOpen(true);
   };
 
   // Share = Text-Snippet (Konzept §6): keine Geburtsdaten, keine Werte.
@@ -409,19 +422,214 @@ export default function TensionNavigator({ viewModel }: TensionNavigatorProps) {
           </div>
         )}
 
-        {/* Herkunft (bei „Trifft"): sprachlich, Richtung + Stufe — keine Zahlen im Visual */}
-        {mode === "vertiefung" && (
-          <details open className="mt-4 rounded-xl border border-gold-muted/15 bg-obsidian-deep/40 p-4" data-testid="tension-origin">
-            <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-widest text-gold-muted">
-              Herkunft &amp; Methode
-            </summary>
-            <p className="text-xs text-stone-400 leading-relaxed mt-2">
+        {/* Herkunft-Layer: öffnet bei „Trifft" oder explizit. Übernimmt die KOMPLETTE
+            bisherige technische Fusions-Detailansicht. Im Herkunft-Layer SIND Zahlen
+            erlaubt (Konzept §7: Herkunft zeigt die Ableitung) — im Navigator-Visual
+            selbst weiterhin KEINE. */}
+        <div className="mt-4 text-center">
+          <button
+            type="button"
+            onClick={() => setOriginOpen((o) => !o)}
+            className="font-mono text-[10px] uppercase tracking-widest text-gold-muted hover:text-gold-light transition-colors duration-200 underline underline-offset-4 decoration-gold-muted/40"
+            data-testid="tension-origin-toggle"
+          >
+            Herkunft &amp; Methode
+          </button>
+        </div>
+        {originOpen && (
+          <div className="mt-4 rounded-xl border border-gold-muted/15 bg-obsidian-deep/40 p-4 sm:p-6 space-y-6 text-left" data-testid="tension-origin">
+            <p className="text-xs text-stone-400 leading-relaxed">
               Abgeleitet aus der {act.element}-Differenz deines Fusionsfelds ({originDirection}).
               Ausprägung: {signalLabel} (kalibriert gegen Zufallsbaseline). Die Lesart neigt aktuell
               zum Pol {leanPole}.
             </p>
-          </details>
+            <OriginLayer fusion={viewModel.fusion} />
+          </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Herkunft-Layer: die vollständige technische Fusions-Ansicht (vormals eine
+// eigene Tab-Komponente). Kalibrierter Kohärenz-Gauge + Band, Signal-Badge,
+// Systembrücke, Engine-Deutung, Element-Doppelbalken (West vs. BaZi + Δ) und
+// die größten Spannungsfelder. Gauge bewusst ohne framer-motion (PR #14):
+// statischer strokeDashoffset, Übergänge nur per CSS.
+// ---------------------------------------------------------------------------
+
+function OriginLayer({ fusion }: { fusion: FusionData }) {
+  const {
+    coherenceIndex,
+    coherenceCalibrated,
+    signalLevel,
+    coherenceRating,
+    coherenceExplanation,
+    systemBridge,
+    elementalComparison,
+    topSignals,
+    integrationText,
+    source,
+  } = fusion;
+  const signalLabel = signalLevel === "spuerbar" ? "spürbar" : signalLevel;
+
+  return (
+    <div className="space-y-6">
+      <p className="text-sm text-stone-400 leading-relaxed">
+        Die Fusions-Matrix führt das westliche Grad-Koordinatensystem und die chinesischen
+        Säulen-Einflüsse der Fünf Elemente zusammen. Sie bewertet, wie nahtlos Ihre bewussten
+        Willensimpulse (Sonne/Zodiak) und Ihre primären spirituellen Energieleitungen
+        (Tagesmeister/BaZi) im Alltagsfluss miteinander verschmelzen.
+      </p>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        {/* Kalibrierter Kohärenz-Gauge */}
+        <div className="lg:col-span-4">
+          <div className="rounded-2xl border border-gold-muted/10 bg-obsidian-deep/30 p-6 flex flex-col items-center justify-center text-center space-y-5 h-full">
+            <span className="font-mono text-[9px] uppercase tracking-widest text-[#9A8F80]">
+              {coherenceCalibrated ? "Kalibrierter Kohärenzindex" : "System-Kohärenzindex"}
+            </span>
+
+            <div className="relative flex items-center justify-center">
+              <svg className="w-40 h-40 transform -rotate-90">
+                <circle cx="80" cy="80" r="70" className="stroke-stone-800" strokeWidth="8" fill="transparent" />
+                <circle
+                  cx="80"
+                  cy="80"
+                  r="70"
+                  className="stroke-[#D4AF37] transition-all duration-700"
+                  strokeWidth="8"
+                  fill="transparent"
+                  strokeDasharray={440}
+                  strokeDashoffset={440 - (440 * coherenceIndex) / 100}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <div className="absolute flex flex-col items-center justify-center">
+                <span className="text-4xl font-serif font-bold text-gold-light tracking-tight" data-testid="fusion-coherence-value">
+                  {coherenceIndex}%
+                </span>
+                <span className="font-mono text-[8px] uppercase text-[#9A8F80] tracking-wider mt-0.5 max-w-[110px] text-center leading-snug">
+                  {coherenceCalibrated ? "kalibrierte Strukturkongruenz vs. Zufallsbaseline" : "Deckung"}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="text-md font-serif font-bold text-[#E0D8D0] tracking-wide" data-testid="fusion-coherence-rating">
+                {coherenceRating}
+              </h4>
+              {/* Sichtbarkeit des Kongruenz-Musters vs. Zufallsbaseline —
+                  KEINE Spannungsqualität (+1σ = harmonischer als zufällig). */}
+              {signalLevel && (
+                <span
+                  data-testid="fusion-signal-level"
+                  className="inline-block font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 rounded border text-gold-muted border-gold-muted/30 bg-gold-muted/10"
+                >
+                  Ausprägung des Signals: {signalLabel}
+                </span>
+              )}
+              <p className="text-xs text-stone-400 leading-relaxed font-light">{coherenceExplanation}</p>
+              <span
+                data-testid="fusion-source"
+                className="inline-block font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 rounded border text-emerald-300 border-emerald-500/30 bg-emerald-500/10"
+              >
+                Quelle: {source}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Systembrücke, Engine-Deutung, Element-Doppelbalken, Spannungsfelder */}
+        <div className="lg:col-span-8">
+          <div className="rounded-2xl border border-gold-muted/10 bg-obsidian-deep/30 p-6 space-y-6 h-full">
+            <h4 className="font-serif text-lg font-bold text-gold-light border-b border-gold-muted/10 pb-3">
+              Synthese &amp; Systembrücke
+            </h4>
+
+            <p className="text-sm text-stone-300 font-light leading-relaxed">{systemBridge}</p>
+
+            {/* Die ECHTE fusion_interpretation der Engine */}
+            {integrationText && (
+              <div className="space-y-2 pt-4 border-t border-gold-muted/5">
+                <span className="font-mono text-[10px] uppercase font-bold text-gold-muted tracking-widest block">
+                  Fusions-Deutung der Engine
+                </span>
+                <p
+                  data-testid="fusion-interpretation"
+                  className="text-sm text-stone-300 font-light leading-relaxed whitespace-pre-line"
+                >
+                  {integrationText}
+                </p>
+              </div>
+            )}
+
+            {/* Per-Element West-vs-BaZi-Vergleich — die Daten, aus denen die Achsen abgeleitet sind */}
+            {elementalComparison.length > 0 && (
+              <div className="space-y-4 pt-4 border-t border-gold-muted/5">
+                <span className="font-mono text-[10px] uppercase font-bold text-gold-muted tracking-widest block">
+                  Element-Resonanz: West vs. BaZi
+                </span>
+                <div className="space-y-3" data-testid="fusion-elemental-comparison">
+                  {elementalComparison.map((cmp) => (
+                    <div key={cmp.element} className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-serif font-bold text-slate-200">{cmp.element}</span>
+                        <span className="font-mono text-[9px] text-stone-500">
+                          Δ {cmp.difference >= 0 ? "+" : ""}{cmp.difference.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-mono text-[8px] uppercase text-stone-500 w-8 shrink-0">West</span>
+                        <div className="flex-1 h-1.5 rounded-full bg-stone-800 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-[#D4AF37]"
+                            style={{ width: `${Math.min(100, Math.max(0, cmp.western * 100))}%` }}
+                          />
+                        </div>
+                        <span className="font-mono text-[9px] text-stone-400 w-9 text-right shrink-0">{cmp.western.toFixed(2)}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-mono text-[8px] uppercase text-stone-500 w-8 shrink-0">BaZi</span>
+                        <div className="flex-1 h-1.5 rounded-full bg-stone-800 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-stone-400"
+                            style={{ width: `${Math.min(100, Math.max(0, cmp.bazi * 100))}%` }}
+                          />
+                        </div>
+                        <span className="font-mono text-[9px] text-stone-400 w-9 text-right shrink-0">{cmp.bazi.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Größte West/Ost-Differenzen — aus elemental_comparison abgeleitet, nie erfunden */}
+            {topSignals.length > 0 && (
+              <div className="space-y-4 pt-4 border-t border-gold-muted/5">
+                <span className="font-mono text-[10px] uppercase font-bold text-gold-muted tracking-widest block">
+                  Größte Spannungsfelder (aus dem Element-Vergleich abgeleitet)
+                </span>
+                <div className="grid grid-cols-1 gap-4">
+                  {topSignals.map((sig, idx) => (
+                    <div
+                      key={idx}
+                      className="p-4 rounded-xl bg-obsidian-deep/40 border border-gold-muted/10 space-y-2 hover:border-gold-muted/30 duration-300"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <Shield className="h-4 w-4 text-gold-muted" />
+                        <strong className="text-xs font-serif font-bold text-slate-200">{sig.trigger}</strong>
+                      </div>
+                      <p className="text-xs text-stone-400 font-sans leading-relaxed">{sig.interpretation}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
