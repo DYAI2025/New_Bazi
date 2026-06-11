@@ -1,6 +1,7 @@
 import { ElementType, YinYang } from "../types";
 import { ProfileViewModel, HouseMeaning, ElementCardData, ProfileSource } from "../viewmodels/profileViewModel";
 import { calculateAstrologyFusion, HEAVENLY_STEMS, EARTHLY_BRANCHES, WESTERN_ZODIAC } from "./astrology";
+import { aspectInterpretation } from "./aspectInterpretation";
 
 // Standard meanings for 12 Houses to combine with planet details
 const HOUSE_TEMPLATES = [
@@ -362,14 +363,20 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
     .filter((asp: any) => asp && typeof asp === "object")
     .map((asp: any) => {
       const typeInfo = typeof asp.type === "string" ? ASPECT_TYPES_DE[asp.type.toLowerCase()] : undefined;
+      const planet1 = germanPlanetName(asp.planet1 || asp.sourceKey || "Unbekannt");
+      const planet2 = germanPlanetName(asp.planet2 || asp.targetKey || "Unbekannt");
+      const typeDe = typeInfo ? typeInfo.name : asp.type || "Aspekt";
       return {
-        planet1: germanPlanetName(asp.planet1 || asp.sourceKey || "Unbekannt"),
-        planet2: germanPlanetName(asp.planet2 || asp.targetKey || "Unbekannt"),
-        type: typeInfo ? typeInfo.name : asp.type || "Aspekt",
+        planet1,
+        planet2,
+        type: typeDe,
         symbol: asp.symbol || (typeInfo ? typeInfo.symbol : "☌"),
         orb: typeof asp.orb === "number" ? asp.orb : 0,
         harmony: asp.harmony || (typeInfo ? typeInfo.harmony : "neutral"),
-        interpretation: asp.interpretation || "Lokale abgeleitete Deutung"
+        // REAL aspects carry no interpretation field — compose a local,
+        // deterministic sentence (aspect-type template x planet keywords)
+        // instead of the former literal placeholder.
+        interpretation: asp.interpretation || aspectInterpretation(planet1, planet2, typeDe)
       };
     });
 
