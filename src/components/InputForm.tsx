@@ -7,6 +7,7 @@ import { ResolvedPlace } from "../api/bazodiacClient";
 interface InputFormProps {
   birthData: BirthData | null;
   onCalculate: (data: BirthData) => void;
+  timeError?: string | null;
 }
 
 const EMPTY: BirthData = {
@@ -24,7 +25,7 @@ const FIELD_CLASS =
 const LABEL_CLASS =
   "font-mono text-[10px] uppercase font-bold text-gold-muted tracking-wider flex items-center space-x-1.5 select-none mb-2";
 
-export default function InputForm({ birthData, onCalculate }: InputFormProps) {
+export default function InputForm({ birthData, onCalculate, timeError = null }: InputFormProps) {
   const [formData, setFormData] = React.useState<BirthData>({ ...EMPTY, ...(birthData || {}) });
   const [submitting, setSubmitting] = React.useState(false);
 
@@ -156,6 +157,11 @@ export default function InputForm({ birthData, onCalculate }: InputFormProps) {
                   onChange={(e) => setFormData({ ...formData, birthTime: e.target.value })}
                   className={`${FIELD_CLASS} font-mono`}
                 />
+                {timeError && (
+                  <p className="mt-1.5 text-[11px] text-red-400 font-sans leading-relaxed" data-testid="time-field-error">
+                    {timeError}
+                  </p>
+                )}
               </div>
 
               <div className="sm:col-span-2">

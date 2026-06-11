@@ -1,0 +1,11 @@
+{
+  "error": "Nonexistent local time due to DST transition: 1990-03-25T02:30:00 in Europe/Berlin. Provide a valid time or set nonexistentTime='shift_forward'.",
+  "type": "dst_error",
+  "hint": "Use dst_policy='earlier' or 'later' to auto-resolve.",
+  "message": "Nonexistent local time due to DST transition: 1990-03-25T02:30:00 in Europe/Berlin. Provide a valid time or set nonexistentTime='shift_forward'.",
+  "detail": {},
+  "status": 422,
+  "path": "/chart",
+  "timestamp": "2026-06-11T12:41:55.425749Z",
+  "request_id": "b5e1b2ca-776d-4da2-a959-4833915e9e4a"
+}
