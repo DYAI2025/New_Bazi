@@ -56,12 +56,25 @@ test("renders the FuFirE-sourced overview after computing", async ({ page }) => 
   await page.screenshot({ path: `${SHOT_DIR}/overview-fufire-source.png`, fullPage: true });
 });
 
-test("fusion tab explains the coherence index and shows the source", async ({ page }) => {
+test("fusion tab renders the REAL calibrated FusionResponse path", async ({ page }) => {
   await page.goto("/");
   await computeProfile(page);
   await page.click("#nav-tab-fusion");
   await expect(page.getByText(/Kohärenzindex/).first()).toBeVisible();
   await expect(page.getByTestId("fusion-source")).toContainText("fufire");
+  // CALIBRATED gauge value (h_calibrated 0.6144 -> 61.4%), not raw 90.8%.
+  await expect(page.getByTestId("fusion-coherence-value")).toHaveText("61.4%");
+  // Honest band label straight from calibration.interpretation_band.
+  await expect(page.getByTestId("fusion-coherence-rating")).toContainText("Überdurchschnittliche Kongruenz");
+  // Signal level badge (z = 1.015 -> spürbar) with the visibility wording.
+  await expect(page.getByTestId("fusion-signal-level")).toContainText("Ausprägung des Signals: spürbar");
+  // Per-element West-vs-BaZi comparison + derived Spannungsfelder.
+  await expect(page.getByTestId("fusion-elemental-comparison")).toBeVisible();
+  await expect(page.getByText(/Größte Spannungsfelder/)).toBeVisible();
+  await expect(page.getByText(/Metall: West 0\.13 vs\. BaZi 0\.43/)).toBeVisible();
+  // The engine's REAL fusion_interpretation text is rendered.
+  await expect(page.getByTestId("fusion-interpretation")).toContainText("Harmonie-Index: 90.80%");
+  await expect(page.getByTestId("fusion-interpretation")).toContainText("Westliche Dominanz: Holz");
   await page.screenshot({ path: `${SHOT_DIR}/fusion-tab.png`, fullPage: true });
 });
 

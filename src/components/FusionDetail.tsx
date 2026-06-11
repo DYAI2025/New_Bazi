@@ -8,9 +8,9 @@ interface FusionDetailProps {
 }
 
 export default function FusionDetail({ viewModel }: FusionDetailProps) {
-  const { coherenceIndex, coherenceCalibrated, tensionLevel, coherenceRating, coherenceExplanation, systemBridge, elementalComparison, topSignals, integrationText, source } = viewModel.fusion;
+  const { coherenceIndex, coherenceCalibrated, signalLevel, coherenceRating, coherenceExplanation, systemBridge, elementalComparison, topSignals, integrationText, source } = viewModel.fusion;
   const fusionMissing = source === "missing";
-  const tensionLabel = tensionLevel === "spuerbar" ? "spürbar" : tensionLevel;
+  const signalLabel = signalLevel === "spuerbar" ? "spürbar" : signalLevel;
 
   // Visual color accents matching the coherence index
   const getCoherenceGaugeColor = (score: number) => {
@@ -105,12 +105,14 @@ export default function FusionDetail({ viewModel }: FusionDetailProps) {
               <h4 className="text-md font-serif font-bold text-[#E0D8D0] tracking-wide" data-testid="fusion-coherence-rating">
                 {coherenceRating}
               </h4>
-              {tensionLevel && (
+              {/* Visibility of the congruence pattern vs. random baseline —
+                  NOT a tension quality (+1σ = MORE harmonic than random). */}
+              {signalLevel && (
                 <span
-                  data-testid="fusion-tension-level"
+                  data-testid="fusion-signal-level"
                   className="inline-block font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 rounded border text-gold-muted border-gold-muted/30 bg-gold-muted/10"
                 >
-                  Spannungsniveau: {tensionLabel}
+                  Ausprägung des Signals: {signalLabel}
                 </span>
               )}
               <p className="text-xs text-stone-400 leading-relaxed font-light">

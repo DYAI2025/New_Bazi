@@ -9,24 +9,35 @@
  *       Quadrat = Reibung/Antrieb, Sextil = Gelegenheit/Anregung, ...)
  *   (b) a planet keyword table (Sonne = Identität, Mond = Gefühlswelt, ...).
  *
- * Tone is anti-reification: "X trifft auf Y: ..." — describing an
- * interplay of themes, never an essential statement about the person
- * ("Du bist ...").
+ * GRAMMAR CONTRACT: every keyword is a SINGLE German noun whose dative
+ * singular equals its nominative form ("zwischen Identität und Antrieb" is
+ * correct; plural or multi-word keywords like "Werte und Beziehung" produced
+ * broken chains such as "zwischen Werte und Beziehung und Denken und
+ * Kommunikation"). Templates name the planet pair ONCE up front
+ * ("X trifft auf Y: ...") and join the two keywords with at most one "und",
+ * so the composed sentence stays unambiguous for every pairing.
+ *
+ * Tone is anti-reification: describing an interplay of themes, never an
+ * essential statement about the person ("Du bist ...").
  */
 
-/** Planet keyword table — German planet names (post-normalizer) -> theme. */
-const PLANET_KEYWORDS_DE: Record<string, string> = {
+/**
+ * Planet keyword table — German planet names (post-normalizer) -> theme.
+ * Exported so tests can pin the dative-safety contract (single-word,
+ * form-stable nouns only).
+ */
+export const PLANET_KEYWORDS_DE: Record<string, string> = {
   Sonne: "Identität",
   Mond: "Gefühlswelt",
-  Merkur: "Denken und Kommunikation",
-  Venus: "Werte und Beziehung",
+  Merkur: "Kommunikation",
+  Venus: "Beziehungswelt",
   Mars: "Antrieb",
   Jupiter: "Wachstum",
-  Saturn: "Struktur und Grenze",
+  Saturn: "Strukturkraft",
   Uranus: "Umbruch",
-  Neptun: "Auflösung und Intuition",
+  Neptun: "Intuition",
   Pluto: "Wandlung",
-  Chiron: "Verletzlichkeit und Heilung",
+  Chiron: "Verletzlichkeit",
   Lilith: "Eigensinn",
   Mondknoten: "Entwicklungsrichtung",
   "Wahrer Mondknoten": "Entwicklungsrichtung",
@@ -36,18 +47,18 @@ const PLANET_KEYWORDS_DE: Record<string, string> = {
 
 /**
  * Aspect-type templates keyed by the GERMAN aspect name the normalizer
- * produces (plus a generic fallback). Each composes the two planet themes
- * into one sentence.
+ * produces (plus a generic fallback). Each names the pair once and composes
+ * the two single-noun themes into one grammatically clean sentence.
  */
 const ASPECT_TEMPLATES_DE: Record<string, (p1: string, p2: string, k1: string, k2: string) => string> = {
   Konjunktion: (p1, p2, k1, k2) =>
-    `${p1} trifft auf ${p2}: ${k1} und ${k2} verschmelzen hier zu einem gebündelten Impuls, der beide Themen gemeinsam auftreten lässt.`,
+    `${p1} trifft auf ${p2}: ${k1} und ${k2} verschmelzen zu einem gebündelten Impuls, der beide Themen gemeinsam auftreten lässt.`,
   Opposition: (p1, p2, k1, k2) =>
     `${p1} steht ${p2} gegenüber: zwischen ${k1} und ${k2} spannt sich eine Achse, deren Pole nach bewusstem Ausgleich suchen.`,
   Trigon: (p1, p2, k1, k2) =>
     `${p1} trifft auf ${p2}: ${k1} und ${k2} fließen unterstützend ineinander und können einander mühelos tragen.`,
   Quadrat: (p1, p2, k1, k2) =>
-    `${p1} trifft auf ${p2}: die Reibung zwischen ${k1} und ${k2} erzeugt Spannung, die als Antrieb nutzbar wird.`,
+    `${p1} trifft auf ${p2}: die Reibung zwischen ${k1} und ${k2} erzeugt Spannung, die sich als Entwicklungsschub nutzen lässt.`,
   Sextil: (p1, p2, k1, k2) =>
     `${p1} trifft auf ${p2}: zwischen ${k1} und ${k2} öffnet sich eine anregende Gelegenheit, die aktives Aufgreifen belohnt.`,
   Quincunx: (p1, p2, k1, k2) =>

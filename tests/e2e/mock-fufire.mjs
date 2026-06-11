@@ -37,9 +37,40 @@ const CHART = {
   wuxing: {
     wu_xing_vector: { Holz: 22, Feuer: 28, Erde: 24, Metall: 14, Wasser: 12 }
   },
+  // REAL FusionResponse shape (mirrors src/__fixtures__/fufire/fusion.json):
+  // harmony_index OBJECT, calibration block (incl. h_baseline/h_sigma),
+  // elemental_comparison, fusion_interpretation, cosmic_state. The legacy
+  // { coherenceIndex, systemBridge } mock shape is gone — e2e must prove the
+  // new calibrated rendering path (61.4% gauge, honest band label,
+  // Spannungsfelder, engine interpretation text).
   fusion: {
-    coherenceIndex: 76,
-    systemBridge: "Westliche Waage-Sonne und Holz-Tagesmeister bilden eine kooperative, ausgleichende Brücke."
+    harmony_index: {
+      harmony_index: 0.908,
+      interpretation: "Starke Resonanz - Westliche und östliche Matrix stehen in perfekter Harmonie",
+      method: "dot_product",
+      western_vector: { Holz: 0.61, Feuer: 0.438, Erde: 0.305, Metall: 0.133, Wasser: 0.57 },
+      bazi_vector: { Holz: 0.388, Feuer: 0.539, Erde: 0.431, Metall: 0.431, Wasser: 0.431 }
+    },
+    calibration: {
+      h_raw: 0.908,
+      h_calibrated: 0.6144,
+      h_baseline: 0.7614,
+      h_sigma: 0.1445,
+      sigma_above: 1.015,
+      quality: "ok",
+      interpretation_band: "Überdurchschnittliche Kongruenz",
+      n_west: 14,
+      n_bazi_contributions: 13
+    },
+    elemental_comparison: {
+      Holz: { western: 0.61, bazi: 0.388, difference: 0.222 },
+      Feuer: { western: 0.438, bazi: 0.539, difference: -0.102 },
+      Erde: { western: 0.305, bazi: 0.431, difference: -0.126 },
+      Metall: { western: 0.133, bazi: 0.431, difference: -0.299 },
+      Wasser: { western: 0.57, bazi: 0.431, difference: 0.139 }
+    },
+    cosmic_state: 0.908,
+    fusion_interpretation: "Harmonie-Index: 90.80%\nStarke Resonanz - Westliche und östliche Matrix stehen in perfekter Harmonie\n\nWestliche Dominanz: Holz\nÖstliche Dominanz: Feuer\n\nIhre westliche und östliche Chart stehen in starker Resonanz.\nDie Energien ergänzen sich harmonisch."
   }
 };
 

@@ -29,11 +29,14 @@ export interface ElementCardData {
 }
 
 /**
- * Tension level between the western and the BaZi structure — groundwork for
- * the upcoming Spannungsnavigator. Derived from the engine's calibration
- * block (z-score against the random baseline) when available.
+ * Signal level: how VISIBLE the West-Ost congruence pattern is — derived from
+ * the engine's calibration block (|z-score| of h_raw against the random
+ * baseline) when available. This is concept language for pattern visibility,
+ * NOT a tension quality: +1σ means MORE harmonic than random. True tension
+ * intensity will derive from the per-element differences in the upcoming
+ * Spannungsnavigator.
  */
-export type TensionLevel = "leise" | "spuerbar" | "dominant";
+export type SignalLevel = "leise" | "spuerbar" | "dominant";
 
 export interface FusionData {
   coherenceIndex: number;
@@ -44,7 +47,7 @@ export interface FusionData {
    */
   coherenceCalibrated: boolean;
   /** null when the response carries no usable calibration/coherence data. */
-  tensionLevel: TensionLevel | null;
+  signalLevel: SignalLevel | null;
   coherenceRating: string;
   coherenceExplanation: string;
   systemBridge: string;
@@ -71,7 +74,12 @@ export interface FusionData {
   wuxingContributors: string[];
   supports: string[];
   frictions: string[];
-  integrationText: string;
+  /**
+   * The engine's REAL fusion_interpretation text (or a legacy passthrough).
+   * null when the engine sent none — the "Fusions-Deutung der Engine"
+   * section is then hidden instead of showing an invented local sentence.
+   */
+  integrationText: string | null;
   source: string;
 }
 

@@ -559,23 +559,26 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
     : realCoherence01 !== null ? Math.round((realCoherence01 <= 1 ? realCoherence01 * 100 : realCoherence01) * 10) / 10
     : 0;
 
-  // Tension level (groundwork for the Spannungsnavigator): how far the raw
-  // harmony sits from the engine's random baseline, in baseline sigmas.
-  // z = (h_raw - h_baseline) / h_sigma. |z| < 1 -> leise, 1..2 -> spuerbar,
-  // > 2 -> dominant.
-  let tensionLevel: "leise" | "spuerbar" | "dominant" | null = null;
+  // Signal level: how VISIBLE the West-Ost congruence pattern is, i.e. how
+  // far the raw harmony sits from the engine's random baseline, in baseline
+  // sigmas. z = (h_raw - h_baseline) / h_sigma; the |z| buckets pin >=
+  // semantics: |z| < 1 -> leise, 1 <= |z| < 2 -> spuerbar, |z| >= 2 ->
+  // dominant. This is NOT a tension quality — +1σ means MORE harmonic than
+  // random, not "more tense". True tension intensity will derive from the
+  // per-element differences in the upcoming Spannungsnavigator.
+  let signalLevel: "leise" | "spuerbar" | "dominant" | null = null;
   const hRaw = calibration && typeof calibration.h_raw === "number" ? calibration.h_raw : realCoherence01;
   const hBaseline = calibration && typeof calibration.h_baseline === "number" ? calibration.h_baseline : null;
   const hSigma = calibration && typeof calibration.h_sigma === "number" && calibration.h_sigma > 0 ? calibration.h_sigma : null;
   if (hRaw !== null && hBaseline !== null && hSigma !== null) {
     const z = Math.abs((hRaw - hBaseline) / hSigma);
-    tensionLevel = z < 1 ? "leise" : z < 2 ? "spuerbar" : "dominant";
+    signalLevel = z < 1 ? "leise" : z < 2 ? "spuerbar" : "dominant";
   } else if (hCalibrated !== null) {
     // HONEST APPROXIMATION: the response carried h_calibrated but no usable
     // baseline std (h_sigma), so no z-score is computable. We derive the
     // level from h_calibrated thirds instead (<0.33 leise, <0.66 spuerbar,
     // else dominant) — a coarse bucketing, not a statistical statement.
-    tensionLevel = hCalibrated < 0.33 ? "leise" : hCalibrated < 0.66 ? "spuerbar" : "dominant";
+    signalLevel = hCalibrated < 0.33 ? "leise" : hCalibrated < 0.66 ? "spuerbar" : "dominant";
   }
 
   // Custom label rating
@@ -628,7 +631,7 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
   const fusion = {
     coherenceIndex,
     coherenceCalibrated,
-    tensionLevel,
+    signalLevel,
     coherenceRating: rawFusion.coherenceRating || coherenceRating,
     coherenceExplanation: coherenceCalibrated
       ? "Kalibrierte Strukturkongruenz: Der rohe Resonanzwert wird gegen eine Zufallsbaseline kalibriert — angezeigt wird, wie deutlich Ihre West-Ost-Struktur über zufälliger Übereinstimmung liegt. Kein moralisches Qualitätsurteil (kein Gut-Schlecht-Wert)."
@@ -644,10 +647,15 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
     wuxingContributors: rawFusion.wuxingContributors || (wuxingAvail ? sortedWuXing.slice(0, 2).map(([el, pct]) => `${el} (${pct}%)`) : []),
     supports: rawFusion.supports || [ `${maxElement} stärkt Willenskraft`, "Häuser-Trigon-Harmonien" ],
     frictions: rawFusion.frictions || [ `Mangel an ${minElement} drosselt Fluss`, "Quadrat-Aspekte erfordern Reflexion" ],
-    integrationText: rawFusion.integrationText
-      || (typeof rawFusion.fusion_interpretation === "string" && rawFusion.fusion_interpretation
+    // The "Fusions-Deutung der Engine" section shows ONLY real engine text
+    // (fusion_interpretation) or a legacy passthrough. Absent text -> null ->
+    // the section stays hidden. NO invented fallback sentence — that would be
+    // local copy masquerading as engine output.
+    integrationText: typeof rawFusion.integrationText === "string" && rawFusion.integrationText
+      ? rawFusion.integrationText
+      : typeof rawFusion.fusion_interpretation === "string" && rawFusion.fusion_interpretation
         ? rawFusion.fusion_interpretation
-        : "Durch das Erkennen dieser kosmischen Strömungen verschmelzen beide Philosophien im Alltag."),
+        : null,
     source: sectionSource(Boolean(raw.fusion))
   };
 

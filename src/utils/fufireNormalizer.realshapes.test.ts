@@ -134,10 +134,27 @@ describe("normalizer vs REAL orchestrated prod raw (chart + western + fusion)", 
     expect(vm.fusion.coherenceRating).toBe("Überdurchschnittliche Kongruenz");
   });
 
-  it("derives the tension level from the calibration z-score (h_raw vs baseline/sigma)", () => {
+  it("derives the signal level from the calibration z-score (h_raw vs baseline/sigma)", () => {
     const vm = normalizeFuFireProfile(prodOrchestratedRaw(), INPUT, "fufire-orchestrated");
     // z = (0.908 - 0.7614) / 0.1445 = 1.015 -> 1 <= |z| < 2 -> "spuerbar"
-    expect(vm.fusion.tensionLevel).toBe("spuerbar");
+    expect(vm.fusion.signalLevel).toBe("spuerbar");
+  });
+
+  it("pins the >= bucket semantics of the signal level (z=0.99 / 1.0 / 2.0)", () => {
+    // Exact binary fractions so the z-score boundaries are hit precisely:
+    // baseline 0.25, sigma 0.25 -> z = (h_raw - 0.25) / 0.25.
+    const vmFor = (hRaw: number) =>
+      normalizeFuFireProfile(
+        { fusion: { calibration: { h_raw: hRaw, h_baseline: 0.25, h_sigma: 0.25 } } },
+        INPUT,
+        "fufire-orchestrated"
+      );
+    // z = 0.99 < 1 -> leise
+    expect(vmFor(0.4975).fusion.signalLevel).toBe("leise");
+    // z = 1.0 -> the >= boundary flips to spuerbar
+    expect(vmFor(0.5).fusion.signalLevel).toBe("spuerbar");
+    // z = 2.0 -> the >= boundary flips to dominant
+    expect(vmFor(0.75).fusion.signalLevel).toBe("dominant");
   });
 
   it("falls back to the RAW harmony only when calibration is absent — and flags it", () => {
@@ -147,8 +164,8 @@ describe("normalizer vs REAL orchestrated prod raw (chart + western + fusion)", 
     expect(vm.fusion.coherenceCalibrated).toBe(false);
     // Raw harmony_index.interpretation is the best remaining label.
     expect(vm.fusion.coherenceRating).toContain("Starke Resonanz");
-    // No baseline/sigma and no h_calibrated -> no tension level claim.
-    expect(vm.fusion.tensionLevel).toBeNull();
+    // No baseline/sigma and no h_calibrated -> no signal level claim.
+    expect(vm.fusion.signalLevel).toBeNull();
   });
 
   it("maps elemental_comparison (per-element West-vs-BaZi weights) into the view model", () => {
@@ -187,7 +204,15 @@ describe("normalizer vs REAL orchestrated prod raw (chart + western + fusion)", 
     expect(vm.fusion.integrationText).toContain("Westliche Dominanz: Holz");
   });
 
-  it("approximates the tension level from h_calibrated thirds when sigma is missing", () => {
+  it("returns integrationText null when the engine sent no fusion_interpretation — NO invented fallback", () => {
+    const { fusion_interpretation, ...rest } = fusionFixture as any;
+    const vm = normalizeFuFireProfile({ fusion: rest }, INPUT, "fufire-orchestrated");
+    // The "Fusions-Deutung der Engine" section must stay hidden instead of
+    // labeling local copy as engine output.
+    expect(vm.fusion.integrationText).toBeNull();
+  });
+
+  it("approximates the signal level from h_calibrated thirds when sigma is missing", () => {
     const { calibration, ...rest } = fusionFixture as any;
     const vm = normalizeFuFireProfile(
       { fusion: { ...rest, calibration: { h_calibrated: 0.6144, interpretation_band: "Überdurchschnittliche Kongruenz" } } },
@@ -195,7 +220,7 @@ describe("normalizer vs REAL orchestrated prod raw (chart + western + fusion)", 
       "fufire-orchestrated"
     );
     // 0.33 <= 0.6144 < 0.66 -> "spuerbar" (documented coarse bucketing)
-    expect(vm.fusion.tensionLevel).toBe("spuerbar");
+    expect(vm.fusion.signalLevel).toBe("spuerbar");
     expect(vm.fusion.coherenceIndex).toBeCloseTo(61.4, 1);
   });
 });

@@ -5,7 +5,7 @@
  * German sentence per aspect.
  */
 import { describe, it, expect } from "vitest";
-import { aspectInterpretation } from "./aspectInterpretation";
+import { aspectInterpretation, PLANET_KEYWORDS_DE } from "./aspectInterpretation";
 import { normalizeFuFireProfile } from "./fufireNormalizer";
 
 import westernFixture from "../__fixtures__/fufire/western.json";
@@ -37,9 +37,40 @@ describe("aspectInterpretation generator", () => {
     expect(square).toContain("Reibung");
 
     const opp = aspectInterpretation("Venus", "Saturn", "Opposition");
-    expect(opp).toContain("Werte und Beziehung");
-    expect(opp).toContain("Struktur und Grenze");
+    expect(opp).toContain("Beziehungswelt");
+    expect(opp).toContain("Strukturkraft");
     expect(opp).toContain("Achse");
+  });
+
+  it("GRAMMAR CONTRACT: every planet keyword is a single dative-stable noun", () => {
+    // Multi-word keywords ("Werte und Beziehung") after "zwischen" (dative)
+    // produced broken chains like "zwischen Werte und Beziehung und Denken
+    // und Kommunikation". Pin: one word, no "und", no whitespace.
+    for (const [planet, keyword] of Object.entries(PLANET_KEYWORDS_DE)) {
+      expect(keyword, `keyword for ${planet}`).toMatch(/^[A-ZÄÖÜ][a-zäöüß]+$/);
+    }
+  });
+
+  it("never composes ambiguous 'und'-chains between the two keywords", () => {
+    // The keyword segment between the two themes must contain exactly one
+    // "und" for every planet pairing and every aspect type.
+    const planets = Object.keys(PLANET_KEYWORDS_DE);
+    const types = ["Konjunktion", "Opposition", "Trigon", "Quadrat", "Sextil", "Quincunx", "Halbsextil"];
+    for (const p1 of planets) {
+      for (const p2 of planets) {
+        if (p1 === p2) continue;
+        for (const t of types) {
+          const s = aspectInterpretation(p1, p2, t);
+          const k1 = PLANET_KEYWORDS_DE[p1];
+          const k2 = PLANET_KEYWORDS_DE[p2];
+          expect(s, `${p1} ${t} ${p2}`).toContain(`${k1} und ${k2}`);
+          // The broken legacy chain shape ("zwischen <a> und <b> und <c>")
+          // can no longer occur: no keyword itself contains "und".
+          expect(k1).not.toContain(" und ");
+          expect(k2).not.toContain(" und ");
+        }
+      }
+    }
   });
 
   it("produces distinct sentences per aspect type", () => {
