@@ -141,7 +141,48 @@ describe("POST /api/azodiac/daily with REAL bootstrap + daily responses", () => 
     expect(res.body.available).toBe(true);
     expect(res.body.source).toBe("fufire");
     expect(res.body.description).toBe((dailyFixture as any).fusion.synthesis);
-    expect(res.body.coachingKeyword).toBe((dailyFixture as any).fusion.action);
     expect(res.body.date).toBe((dailyFixture as any).date);
+  });
+
+  it("delivers the FULL daily content: west/ost cards, fusion, action, push, context notes", async () => {
+    mockFetchWithRealFixtures();
+    const fx = dailyFixture as any;
+    const res = await request(createApp()).post("/api/azodiac/daily").send(VALID_BODY);
+    expect(res.status).toBe(200);
+
+    // West card — everything the engine sends, nothing invented.
+    expect(res.body.western).toEqual({
+      summary: fx.western.summary,
+      themes: fx.western.themes,
+      caution: fx.western.caution,
+      opportunity: fx.western.opportunity
+    });
+
+    // Ost card incl. the day-master daily reference from evidence.
+    expect(res.body.eastern).toEqual({
+      summary: fx.eastern.summary,
+      themes: fx.eastern.themes,
+      caution: fx.eastern.caution,
+      opportunity: fx.eastern.opportunity,
+      dayMaster: fx.eastern.evidence.day_master,
+      dailyPillar: fx.eastern.evidence.daily_pillar,
+      relationToDayMaster: fx.eastern.evidence.relation_to_day_master,
+      jieqi: fx.eastern.evidence.jieqi
+    });
+
+    // Fusion card + the action as its own Impuls block.
+    expect(res.body.fusion).toEqual({ summary: fx.fusion.summary, synthesis: fx.fusion.synthesis });
+    expect(res.body.action).toBe(fx.fusion.action);
+
+    // Push groundwork + context notes.
+    expect(res.body.pushText).toBe(fx.fusion.push_text);
+    expect(res.body.pushworthy).toBe(fx.fusion.pushworthy);
+    expect(res.body.jieqiNote).toBe(fx.fusion.jieqi_note);
+    expect(res.body.weekdayNote).toBe(fx.fusion.weekday_note);
+
+    // The ghost metrics never existed in the engine response — gone from the VM.
+    expect(res.body).not.toHaveProperty("qiResonance");
+    expect(res.body).not.toHaveProperty("dominantPhase");
+    expect(res.body).not.toHaveProperty("coachingKeyword");
   });
 });

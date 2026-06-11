@@ -160,9 +160,6 @@ describe("POST /api/azodiac/daily", () => {
   it("uses experience bootstrap + daily and never builds local prose", async () => {
     (FuFirEClient.postExperienceBootstrap as any).mockResolvedValue({ soulprint_sectors: SECTORS });
     (FuFirEClient.postExperienceDaily as any).mockResolvedValue({
-      qiResonance: 64,
-      dominantPhase: "Wasser",
-      coachingKeyword: "Fluss",
       description: "Von FuFirE geliefert."
     });
     const res = await request(app).post("/api/azodiac/daily").send(VALID_BODY);
@@ -170,7 +167,114 @@ describe("POST /api/azodiac/daily", () => {
     expect(FuFirEClient.postExperienceBootstrap).toHaveBeenCalled();
     expect(FuFirEClient.postExperienceDaily).toHaveBeenCalled();
     expect(res.body.source).toBe("fufire");
-    expect(res.body.qiResonance).toBe(64);
+    expect(res.body.description).toBe("Von FuFirE geliefert.");
+  });
+
+  it("maps the FULL engine DailyResponse into the view model (no ghost metrics)", async () => {
+    (FuFirEClient.postExperienceBootstrap as any).mockResolvedValue({ soulprint_sectors: SECTORS });
+    (FuFirEClient.postExperienceDaily as any).mockResolvedValue({
+      date: "2026-06-10",
+      western: {
+        summary: "West-Zusammenfassung.",
+        themes: ["Kommunikation", "Identitaet"],
+        caution: "West-Spannung.",
+        opportunity: "West-Potenzial.",
+        evidence: { transit_sectors: [2, 0], natal_focus: ["sun"], day_master: null, daily_pillar: null, relation_to_day_master: null, jieqi: null, weekday: "Mittwoch" },
+        jieqi_note: null,
+        weekday_note: "Mittwoch (Merkur)."
+      },
+      eastern: {
+        summary: "Ost-Zusammenfassung.",
+        themes: ["Ressourcen"],
+        caution: "Ost-Spannung.",
+        opportunity: "Ost-Chance.",
+        evidence: { day_master: "Xin", daily_pillar: { stem: "Yi", branch: "Mao" }, relation_to_day_master: "wealth", jieqi: "Mangzhong", weekday: "Mittwoch" },
+        jieqi_note: "Feuer-Energie steigt.",
+        weekday_note: "Mittwoch (Merkur)."
+      },
+      fusion: {
+        summary: "Fusion-Kurz.",
+        synthesis: "Fusion-Synthese.",
+        action: "Fusion-Impuls.",
+        pushworthy: true,
+        push_text: "Kurzform des Tages.",
+        jieqi_note: "Solarterm faerbt beide Systeme.",
+        weekday_note: "Mittwoch-Energie."
+      }
+    });
+    const res = await request(app).post("/api/azodiac/daily").send(VALID_BODY);
+    expect(res.status).toBe(200);
+    expect(res.body.available).toBe(true);
+    expect(res.body.source).toBe("fufire");
+    expect(res.body.date).toBe("2026-06-10");
+    // Three-card content
+    expect(res.body.western).toEqual({
+      summary: "West-Zusammenfassung.",
+      themes: ["Kommunikation", "Identitaet"],
+      caution: "West-Spannung.",
+      opportunity: "West-Potenzial."
+    });
+    expect(res.body.eastern).toEqual({
+      summary: "Ost-Zusammenfassung.",
+      themes: ["Ressourcen"],
+      caution: "Ost-Spannung.",
+      opportunity: "Ost-Chance.",
+      dayMaster: "Xin",
+      dailyPillar: { stem: "Yi", branch: "Mao" },
+      relationToDayMaster: "wealth",
+      jieqi: "Mangzhong"
+    });
+    expect(res.body.fusion).toEqual({ summary: "Fusion-Kurz.", synthesis: "Fusion-Synthese." });
+    // Action is its own field, not crammed into a keyword chip
+    expect(res.body.action).toBe("Fusion-Impuls.");
+    // Push groundwork
+    expect(res.body.pushText).toBe("Kurzform des Tages.");
+    expect(res.body.pushworthy).toBe(true);
+    // Context notes
+    expect(res.body.jieqiNote).toBe("Solarterm faerbt beide Systeme.");
+    expect(res.body.weekdayNote).toBe("Mittwoch-Energie.");
+    // Ghost metrics are gone — the engine never sends them
+    expect(res.body).not.toHaveProperty("qiResonance");
+    expect(res.body).not.toHaveProperty("dominantPhase");
+    expect(res.body).not.toHaveProperty("coachingKeyword");
+  });
+
+  it("falls back to section notes when fusion carries no jieqi/weekday note", async () => {
+    (FuFirEClient.postExperienceBootstrap as any).mockResolvedValue({ soulprint_sectors: SECTORS });
+    (FuFirEClient.postExperienceDaily as any).mockResolvedValue({
+      eastern: { summary: "Ost.", jieqi_note: "Ost-Jieqi-Note." },
+      western: { summary: "West.", weekday_note: "West-Wochentag-Note." },
+      fusion: { synthesis: "Synthese." }
+    });
+    const res = await request(app).post("/api/azodiac/daily").send(VALID_BODY);
+    expect(res.status).toBe(200);
+    expect(res.body.jieqiNote).toBe("Ost-Jieqi-Note.");
+    expect(res.body.weekdayNote).toBe("West-Wochentag-Note.");
+  });
+
+  it("forwards a requested targetDate to the engine DailyRequest", async () => {
+    (FuFirEClient.postExperienceBootstrap as any).mockResolvedValue({ soulprint_sectors: SECTORS });
+    (FuFirEClient.postExperienceDaily as any).mockResolvedValue({ fusion: { synthesis: "Morgen." } });
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    const res = await request(app).post("/api/azodiac/daily").send({ ...VALID_BODY, targetDate: tomorrow });
+    expect(res.status).toBe(200);
+    const dailyPayload = (FuFirEClient.postExperienceDaily as any).mock.calls[0][0];
+    expect(dailyPayload.target_date).toBe(tomorrow);
+  });
+
+  it("rejects a malformed targetDate with 400", async () => {
+    const res = await request(app).post("/api/azodiac/daily").send({ ...VALID_BODY, targetDate: "10.06.2026" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("invalid_target_date");
+    expect(FuFirEClient.postExperienceBootstrap).not.toHaveBeenCalled();
+  });
+
+  it("rejects a targetDate outside the ±7-day window with 400", async () => {
+    const farOut = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+    const res = await request(app).post("/api/azodiac/daily").send({ ...VALID_BODY, targetDate: farOut });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("invalid_target_date");
+    expect(FuFirEClient.postExperienceDaily).not.toHaveBeenCalled();
   });
 
   it("sends BirthInput-wrapped payloads (NOT the chart shape) to bootstrap and daily", async () => {
@@ -217,7 +321,7 @@ describe("POST /api/azodiac/daily", () => {
     expect(res.body.available).toBe(true);
     expect(res.body.source).toBe("fufire");
     expect(res.body.description).toBe("Heute zaehlt Klarheit.");
-    expect(res.body.coachingKeyword).toBe("Fokus");
+    expect(res.body.action).toBe("Fokus");
     expect(res.body.date).toBe("2026-06-10");
   });
 
@@ -229,7 +333,7 @@ describe("POST /api/azodiac/daily", () => {
     expect(FuFirEClient.postExperienceDaily).not.toHaveBeenCalled();
   });
 
-  it("treats a daily payload without description as missing", async () => {
+  it("treats a daily payload without any user-facing content as missing", async () => {
     (FuFirEClient.postExperienceBootstrap as any).mockResolvedValue({ soulprint_sectors: SECTORS });
     (FuFirEClient.postExperienceDaily as any).mockResolvedValue({ qiResonance: 50 });
     const res = await request(app).post("/api/azodiac/daily").send(VALID_BODY);

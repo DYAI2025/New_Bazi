@@ -78,6 +78,62 @@ test("fusion tab renders the REAL calibrated FusionResponse path", async ({ page
   await page.screenshot({ path: `${SHOT_DIR}/fusion-tab.png`, fullPage: true });
 });
 
+test("daily tab auto-loads the full FuFirE Tagespuls (three cards + Impuls)", async ({ page }) => {
+  await page.goto("/");
+  await computeProfile(page);
+  await page.click("#nav-tab-daily");
+
+  // Auto-load: no "abrufen" click needed — the cards appear on tab open.
+  await expect(page.getByTestId("daily-card-west")).toBeVisible({ timeout: 15000 });
+  await expect(page.getByTestId("daily-card-east")).toBeVisible();
+  await expect(page.getByTestId("daily-card-fusion")).toBeVisible();
+  await expect(page.getByTestId("daily-source")).toContainText("fufire");
+
+  // West card carries the engine's western.* content.
+  await expect(page.getByTestId("daily-card-west")).toContainText("Kommunikation, Identitaet im Fokus");
+  await expect(page.getByTestId("daily-card-west")).toContainText("Sektor 3 bietet dir heute besonderes Potenzial");
+
+  // Ost card carries eastern.* incl. the day-master daily reference.
+  await expect(page.getByTestId("daily-card-east")).toContainText("Day Master Xin");
+  await expect(page.getByTestId("daily-east-reference")).toContainText("Tagessäule Yi–Mao");
+  await expect(page.getByTestId("daily-east-reference")).toContainText("Solarterm Mangzhong");
+
+  // Fusion card shows summary + synthesis.
+  await expect(page.getByTestId("daily-card-fusion")).toContainText("Dein Fusionstag verbindet Kommunikation");
+  await expect(page.getByTestId("daily-card-fusion")).toContainText("Die Synthese liegt darin");
+
+  // fusion.action is its own Impuls block, not a keyword chip.
+  await expect(page.getByTestId("daily-action")).toContainText("Impuls des Tages");
+  await expect(page.getByTestId("daily-action")).toContainText("Nutze heute gezielt den Bereich Kommunikation");
+
+  // Tages-Kurzform (push_text) + context notes (jieqi/weekday).
+  await expect(page.getByTestId("daily-push-text")).toContainText("Dein Wealth-Tag: Kommunikation ruft.");
+  await expect(page.getByTestId("daily-context")).toContainText("Solarterm Mangzhong faerbt beide Systeme");
+
+  // The ghost metric rows are gone for good.
+  await expect(page.locator("body")).not.toContainText("Leitelement");
+  await expect(page.locator("body")).not.toContainText("Resonanzfaktor");
+  await expect(page.locator("body")).not.toContainText("Schwingungswort");
+
+  await page.screenshot({ path: `${SHOT_DIR}/daily-pulse-full.png`, fullPage: true });
+});
+
+test("daily tab Tagesnavigation requests the previous day (Rückblick)", async ({ page }) => {
+  await page.goto("/");
+  await computeProfile(page);
+  await page.click("#nav-tab-daily");
+  await expect(page.getByTestId("daily-card-west")).toBeVisible({ timeout: 15000 });
+  await expect(page.getByTestId("daily-day-label")).toContainText("Heute");
+
+  await page.getByTestId("daily-prev").click();
+  await expect(page.getByTestId("daily-day-label")).toContainText("Rückblick");
+  // Mock echoes target_date → the rendered date is yesterday's.
+  const yesterday = new Date(Date.now() - 86400000);
+  const y = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+  await expect(page.getByText(`FuFirE Tagespuls · ${y}`)).toBeVisible({ timeout: 15000 });
+  await page.screenshot({ path: `${SHOT_DIR}/daily-pulse-prev-day.png`, fullPage: true });
+});
+
 test("western tab shows house data", async ({ page }) => {
   await page.goto("/");
   await computeProfile(page);

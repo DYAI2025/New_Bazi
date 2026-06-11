@@ -74,11 +74,73 @@ const CHART = {
   }
 };
 
+// REAL BootstrapResponse essentials: the BFF refuses to call /v1/experience/daily
+// without a valid 12-sector soulprint ring from bootstrap (mirrors
+// src/__fixtures__/fufire/bootstrap.json).
+const BOOTSTRAP = {
+  soulprint_sectors: [0.0697, 0.101788, 0.243949, 0.043493, 0.086053, 0.04256, 0.129119, 0.032088, 0.043641, 0.024569, 0, 0.18304]
+};
+
+// REAL DailyResponse shape (mirrors src/__fixtures__/fufire/daily.json):
+// western.* / eastern.* sections with evidence, fusion.{summary,synthesis,action},
+// push_text/pushworthy and jieqi/weekday notes. The legacy
+// { qiResonance, dominantPhase, coachingKeyword } mock shape is gone — e2e must
+// prove the full three-card + Impuls rendering path.
 const DAILY = {
-  qiResonance: 64,
-  dominantPhase: "Wasser",
-  coachingKeyword: "Fluss",
-  description: "Heute trägt eine Wasser-Resonanz Ihre Vorhaben. Bewegen Sie sich anpassungsfähig und hören Sie nach innen."
+  date: "2026-06-10",
+  western: {
+    summary: "Fuer dich als Gemini stehen heute Kommunikation, Identitaet im Fokus. Die Planetenkonstellation aktiviert deine Sektoren 3 und 1.",
+    themes: ["Kommunikation", "Identitaet"],
+    caution: "Achte in Sektor 1 auf Ueberanstrengung -- hier liegt heute Spannung.",
+    opportunity: "Sektor 3 bietet dir heute besonderes Potenzial. Nutze die Energie aktiv.",
+    evidence: {
+      transit_sectors: [2, 0],
+      natal_focus: ["sun", "ascendant"],
+      day_master: null,
+      daily_pillar: null,
+      relation_to_day_master: null,
+      jieqi: null,
+      weekday: "Mittwoch"
+    },
+    jieqi_note: null,
+    weekday_note: "Mittwoch (Merkur): Kommunikation und Austausch stehen im Vordergrund."
+  },
+  eastern: {
+    summary: "Dein Day Master Xin erobert heute Holz-Terrain. Dosiere deine Kraefte bewusst. Solarterm: Mangzhong.",
+    themes: ["Ressourcen", "Chancen", "Taktung"],
+    caution: "Achte auf Grenzen -- Ueberausgabe (Energie oder Mittel) liegt heute nah.",
+    opportunity: "Wealth-Tage bringen materielle und immaterielle Chancen. Augen offen halten.",
+    evidence: {
+      transit_sectors: null,
+      natal_focus: null,
+      day_master: "Xin",
+      daily_pillar: { stem: "Yi", branch: "Mao" },
+      relation_to_day_master: "wealth",
+      jieqi: "Mangzhong",
+      weekday: "Mittwoch"
+    },
+    jieqi_note: "Feuer-Energie steigt: Sichtbarkeit und Aktivitaet nehmen zu.",
+    weekday_note: "Mittwoch (Merkur): Kommunikation und Austausch stehen im Vordergrund."
+  },
+  fusion: {
+    summary: "Dein Fusionstag verbindet Kommunikation aus beiden Systemen. Westlich staerkt dein Transitfeld, oestlich arbeitet dein Day Master Xin in wealth-Dynamik.",
+    synthesis: "Beide Systeme zeigen heute einen gemeinsamen Impuls: Kommunikation. Gleichzeitig entsteht Spannung im Bereich Ressourcen, Chancen. Die Synthese liegt darin, beides bewusst zu halten — den Kommunikation-Impuls aktiv zu nutzen und den Spannungsbereich nicht zu verdraengen.",
+    action: "Nutze heute gezielt den Bereich Kommunikation. Plane eine bewusste Handlung, die beide Energien verbindet.",
+    pushworthy: true,
+    push_text: "Dein Wealth-Tag: Kommunikation ruft.",
+    jieqi_note: "Solarterm Mangzhong faerbt beide Systeme.",
+    weekday_note: "Mittwoch-Energie verbindet die Impulse."
+  },
+  chart_type_quality: "exact",
+  quality_flags: {
+    house_system_fallback: false,
+    house_system_requested: "placidus",
+    house_system_used: "placidus",
+    ephemeris_mode: "SWIEPH",
+    chart_type_quality: "exact"
+  },
+  meta: { engine_version: "1.0.0-rc1-20260220", generated_at: "2026-06-10T22:16:24Z" },
+  impact: null
 };
 
 function readBody(req) {
@@ -107,7 +169,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  await readBody(req);
+  const rawBody = await readBody(req);
 
   if (req.method === "POST" && url === "/chart") {
     res.writeHead(200);
@@ -118,8 +180,21 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "POST" && url === "/v1/calculate/bazi") { res.writeHead(200); res.end(JSON.stringify({ bazi: CHART.bazi })); return; }
   if (req.method === "POST" && url === "/v1/calculate/wuxing") { res.writeHead(200); res.end(JSON.stringify({ wuxing: CHART.wuxing })); return; }
   if (req.method === "POST" && url === "/v1/calculate/fusion") { res.writeHead(200); res.end(JSON.stringify({ fusion: CHART.fusion })); return; }
-  if (req.method === "POST" && url === "/v1/experience/bootstrap") { res.writeHead(200); res.end(JSON.stringify({ ok: true })); return; }
-  if (req.method === "POST" && url === "/v1/experience/daily") { res.writeHead(200); res.end(JSON.stringify(DAILY)); return; }
+  if (req.method === "POST" && url === "/v1/experience/bootstrap") { res.writeHead(200); res.end(JSON.stringify(BOOTSTRAP)); return; }
+  if (req.method === "POST" && url === "/v1/experience/daily") {
+    // Echo the requested target_date (like the real engine) so the e2e
+    // Tagesnavigation can assert prev/next day requests round-trip.
+    let targetDate = DAILY.date;
+    try {
+      const parsed = JSON.parse(rawBody || "{}");
+      if (typeof parsed.target_date === "string" && parsed.target_date) targetDate = parsed.target_date;
+    } catch {
+      // keep fixture date
+    }
+    res.writeHead(200);
+    res.end(JSON.stringify({ ...DAILY, date: targetDate }));
+    return;
+  }
 
   res.writeHead(404);
   res.end(JSON.stringify({ error: "not_found" }));

@@ -88,37 +88,129 @@ async function resolveProfile(value: ValidatedBirthInput): Promise<ProfileServic
 
 // --- Daily pulse from FuFirE experience (no local prose fabrication) ---
 
-function normalizeDaily(daily: any): {
+interface DailySectionVM {
+  summary: string | null;
+  themes: string[];
+  caution: string | null;
+  opportunity: string | null;
+}
+
+interface DailyEasternVM extends DailySectionVM {
+  dayMaster: string | null;
+  dailyPillar: { stem: string; branch: string } | null;
+  relationToDayMaster: string | null;
+  jieqi: string | null;
+}
+
+interface DailyPulseVM {
   date: string;
-  qiResonance: number | null;
-  dominantPhase: string | null;
-  coachingKeyword: string | null;
+  western: DailySectionVM | null;
+  eastern: DailyEasternVM | null;
+  fusion: { summary: string | null; synthesis: string | null } | null;
+  action: string | null;
+  pushText: string | null;
+  pushworthy: boolean;
+  jieqiNote: string | null;
+  weekdayNote: string | null;
   description: string | null;
   source: "fufire" | "missing";
   available: boolean;
-} {
-  const d = daily || {};
-  const qiResonance = typeof d.qiResonance === "number" ? d.qiResonance
-    : typeof d.qi_resonance === "number" ? d.qi_resonance : null;
-  const dominantPhase = d.dominantPhase || d.dominant_phase || null;
-  // Engine DailyResponse shape: fusion.{synthesis,summary,action} carries the
-  // user-facing daily text (see DailyFusion in the FuFirE OpenAPI spec).
-  const fusion = d.fusion && typeof d.fusion === "object" ? d.fusion : null;
-  const fusionText = fusion ? fusion.synthesis || fusion.summary || null : null;
-  const coachingKeyword = d.coachingKeyword || d.coaching_keyword || (fusion ? fusion.action || null : null);
-  const description = d.description || d.text || fusionText || null;
+}
 
-  // Require user-facing text: a bare metric without a description is treated as missing.
-  const available = Boolean(description) && (qiResonance !== null || Boolean(dominantPhase) || Boolean(fusionText));
+function dailyText(v: unknown): string | null {
+  return typeof v === "string" && v.trim() !== "" ? v : null;
+}
+
+function dailySection(raw: any): DailySectionVM | null {
+  if (!raw || typeof raw !== "object") return null;
+  const section: DailySectionVM = {
+    summary: dailyText(raw.summary),
+    themes: Array.isArray(raw.themes) ? raw.themes.filter((t: unknown) => typeof t === "string" && t.trim() !== "") : [],
+    caution: dailyText(raw.caution),
+    opportunity: dailyText(raw.opportunity)
+  };
+  const hasContent = section.summary || section.caution || section.opportunity || section.themes.length > 0;
+  return hasContent ? section : null;
+}
+
+/**
+ * Maps the engine DailyResponse (see DailyFusion in the FuFirE OpenAPI spec)
+ * into the view model. The engine sends western.*, eastern.* (incl. the
+ * day-master daily reference under evidence), fusion.{summary,synthesis,action},
+ * push_text/pushworthy and jieqi/weekday context notes — all of it is surfaced.
+ * No metrics are invented: fields the engine does not send do not exist here.
+ */
+function normalizeDaily(daily: any): DailyPulseVM {
+  const d = daily || {};
+  const western = dailySection(d.western);
+
+  const easternBase = dailySection(d.eastern);
+  const evidence = d.eastern && typeof d.eastern === "object" && d.eastern.evidence && typeof d.eastern.evidence === "object"
+    ? d.eastern.evidence
+    : {};
+  const pillarRaw = evidence.daily_pillar;
+  const dailyPillar = pillarRaw && typeof pillarRaw === "object" && dailyText(pillarRaw.stem) && dailyText(pillarRaw.branch)
+    ? { stem: String(pillarRaw.stem), branch: String(pillarRaw.branch) }
+    : null;
+  const eastern: DailyEasternVM | null = easternBase
+    ? {
+        ...easternBase,
+        dayMaster: dailyText(evidence.day_master),
+        dailyPillar,
+        relationToDayMaster: dailyText(evidence.relation_to_day_master),
+        jieqi: dailyText(evidence.jieqi)
+      }
+    : null;
+
+  const f = d.fusion && typeof d.fusion === "object" ? d.fusion : null;
+  const fusion = f ? { summary: dailyText(f.summary), synthesis: dailyText(f.synthesis) } : null;
+  const fusionText = fusion ? fusion.synthesis || fusion.summary : null;
+  const description = dailyText(d.description) || dailyText(d.text) || fusionText;
+
+  // Context notes: fusion-level first, section-level as fallback.
+  const jieqiNote = dailyText(f?.jieqi_note) || dailyText(d.eastern?.jieqi_note) || dailyText(d.western?.jieqi_note);
+  const weekdayNote = dailyText(f?.weekday_note) || dailyText(d.western?.weekday_note) || dailyText(d.eastern?.weekday_note);
+
+  // Available = the engine delivered real user-facing content for the day.
+  const available = Boolean(description || western || eastern);
   return {
-    date: typeof d.date === "string" && d.date ? d.date : new Date().toISOString().split("T")[0],
-    qiResonance,
-    dominantPhase,
-    coachingKeyword,
+    date: dailyText(d.date) || dailyText(d.target_date) || new Date().toISOString().split("T")[0],
+    western,
+    eastern,
+    fusion: fusion && (fusion.summary || fusion.synthesis) ? fusion : null,
+    action: f ? dailyText(f.action) : null,
+    pushText: f ? dailyText(f.push_text) : null,
+    pushworthy: Boolean(f?.pushworthy),
+    jieqiNote,
+    weekdayNote,
     description,
     source: available ? "fufire" : "missing",
     available
   };
+}
+
+/**
+ * Tagesnavigation: the UI may request a specific target_date (±7 days around
+ * today). One extra day of tolerance absorbs the timezone skew between the
+ * browser's local date and the server clock.
+ */
+const DAILY_TARGET_RANGE_DAYS = 7;
+
+function resolveTargetDate(raw: unknown): { value?: string; error?: string } {
+  if (raw === undefined || raw === null || raw === "") return {};
+  if (typeof raw !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return { error: "targetDate muss das Format YYYY-MM-DD haben." };
+  }
+  const target = new Date(`${raw}T00:00:00Z`);
+  if (Number.isNaN(target.getTime()) || target.toISOString().slice(0, 10) !== raw) {
+    return { error: "targetDate ist kein gueltiger Kalendertag." };
+  }
+  const today = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`);
+  const diffDays = Math.round((target.getTime() - today.getTime()) / 86400000);
+  if (Math.abs(diffDays) > DAILY_TARGET_RANGE_DAYS + 1) {
+    return { error: `targetDate darf hoechstens ${DAILY_TARGET_RANGE_DAYS} Tage vom heutigen Datum abweichen.` };
+  }
+  return { value: raw };
 }
 
 // --- Detail endpoint factory ---
@@ -313,6 +405,11 @@ export function createApp(): Express {
       res.status(400).json({ error: "invalid_birth_input", fields: errors });
       return;
     }
+    const targetDate = resolveTargetDate((req.body || {}).targetDate);
+    if (targetDate.error) {
+      res.status(400).json({ error: "invalid_target_date", message: targetDate.error });
+      return;
+    }
     try {
       // BootstrapRequest/DailyRequest wrap a BirthInput — NOT the /chart shape.
       const bootstrap = await FuFirEClient.postExperienceBootstrap(buildBootstrapPayload(value));
@@ -327,7 +424,7 @@ export function createApp(): Express {
         });
         return;
       }
-      const daily = await FuFirEClient.postExperienceDaily(buildDailyPayload(value, sectors));
+      const daily = await FuFirEClient.postExperienceDaily(buildDailyPayload(value, sectors, targetDate.value));
       res.json(normalizeDaily(daily));
     } catch (err) {
       sendError(res, err);

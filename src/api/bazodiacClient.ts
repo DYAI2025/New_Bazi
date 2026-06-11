@@ -13,11 +13,36 @@ export interface SynastryResponse {
   partnerRef: { name: string; sunSign: string; dayMaster: string };
 }
 
+export interface DailyPulseSection {
+  summary: string | null;
+  themes: string[];
+  caution: string | null;
+  opportunity: string | null;
+}
+
+export interface DailyPulseEastern extends DailyPulseSection {
+  dayMaster: string | null;
+  dailyPillar: { stem: string; branch: string } | null;
+  relationToDayMaster: string | null;
+  jieqi: string | null;
+}
+
+/**
+ * Mirrors the BFF view model for /api/azodiac/daily, which itself mirrors the
+ * engine DailyResponse: three content sections (West/Ost/Fusion), the fusion
+ * action as its own Impuls, push groundwork and jieqi/weekday context notes.
+ * No invented metrics.
+ */
 export interface DailyPulseResponse {
   date: string;
-  qiResonance: number | null;
-  dominantPhase: string | null;
-  coachingKeyword: string | null;
+  western: DailyPulseSection | null;
+  eastern: DailyPulseEastern | null;
+  fusion: { summary: string | null; synthesis: string | null } | null;
+  action: string | null;
+  pushText: string | null;
+  pushworthy: boolean;
+  jieqiNote: string | null;
+  weekdayNote: string | null;
   description: string | null;
   source: "fufire" | "missing";
   available: boolean;
@@ -199,8 +224,12 @@ export class BazodiacClient {
     });
   }
 
-  static fetchDailyPulse(birthData: BirthData): Promise<DailyPulseResponse> {
-    return postJson<DailyPulseResponse>("/api/azodiac/daily", toBirthInputPayload(birthData));
+  static fetchDailyPulse(birthData: BirthData, targetDate?: string): Promise<DailyPulseResponse> {
+    const payload = toBirthInputPayload(birthData);
+    return postJson<DailyPulseResponse>(
+      "/api/azodiac/daily",
+      targetDate ? { ...payload, targetDate } : payload
+    );
   }
 
   static async searchPlaces(input: string): Promise<PlacePrediction[]> {
