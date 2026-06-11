@@ -1,6 +1,7 @@
 import { BirthData } from "../types";
 import { ProfileViewModel } from "../viewmodels/profileViewModel";
 import type { FieldError } from "../utils/birthInputValidation";
+import type { ElementalWeight } from "../utils/tensionPair";
 
 export interface SynastryResponse {
   score: number;
@@ -11,6 +12,9 @@ export interface SynastryResponse {
   source: string;
   userRef: { name: string; sunSign: string; dayMaster: string };
   partnerRef: { name: string; sunSign: string; dayMaster: string };
+  /** Per-Element-Verteilung beider Personen (Paar-Spannungsnavigator); leer wenn ein Fusionsfeld fehlt. */
+  elementalA: ElementalWeight[];
+  elementalB: ElementalWeight[];
 }
 
 export interface DailyPulseSection {

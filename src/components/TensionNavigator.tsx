@@ -11,10 +11,18 @@ import {
   type ReactionMode,
   type TensionReaction,
 } from "../utils/tensionReaction";
-import { TENSION_QUESTIONS, selectQuestion } from "../content/tensionQuestions";
+import { TENSION_QUESTIONS, PAIR_QUESTIONS, selectQuestion } from "../content/tensionQuestions";
+import { derivePairTension, type ElementalWeight } from "../utils/tensionPair";
 
 interface TensionNavigatorProps {
-  viewModel: ProfileViewModel;
+  /** Natal-Modus: Spannung West↔BaZi aus dem eigenen Fusionsfeld. */
+  viewModel?: ProfileViewModel;
+  /** Paar-Modus (Synastrie): Spannung zwischen zwei Personen (A→Gold, B→Blau). */
+  pairMode?: boolean;
+  elementalA?: ElementalWeight[];
+  elementalB?: ElementalWeight[];
+  nameA?: string;
+  nameB?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -107,16 +115,37 @@ function labelAnchor(angle: number): "start" | "middle" | "end" {
   return "middle";
 }
 
-export default function TensionNavigator({ viewModel }: TensionNavigatorProps) {
-  const { elementalComparison, signalLevel } = viewModel.fusion;
-
+export default function TensionNavigator({
+  viewModel,
+  pairMode = false,
+  elementalA,
+  elementalB,
+  nameA,
+  nameB,
+}: TensionNavigatorProps) {
   // Lokales Datum (sv-Locale liefert YYYY-MM-DD) für die deterministische Tagesrotation.
   const todayISO = new Date().toLocaleDateString("sv");
 
-  const base = React.useMemo(
-    () => deriveTension(elementalComparison, signalLevel),
-    [elementalComparison, signalLevel],
-  );
+  const base = React.useMemo(() => {
+    if (pairMode) return derivePairTension(elementalA ?? [], elementalB ?? []);
+    if (!viewModel) return null;
+    return deriveTension(viewModel.fusion.elementalComparison, viewModel.fusion.signalLevel);
+  }, [pairMode, elementalA, elementalB, viewModel]);
+
+  // Paar-Modus: Personengewichte je Element für die zweifarbigen Knoten,
+  // normiert auf das größte Gewicht beider Personen (nur Visual-Skalierung).
+  const pairWeights = React.useMemo(() => {
+    if (!pairMode) return null;
+    const byElement = new Map<string, { wA: number; wB: number }>();
+    for (const w of elementalA ?? []) byElement.set(w.element, { wA: w.weight, wB: 0 });
+    for (const w of elementalB ?? []) {
+      const entry = byElement.get(w.element) ?? { wA: 0, wB: 0 };
+      entry.wB = w.weight;
+      byElement.set(w.element, entry);
+    }
+    const maxW = Math.max(0.0001, ...[...byElement.values()].flatMap((e) => [e.wA, e.wB]));
+    return { byElement, maxW };
+  }, [pairMode, elementalA, elementalB]);
 
   const [loop, setLoop] = React.useState<LoopState | null>(null);
   const [copied, setCopied] = React.useState(false);
@@ -132,7 +161,7 @@ export default function TensionNavigator({ viewModel }: TensionNavigatorProps) {
   }, [base]);
 
   if (!base) {
-    const fusionMissing = viewModel.fusion.source === "missing";
+    const fusionMissing = !pairMode && viewModel?.fusion.source === "missing";
     return (
       <div id="tension-navigator" className="space-y-8">
         <div
@@ -145,8 +174,10 @@ export default function TensionNavigator({ viewModel }: TensionNavigatorProps) {
           </h3>
           <p className="text-sm text-stone-400 max-w-md">
             {fusionMissing
-              ? `FuFirE hat keine Fusionsdaten geliefert. Es werden bewusst keine erfundenen Kohärenzwerte angezeigt (Quelle: ${viewModel.fusion.source}).`
-              : "Für dieses Profil liefert das Fusionsfeld keine auswertbare Differenz."}
+              ? `FuFirE hat keine Fusionsdaten geliefert. Es werden bewusst keine erfundenen Kohärenzwerte angezeigt (Quelle: ${viewModel?.fusion.source}).`
+              : pairMode
+                ? "Für diesen Vergleich liefern die beiden Fusionsfelder keine auswertbare Differenz."
+                : "Für dieses Profil liefert das Fusionsfeld keine auswertbare Differenz."}
           </p>
         </div>
       </div>
@@ -161,10 +192,13 @@ export default function TensionNavigator({ viewModel }: TensionNavigatorProps) {
   const signalLabel = SIGNAL_LABEL[current.signalLevel];
 
   // Frage des Tages (deterministisch) + Reaktions-Offset (Widerstand: Index+1 mod 3).
+  // Paar-Modus: eine kuratierte Paar-Frage je Achse (MVP, Stufe „spürbar").
   const questions = TENSION_QUESTIONS[act.id][current.signalLevel] as readonly string[];
   const baseQuestion = selectQuestion(act.id, current.signalLevel, todayISO);
   const baseIndex = Math.max(0, questions.indexOf(baseQuestion));
-  const question = questions[(baseIndex + (loop?.questionOffset ?? 0)) % questions.length];
+  const question = pairMode
+    ? PAIR_QUESTIONS[act.id]
+    : questions[(baseIndex + (loop?.questionOffset ?? 0)) % questions.length];
 
   const handleReaction = (reaction: TensionReaction) => {
     const result = applyReaction(current, reaction, loop?.rejectedAxisIds ?? [], loop?.questionOffset ?? 0);
@@ -178,11 +212,14 @@ export default function TensionNavigator({ viewModel }: TensionNavigatorProps) {
     if (reaction === "trifft") setOriginOpen(true);
   };
 
-  // Share = Text-Snippet (Konzept §6): keine Geburtsdaten, keine Werte.
+  // Share = Text-Snippet (Konzept §6): keine Geburtsdaten, keine Werte —
+  // im Paar-Modus auch KEINE Namen („wir" statt Personen).
   const handleShare = async () => {
     try {
       await navigator.clipboard.writeText(
-        `Meine Bazodiac-Spannung heute: ${act.poleA} ↔ ${act.poleB}. Frage: ${question}`,
+        pairMode
+          ? `Unsere Bazodiac-Paar-Spannung: ${act.poleA} ↔ ${act.poleB}. Frage: ${question}`
+          : `Meine Bazodiac-Spannung heute: ${act.poleA} ↔ ${act.poleB}. Frage: ${question}`,
       );
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
@@ -200,7 +237,13 @@ export default function TensionNavigator({ viewModel }: TensionNavigatorProps) {
   const leanPole = current.activeLean === "a" ? act.poleA : act.poleB;
 
   // Herkunft (bei „Trifft"): ehrlich technisch, aber sprachlich — Richtung + Stufe, KEINE Zahlen.
-  const originDirection = act.difference >= 0 ? "westlich-betont" : "BaZi-betont";
+  const originDirection = pairMode
+    ? act.difference >= 0
+      ? `${nameA ?? "Person A"}-betont`
+      : `${nameB ?? "Person B"}-betont`
+    : act.difference >= 0
+      ? "westlich-betont"
+      : "BaZi-betont";
 
   return (
     <div id="tension-navigator" className="space-y-6" data-testid="tension-navigator">
@@ -326,17 +369,58 @@ export default function TensionNavigator({ viewModel }: TensionNavigatorProps) {
                     strokeWidth={1.1}
                     className="transition-all duration-500"
                   />
-                  <circle
-                    cx={p.x}
-                    cy={p.y}
-                    r={nr}
-                    fill="#07101acc"
-                    stroke={col}
-                    strokeOpacity={nodeOpacity}
-                    strokeWidth={isAct ? 2 : 1}
-                    filter={isAct && inten.glow ? "url(#tnGoldGlow)" : undefined}
-                    className="transition-all duration-500"
-                  />
+                  {pairMode && pairWeights ? (
+                    (() => {
+                      // Zweifarbiger Knoten: Gold-Halbring = Gewicht Person A,
+                      // Blau-Halbring = Gewicht Person B (stroke-dasharray-Halbierung;
+                      // statisches SVG-rotate, KEINE animierten Transforms — PR #14).
+                      const w = pairWeights.byElement.get(ax.element) ?? { wA: 0, wB: 0 };
+                      const half = Math.PI * nr;
+                      return (
+                        <>
+                          <circle cx={p.x} cy={p.y} r={nr} fill="#07101acc" stroke="none" />
+                          <circle
+                            cx={p.x}
+                            cy={p.y}
+                            r={nr}
+                            fill="none"
+                            stroke="#d9b86d"
+                            strokeOpacity={nodeOpacity}
+                            strokeWidth={(isAct ? 1.5 : 1) + 2.5 * (w.wA / pairWeights.maxW)}
+                            strokeDasharray={`${half} ${half}`}
+                            transform={`rotate(-90 ${p.x} ${p.y})`}
+                            filter={isAct && inten.glow ? "url(#tnGoldGlow)" : undefined}
+                            className="transition-all duration-500"
+                          />
+                          <circle
+                            cx={p.x}
+                            cy={p.y}
+                            r={nr}
+                            fill="none"
+                            stroke="#27c8ee"
+                            strokeOpacity={nodeOpacity}
+                            strokeWidth={(isAct ? 1.5 : 1) + 2.5 * (w.wB / pairWeights.maxW)}
+                            strokeDasharray={`${half} ${half}`}
+                            strokeDashoffset={-half}
+                            transform={`rotate(-90 ${p.x} ${p.y})`}
+                            className="transition-all duration-500"
+                          />
+                        </>
+                      );
+                    })()
+                  ) : (
+                    <circle
+                      cx={p.x}
+                      cy={p.y}
+                      r={nr}
+                      fill="#07101acc"
+                      stroke={col}
+                      strokeOpacity={nodeOpacity}
+                      strokeWidth={isAct ? 2 : 1}
+                      filter={isAct && inten.glow ? "url(#tnGoldGlow)" : undefined}
+                      className="transition-all duration-500"
+                    />
+                  )}
                   <text
                     x={label.x}
                     y={label.y}
@@ -365,7 +449,9 @@ export default function TensionNavigator({ viewModel }: TensionNavigatorProps) {
                 className="font-mono text-[9px] uppercase tracking-widest text-gold-muted mb-2"
                 data-testid="tension-kicker"
               >
-                Aktive Spannung · {act.poleA} ↔ {act.poleB} · {signalLabel}
+                {pairMode
+                  ? `Paar-Spannung · ${nameA ?? "Person A"} ↔ ${nameB ?? "Person B"}`
+                  : `Aktive Spannung · ${act.poleA} ↔ ${act.poleB} · ${signalLabel}`}
               </p>
               {calibration ? (
                 <p
@@ -438,12 +524,32 @@ export default function TensionNavigator({ viewModel }: TensionNavigatorProps) {
         </div>
         {originOpen && (
           <div className="mt-4 rounded-xl border border-gold-muted/15 bg-obsidian-deep/40 p-4 sm:p-6 space-y-6 text-left" data-testid="tension-origin">
-            <p className="text-xs text-stone-400 leading-relaxed">
-              Abgeleitet aus der {act.element}-Differenz deines Fusionsfelds ({originDirection}).
-              Ausprägung: {signalLabel} (kalibriert gegen Zufallsbaseline). Die Lesart neigt aktuell
-              zum Pol {leanPole}.
-            </p>
-            <OriginLayer fusion={viewModel.fusion} />
+            {pairMode ? (
+              <>
+                <p className="text-xs text-stone-400 leading-relaxed">
+                  Abgeleitet aus der {act.element}-Differenz eurer beiden Fusionsfelder ({originDirection}).
+                  Personengewicht je Element = Mittel aus West- und BaZi-Anteil des eigenen Fusionsfelds;
+                  die aktive Achse ist die mit der größten Differenz zwischen euch. Die Lesart neigt
+                  aktuell zum Pol {leanPole}.
+                </p>
+                {pairWeights && (
+                  <p className="text-xs text-stone-500 leading-relaxed font-mono" data-testid="tension-pair-weights">
+                    {act.element}: {nameA ?? "Person A"}{" "}
+                    {(pairWeights.byElement.get(act.element)?.wA ?? 0).toFixed(2)} vs. {nameB ?? "Person B"}{" "}
+                    {(pairWeights.byElement.get(act.element)?.wB ?? 0).toFixed(2)}
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="text-xs text-stone-400 leading-relaxed">
+                  Abgeleitet aus der {act.element}-Differenz deines Fusionsfelds ({originDirection}).
+                  Ausprägung: {signalLabel} (kalibriert gegen Zufallsbaseline). Die Lesart neigt aktuell
+                  zum Pol {leanPole}.
+                </p>
+                {viewModel && <OriginLayer fusion={viewModel.fusion} />}
+              </>
+            )}
           </div>
         )}
       </div>

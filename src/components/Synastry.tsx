@@ -5,6 +5,7 @@ import { BazodiacClient, SynastryResponse, ResolvedPlace } from "../api/bazodiac
 import { Users, Heart, RefreshCw, ArrowRight, AlertTriangle } from "lucide-react";
 import { motion } from "motion/react";
 import PlaceAutocomplete from "./PlaceAutocomplete";
+import TensionNavigator from "./TensionNavigator";
 
 interface SynastryProps {
   viewModel: ProfileViewModel;
@@ -262,6 +263,18 @@ export default function Synastry({ viewModel, birthData }: SynastryProps) {
           </div>
         </div>
       </div>
+
+      {/* Paar-Spannungsnavigator: Differenz der beiden Fusionsfelder (A→Gold, B→Blau).
+          Rendert bei fehlenden/identischen Verteilungen einen ehrlichen Leerzustand. */}
+      {synastryResult && !calculating && (
+        <TensionNavigator
+          pairMode
+          elementalA={synastryResult.elementalA}
+          elementalB={synastryResult.elementalB}
+          nameA={synastryResult.userRef.name}
+          nameB={synastryResult.partnerRef.name}
+        />
+      )}
     </div>
   );
 }

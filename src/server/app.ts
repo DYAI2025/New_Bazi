@@ -25,6 +25,7 @@ import {
 } from "../utils/profileService";
 import { normalizeFuFireProfile } from "../utils/fufireNormalizer";
 import { compareProfiles } from "../utils/synastry";
+import { fuseElementalWeights } from "../utils/tensionPair";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -452,7 +453,13 @@ export function createApp(): Express {
         ...comparison,
         source: "fufire-profiles-local-comparison",
         userRef: { name: a.viewModel.identity.name, sunSign: a.viewModel.western.sunSign, dayMaster: a.viewModel.bazi.dayMaster.element },
-        partnerRef: { name: b.viewModel.identity.name, sunSign: b.viewModel.western.sunSign, dayMaster: b.viewModel.bazi.dayMaster.element }
+        partnerRef: { name: b.viewModel.identity.name, sunSign: b.viewModel.western.sunSign, dayMaster: b.viewModel.bazi.dayMaster.element },
+        // Additiv (Spannungsnavigator-Paar-Modus): per-Element-Verteilung beider
+        // Personen aus deren bereits aufgelösten Fusion-Daten — die Route holt
+        // ohnehin beide vollen FuFirE-Profile, kein zusätzlicher Engine-Call.
+        // Leer ([]), wenn ein Profil kein elemental_comparison liefert.
+        elementalA: fuseElementalWeights(a.viewModel.fusion.elementalComparison),
+        elementalB: fuseElementalWeights(b.viewModel.fusion.elementalComparison)
       });
     } catch (err) {
       sendError(res, err);
