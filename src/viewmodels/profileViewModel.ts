@@ -48,6 +48,18 @@ export interface FusionData {
   coherenceRating: string;
   coherenceExplanation: string;
   systemBridge: string;
+  /** Per-element West-vs-BaZi weights straight from elemental_comparison; empty if absent. */
+  elementalComparison: {
+    element: string;
+    western: number;
+    bazi: number;
+    difference: number;
+  }[];
+  /**
+   * Derived ONLY from server data (largest |difference| entries of
+   * elemental_comparison -> "größte Spannungsfelder") or passed through from
+   * a legacy payload — never invented locally.
+   */
   topSignals: {
     trigger: string;
     interpretation: string;

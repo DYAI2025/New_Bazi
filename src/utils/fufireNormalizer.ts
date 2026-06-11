@@ -585,6 +585,39 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
     coherenceRating = calibration.interpretation_band;
   }
 
+  // REAL elemental_comparison: { Holz: { western, bazi, difference }, ... } —
+  // the per-element West-vs-BaZi weights the harmony is computed from.
+  const ELEMENT_ORDER = [ElementType.WOOD, ElementType.FIRE, ElementType.EARTH, ElementType.METAL, ElementType.WATER];
+  const rawComparison = rawFusion.elemental_comparison && typeof rawFusion.elemental_comparison === "object" && !Array.isArray(rawFusion.elemental_comparison)
+    ? rawFusion.elemental_comparison : null;
+  const elementalComparison = rawComparison
+    ? ELEMENT_ORDER.flatMap((el) => {
+        const entry = rawComparison[el];
+        if (!entry || typeof entry !== "object") return [];
+        const western = typeof entry.western === "number" && Number.isFinite(entry.western) ? entry.western : null;
+        const bazi = typeof entry.bazi === "number" && Number.isFinite(entry.bazi) ? entry.bazi : null;
+        if (western === null || bazi === null) return [];
+        const difference = typeof entry.difference === "number" && Number.isFinite(entry.difference)
+          ? entry.difference
+          : Math.round((western - bazi) * 1000) / 1000;
+        return [{ element: el as string, western, bazi, difference }];
+      })
+    : [];
+
+  // Top signals are DERIVED from server data only (the two largest West/Ost
+  // differences = "größte Spannungsfelder"), or passed through from a legacy
+  // payload. The previous hardcoded default reading every user saw the same
+  // invented "Sonne-Tagesmeister Interferenz" is gone for good.
+  const derivedTopSignals = [...elementalComparison]
+    .sort((a, b) => Math.abs(b.difference) - Math.abs(a.difference))
+    .slice(0, 2)
+    .map((c) => ({
+      trigger: `${c.element}: West ${c.western.toFixed(2)} vs. BaZi ${c.bazi.toFixed(2)}`,
+      interpretation: c.difference >= 0
+        ? `Größtes Spannungsfeld im Element ${c.element}: Die westliche Chart gewichtet ${c.element} um ${Math.abs(c.difference).toFixed(2)} stärker als die BaZi-Struktur.`
+        : `Größtes Spannungsfeld im Element ${c.element}: Die BaZi-Struktur gewichtet ${c.element} um ${Math.abs(c.difference).toFixed(2)} stärker als die westliche Chart.`
+    }));
+
   const fusion = {
     coherenceIndex,
     coherenceCalibrated,
@@ -594,9 +627,8 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
       ? "Kalibrierte Strukturkongruenz: Der rohe Resonanzwert wird gegen eine Zufallsbaseline kalibriert — angezeigt wird, wie deutlich Ihre West-Ost-Struktur über zufälliger Übereinstimmung liegt. Kein moralisches Qualitätsurteil (kein Gut-Schlecht-Wert)."
       : "Der Kohärenzindex ist kein moralisches Qualitätsurteil (kein Gut-Schlecht-Wert), sondern drückt das mathematische Resonanzmaß zwischen den westlichen Ekliptik-Signalen, der ostasiatischen BaZi-Struktur und der Wu-Xing-Verteilung aus.",
     systemBridge: rawFusion.systemBridge || `Ihre energetische Konfiguration spannt eine Brücke zwischen dem westlichen Tierkreiszeichen ${sunSign} und dem BaZi-Tagesmeister ${baziDayMaster.name} (${dmElement}).`,
-    topSignals: rawFusion.topSignals || [
-      { trigger: "Sonne-Tagesmeister Interferenz", interpretation: "Ihre westliche Kernpersönlichkeit harmoniert direkt mit der ostasiatischen Stamm-Schwingung." }
-    ],
+    elementalComparison,
+    topSignals: Array.isArray(rawFusion.topSignals) ? rawFusion.topSignals : derivedTopSignals,
     // New required fields
     label: rawFusion.label || coherenceRating,
     explanation: "Der Kohärenzindex ist kein Gut-Schlecht-Wert, sondern ein Resonanzmaß zwischen westlichen Signalen, BaZi-Struktur und Wu-Xing-Verteilung.",

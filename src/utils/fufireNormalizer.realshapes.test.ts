@@ -151,6 +151,42 @@ describe("normalizer vs REAL orchestrated prod raw (chart + western + fusion)", 
     expect(vm.fusion.tensionLevel).toBeNull();
   });
 
+  it("maps elemental_comparison (per-element West-vs-BaZi weights) into the view model", () => {
+    const vm = normalizeFuFireProfile(prodOrchestratedRaw(), INPUT, "fufire-orchestrated");
+    expect(vm.fusion.elementalComparison).toHaveLength(5);
+    const holz = vm.fusion.elementalComparison.find((c) => c.element === ElementType.WOOD)!;
+    expect(holz.western).toBeCloseTo(0.61, 2);
+    expect(holz.bazi).toBeCloseTo(0.388, 3);
+    expect(holz.difference).toBeCloseTo(0.222, 3);
+    const metall = vm.fusion.elementalComparison.find((c) => c.element === ElementType.METAL)!;
+    expect(metall.difference).toBeCloseTo(-0.299, 3);
+  });
+
+  it("NEVER invents top signals: they derive from the largest elemental differences", () => {
+    const vm = normalizeFuFireProfile(prodOrchestratedRaw(), INPUT, "fufire-orchestrated");
+    // The old hardcoded reading every user saw is gone.
+    const triggers = vm.fusion.topSignals.map((s) => s.trigger).join(" ");
+    expect(triggers).not.toContain("Sonne-Tagesmeister Interferenz");
+    // Top-2 |difference|: Metall (-0.299) and Holz (+0.222).
+    expect(vm.fusion.topSignals).toHaveLength(2);
+    expect(vm.fusion.topSignals[0].trigger).toContain("Metall");
+    expect(vm.fusion.topSignals[1].trigger).toContain("Holz");
+    expect(vm.fusion.topSignals[0].interpretation).toContain("BaZi-Struktur");
+  });
+
+  it("returns NO top signals when the response carries no elemental_comparison", () => {
+    const { elemental_comparison, ...rest } = fusionFixture as any;
+    const vm = normalizeFuFireProfile({ fusion: rest }, INPUT, "fufire-orchestrated");
+    expect(vm.fusion.elementalComparison).toEqual([]);
+    expect(vm.fusion.topSignals).toEqual([]);
+  });
+
+  it("surfaces the engine's REAL fusion_interpretation as integrationText", () => {
+    const vm = normalizeFuFireProfile(prodOrchestratedRaw(), INPUT, "fufire-orchestrated");
+    expect(vm.fusion.integrationText).toContain("Harmonie-Index: 90.80%");
+    expect(vm.fusion.integrationText).toContain("Westliche Dominanz: Holz");
+  });
+
   it("approximates the tension level from h_calibrated thirds when sigma is missing", () => {
     const { calibration, ...rest } = fusionFixture as any;
     const vm = normalizeFuFireProfile(

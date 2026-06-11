@@ -8,7 +8,7 @@ interface FusionDetailProps {
 }
 
 export default function FusionDetail({ viewModel }: FusionDetailProps) {
-  const { coherenceIndex, coherenceCalibrated, tensionLevel, coherenceRating, coherenceExplanation, systemBridge, topSignals, source } = viewModel.fusion;
+  const { coherenceIndex, coherenceCalibrated, tensionLevel, coherenceRating, coherenceExplanation, systemBridge, elementalComparison, topSignals, integrationText, source } = viewModel.fusion;
   const fusionMissing = source === "missing";
   const tensionLabel = tensionLevel === "spuerbar" ? "spürbar" : tensionLevel;
 
@@ -138,30 +138,89 @@ export default function FusionDetail({ viewModel }: FusionDetailProps) {
               {systemBridge}
             </p>
 
-            <div className="space-y-4 pt-4 border-t border-gold-muted/5">
-              <span className="font-mono text-[10px] uppercase font-bold text-gold-muted tracking-widest block">
-                Top-Schwingungssignale (Konjunktions-Konvolut)
-              </span>
-
-              <div className="grid grid-cols-1 gap-4">
-                {topSignals.map((sig, idx) => (
-                  <div 
-                    key={idx} 
-                    className="p-4 rounded-xl bg-obsidian-deep/40 border border-gold-muted/10 space-y-2 hover:border-gold-muted/30 duration-300"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <Shield className="h-4 w-4 text-gold-muted" />
-                      <strong className="text-xs font-serif font-bold text-slate-200">
-                        {sig.trigger}
-                      </strong>
-                    </div>
-                    <p className="text-xs text-stone-400 font-sans leading-relaxed">
-                      {sig.interpretation}
-                    </p>
-                  </div>
-                ))}
+            {/* The engine's REAL fusion interpretation text */}
+            {integrationText && (
+              <div className="space-y-2 pt-4 border-t border-gold-muted/5">
+                <span className="font-mono text-[10px] uppercase font-bold text-gold-muted tracking-widest block">
+                  Fusions-Deutung der Engine
+                </span>
+                <p
+                  data-testid="fusion-interpretation"
+                  className="text-sm text-stone-300 font-light leading-relaxed whitespace-pre-line"
+                >
+                  {integrationText}
+                </p>
               </div>
-            </div>
+            )}
+
+            {/* Per-element West-vs-BaZi comparison — the data the harmony is computed from */}
+            {elementalComparison.length > 0 && (
+              <div className="space-y-4 pt-4 border-t border-gold-muted/5">
+                <span className="font-mono text-[10px] uppercase font-bold text-gold-muted tracking-widest block">
+                  Element-Resonanz: West vs. BaZi
+                </span>
+                <div className="space-y-3" data-testid="fusion-elemental-comparison">
+                  {elementalComparison.map((cmp) => (
+                    <div key={cmp.element} className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-serif font-bold text-slate-200">{cmp.element}</span>
+                        <span className="font-mono text-[9px] text-stone-500">
+                          Δ {cmp.difference >= 0 ? "+" : ""}{cmp.difference.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-mono text-[8px] uppercase text-stone-500 w-8 shrink-0">West</span>
+                        <div className="flex-1 h-1.5 rounded-full bg-stone-800 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-[#D4AF37]"
+                            style={{ width: `${Math.min(100, Math.max(0, cmp.western * 100))}%` }}
+                          />
+                        </div>
+                        <span className="font-mono text-[9px] text-stone-400 w-9 text-right shrink-0">{cmp.western.toFixed(2)}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-mono text-[8px] uppercase text-stone-500 w-8 shrink-0">BaZi</span>
+                        <div className="flex-1 h-1.5 rounded-full bg-stone-800 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-stone-400"
+                            style={{ width: `${Math.min(100, Math.max(0, cmp.bazi * 100))}%` }}
+                          />
+                        </div>
+                        <span className="font-mono text-[9px] text-stone-400 w-9 text-right shrink-0">{cmp.bazi.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Largest West/Ost differences — derived from elemental_comparison, never invented */}
+            {topSignals.length > 0 && (
+              <div className="space-y-4 pt-4 border-t border-gold-muted/5">
+                <span className="font-mono text-[10px] uppercase font-bold text-gold-muted tracking-widest block">
+                  Größte Spannungsfelder (aus dem Element-Vergleich abgeleitet)
+                </span>
+
+                <div className="grid grid-cols-1 gap-4">
+                  {topSignals.map((sig, idx) => (
+                    <div
+                      key={idx}
+                      className="p-4 rounded-xl bg-obsidian-deep/40 border border-gold-muted/10 space-y-2 hover:border-gold-muted/30 duration-300"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <Shield className="h-4 w-4 text-gold-muted" />
+                        <strong className="text-xs font-serif font-bold text-slate-200">
+                          {sig.trigger}
+                        </strong>
+                      </div>
+                      <p className="text-xs text-stone-400 font-sans leading-relaxed">
+                        {sig.interpretation}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
