@@ -89,7 +89,9 @@ describe("POST /api/azodiac/profile with REAL engine responses", () => {
     expect(res.body.bazi.available).toBe(true);
     expect(res.body.bazi.dayMaster.element).toBe("Metall");
     expect(res.body.wuxing.available).toBe(true);
-    expect(res.body.fusion.coherenceIndex).toBeCloseTo(90.8, 1);
+    // CALIBRATED coherence (calibration.h_calibrated 0.6144), not raw 0.908.
+    expect(res.body.fusion.coherenceIndex).toBeCloseTo(61.4, 1);
+    expect(res.body.fusion.coherenceCalibrated).toBe(true);
     expect(res.body.source).toBe("fufire-orchestrated");
   });
 });
@@ -121,11 +123,13 @@ describe("detail endpoints with REAL engine responses", () => {
     expect(sum).toBeCloseTo(100, 0);
   });
 
-  it("POST /api/azodiac/fusion maps cosmic_state into the 0..100 coherence index", async () => {
+  it("POST /api/azodiac/fusion maps the CALIBRATED harmony into the 0..100 coherence index", async () => {
     mockFetchWithRealFixtures();
     const res = await request(createApp()).post("/api/azodiac/fusion").send(VALID_BODY);
     expect(res.status).toBe(200);
-    expect(res.body.fusion.coherenceIndex).toBeCloseTo(90.8, 1);
+    expect(res.body.fusion.coherenceIndex).toBeCloseTo(61.4, 1);
+    expect(res.body.fusion.coherenceCalibrated).toBe(true);
+    expect(res.body.fusion.coherenceRating).toBe("Überdurchschnittliche Kongruenz");
   });
 });
 

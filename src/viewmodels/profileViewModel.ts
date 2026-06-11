@@ -28,8 +28,23 @@ export interface ElementCardData {
   status: "Ausgeglichen" | "Überschuss" | "Defizit";
 }
 
+/**
+ * Tension level between the western and the BaZi structure — groundwork for
+ * the upcoming Spannungsnavigator. Derived from the engine's calibration
+ * block (z-score against the random baseline) when available.
+ */
+export type TensionLevel = "leise" | "spuerbar" | "dominant";
+
 export interface FusionData {
   coherenceIndex: number;
+  /**
+   * true  -> coherenceIndex is the engine's calibrated value
+   *          (calibration.h_calibrated, structure congruence vs. random baseline)
+   * false -> raw harmony/cosmic_state or a legacy value (calibration absent)
+   */
+  coherenceCalibrated: boolean;
+  /** null when the response carries no usable calibration/coherence data. */
+  tensionLevel: TensionLevel | null;
   coherenceRating: string;
   coherenceExplanation: string;
   systemBridge: string;

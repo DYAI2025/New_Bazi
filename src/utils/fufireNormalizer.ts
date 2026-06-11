@@ -526,18 +526,50 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
 
   // E. FUSION MATRIX — never fabricate a coherence index for a missing section.
   const rawFusion = raw.fusion && typeof raw.fusion === "object" ? raw.fusion : {};
-  // REAL FusionResponse: cosmic_state (0..1) and harmony_index = OBJECT
-  // { harmony_index: 0..1, interpretation, ... }. Legacy: coherenceIndex 0..100.
+  // REAL FusionResponse: cosmic_state (0..1), harmony_index = OBJECT
+  // { harmony_index: 0..1, interpretation, ... } AND a calibration block
+  // { h_raw, h_calibrated, h_baseline, h_sigma, sigma_above, quality,
+  //   interpretation_band, n_west, n_bazi_contributions }.
+  // Legacy mocks: coherenceIndex 0..100.
   const harmonyObj = rawFusion.harmony_index && typeof rawFusion.harmony_index === "object"
     ? rawFusion.harmony_index : null;
+  const calibration = rawFusion.calibration && typeof rawFusion.calibration === "object"
+    ? rawFusion.calibration : null;
+  const hCalibrated = calibration && typeof calibration.h_calibrated === "number" && Number.isFinite(calibration.h_calibrated)
+    ? calibration.h_calibrated : null;
   const realCoherence01 = typeof rawFusion.cosmic_state === "number" ? rawFusion.cosmic_state
     : harmonyObj && typeof harmonyObj.harmony_index === "number" ? harmonyObj.harmony_index
     : typeof rawFusion.harmony_index === "number" ? rawFusion.harmony_index
     : null;
-  const coherenceIndex = typeof rawFusion.coherenceIndex === "number" ? rawFusion.coherenceIndex
+  // The CALIBRATED value (structure congruence vs. random baseline) is the
+  // honest headline number. The raw dot-product (0.908 -> "91%") flatters
+  // every chart and is only used when the engine sent no calibration block —
+  // and then it is explicitly flagged via coherenceCalibrated=false.
+  const coherenceCalibrated = hCalibrated !== null;
+  const coherenceIndex = hCalibrated !== null ? Math.round(hCalibrated * 100 * 10) / 10
+    : typeof rawFusion.coherenceIndex === "number" ? rawFusion.coherenceIndex
     : typeof rawFusion.coherence_index === "number" ? rawFusion.coherence_index
     : realCoherence01 !== null ? Math.round((realCoherence01 <= 1 ? realCoherence01 * 100 : realCoherence01) * 10) / 10
     : 0;
+
+  // Tension level (groundwork for the Spannungsnavigator): how far the raw
+  // harmony sits from the engine's random baseline, in baseline sigmas.
+  // z = (h_raw - h_baseline) / h_sigma. |z| < 1 -> leise, 1..2 -> spuerbar,
+  // > 2 -> dominant.
+  let tensionLevel: "leise" | "spuerbar" | "dominant" | null = null;
+  const hRaw = calibration && typeof calibration.h_raw === "number" ? calibration.h_raw : realCoherence01;
+  const hBaseline = calibration && typeof calibration.h_baseline === "number" ? calibration.h_baseline : null;
+  const hSigma = calibration && typeof calibration.h_sigma === "number" && calibration.h_sigma > 0 ? calibration.h_sigma : null;
+  if (hRaw !== null && hBaseline !== null && hSigma !== null) {
+    const z = Math.abs((hRaw - hBaseline) / hSigma);
+    tensionLevel = z < 1 ? "leise" : z < 2 ? "spuerbar" : "dominant";
+  } else if (hCalibrated !== null) {
+    // HONEST APPROXIMATION: the response carried h_calibrated but no usable
+    // baseline std (h_sigma), so no z-score is computable. We derive the
+    // level from h_calibrated thirds instead (<0.33 leise, <0.66 spuerbar,
+    // else dominant) — a coarse bucketing, not a statistical statement.
+    tensionLevel = hCalibrated < 0.33 ? "leise" : hCalibrated < 0.66 ? "spuerbar" : "dominant";
+  }
 
   // Custom label rating
   let coherenceRating = "Harmonische Ausgewogenheit";
@@ -547,11 +579,20 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
   if (harmonyObj && typeof harmonyObj.interpretation === "string" && harmonyObj.interpretation) {
     coherenceRating = harmonyObj.interpretation;
   }
+  // The engine's calibrated interpretation_band beats the raw-harmony
+  // interpretation — it belongs to the value we actually display.
+  if (calibration && typeof calibration.interpretation_band === "string" && calibration.interpretation_band) {
+    coherenceRating = calibration.interpretation_band;
+  }
 
   const fusion = {
     coherenceIndex,
+    coherenceCalibrated,
+    tensionLevel,
     coherenceRating: rawFusion.coherenceRating || coherenceRating,
-    coherenceExplanation: "Der Kohärenzindex ist kein moralisches Qualitätsurteil (kein Gut-Schlecht-Wert), sondern drückt das mathematische Resonanzmaß zwischen den westlichen Ekliptik-Signalen, der ostasiatischen BaZi-Struktur und der Wu-Xing-Verteilung aus.",
+    coherenceExplanation: coherenceCalibrated
+      ? "Kalibrierte Strukturkongruenz: Der rohe Resonanzwert wird gegen eine Zufallsbaseline kalibriert — angezeigt wird, wie deutlich Ihre West-Ost-Struktur über zufälliger Übereinstimmung liegt. Kein moralisches Qualitätsurteil (kein Gut-Schlecht-Wert)."
+      : "Der Kohärenzindex ist kein moralisches Qualitätsurteil (kein Gut-Schlecht-Wert), sondern drückt das mathematische Resonanzmaß zwischen den westlichen Ekliptik-Signalen, der ostasiatischen BaZi-Struktur und der Wu-Xing-Verteilung aus.",
     systemBridge: rawFusion.systemBridge || `Ihre energetische Konfiguration spannt eine Brücke zwischen dem westlichen Tierkreiszeichen ${sunSign} und dem BaZi-Tagesmeister ${baziDayMaster.name} (${dmElement}).`,
     topSignals: rawFusion.topSignals || [
       { trigger: "Sonne-Tagesmeister Interferenz", interpretation: "Ihre westliche Kernpersönlichkeit harmoniert direkt mit der ostasiatischen Stamm-Schwingung." }

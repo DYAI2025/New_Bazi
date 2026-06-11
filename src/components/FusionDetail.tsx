@@ -8,8 +8,9 @@ interface FusionDetailProps {
 }
 
 export default function FusionDetail({ viewModel }: FusionDetailProps) {
-  const { coherenceIndex, coherenceRating, coherenceExplanation, systemBridge, topSignals, source } = viewModel.fusion;
+  const { coherenceIndex, coherenceCalibrated, tensionLevel, coherenceRating, coherenceExplanation, systemBridge, topSignals, source } = viewModel.fusion;
   const fusionMissing = source === "missing";
+  const tensionLabel = tensionLevel === "spuerbar" ? "spürbar" : tensionLevel;
 
   // Visual color accents matching the coherence index
   const getCoherenceGaugeColor = (score: number) => {
@@ -58,7 +59,7 @@ export default function FusionDetail({ viewModel }: FusionDetailProps) {
           <div className="glass-card p-6 sm:p-8 rounded-2xl flex flex-col items-center justify-center text-center space-y-6 h-full relative overflow-hidden">
             
             <span className="font-mono text-[9px] uppercase tracking-widest text-[#9A8F80]">
-              System-Kohärenzindex
+              {coherenceCalibrated ? "Kalibrierter Kohärenzindex" : "System-Kohärenzindex"}
             </span>
 
             {/* Circular Gauge */}
@@ -90,20 +91,28 @@ export default function FusionDetail({ viewModel }: FusionDetailProps) {
               </svg>
               {/* Central Text Score */}
               <div className="absolute flex flex-col items-center justify-center">
-                <span className="text-4xl font-serif font-bold text-gold-light tracking-tight">
+                <span className="text-4xl font-serif font-bold text-gold-light tracking-tight" data-testid="fusion-coherence-value">
                   {coherenceIndex}%
                 </span>
-                <span className="font-mono text-[8px] uppercase text-[#9A8F80] tracking-wider mt-0.5">
-                  Deckung
+                <span className="font-mono text-[8px] uppercase text-[#9A8F80] tracking-wider mt-0.5 max-w-[110px] text-center leading-snug">
+                  {coherenceCalibrated ? "kalibrierte Strukturkongruenz vs. Zufallsbaseline" : "Deckung"}
                 </span>
               </div>
             </div>
 
             {/* Rating text info */}
             <div className="space-y-2">
-              <h4 className="text-md font-serif font-bold text-[#E0D8D0] tracking-wide">
+              <h4 className="text-md font-serif font-bold text-[#E0D8D0] tracking-wide" data-testid="fusion-coherence-rating">
                 {coherenceRating}
               </h4>
+              {tensionLevel && (
+                <span
+                  data-testid="fusion-tension-level"
+                  className="inline-block font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 rounded border text-gold-muted border-gold-muted/30 bg-gold-muted/10"
+                >
+                  Spannungsniveau: {tensionLabel}
+                </span>
+              )}
               <p className="text-xs text-stone-400 leading-relaxed font-light">
                 {coherenceExplanation}
               </p>

@@ -123,12 +123,44 @@ describe("normalizer vs REAL orchestrated prod raw (chart + western + fusion)", 
     expect(vm.wuxing.elementCards).toHaveLength(5);
   });
 
-  it("maps the real FusionResponse (cosmic_state 0..1) to a 0..100 coherence index", () => {
+  it("displays the CALIBRATED coherence (calibration.h_calibrated), not the flattering raw dot-product", () => {
     const vm = normalizeFuFireProfile(prodOrchestratedRaw(), INPUT, "fufire-orchestrated");
-    expect(vm.fusion.coherenceIndex).toBeCloseTo(90.8, 1);
+    // calibration.h_calibrated = 0.6144 -> 61.4% (NOT h_raw 0.908 -> 90.8%)
+    expect(vm.fusion.coherenceIndex).toBeCloseTo(61.4, 1);
+    expect(vm.fusion.coherenceCalibrated).toBe(true);
     expect(vm.fusion.source).toBe("fufire");
-    // Engine's own interpretation is surfaced, not a locally invented label.
+    // The engine's calibrated interpretation_band is surfaced, not a locally
+    // invented label and not the raw-harmony flattery.
+    expect(vm.fusion.coherenceRating).toBe("Überdurchschnittliche Kongruenz");
+  });
+
+  it("derives the tension level from the calibration z-score (h_raw vs baseline/sigma)", () => {
+    const vm = normalizeFuFireProfile(prodOrchestratedRaw(), INPUT, "fufire-orchestrated");
+    // z = (0.908 - 0.7614) / 0.1445 = 1.015 -> 1 <= |z| < 2 -> "spuerbar"
+    expect(vm.fusion.tensionLevel).toBe("spuerbar");
+  });
+
+  it("falls back to the RAW harmony only when calibration is absent — and flags it", () => {
+    const { calibration, ...uncalibrated } = fusionFixture as any;
+    const vm = normalizeFuFireProfile({ fusion: uncalibrated }, INPUT, "fufire-orchestrated");
+    expect(vm.fusion.coherenceIndex).toBeCloseTo(90.8, 1);
+    expect(vm.fusion.coherenceCalibrated).toBe(false);
+    // Raw harmony_index.interpretation is the best remaining label.
     expect(vm.fusion.coherenceRating).toContain("Starke Resonanz");
+    // No baseline/sigma and no h_calibrated -> no tension level claim.
+    expect(vm.fusion.tensionLevel).toBeNull();
+  });
+
+  it("approximates the tension level from h_calibrated thirds when sigma is missing", () => {
+    const { calibration, ...rest } = fusionFixture as any;
+    const vm = normalizeFuFireProfile(
+      { fusion: { ...rest, calibration: { h_calibrated: 0.6144, interpretation_band: "Überdurchschnittliche Kongruenz" } } },
+      INPUT,
+      "fufire-orchestrated"
+    );
+    // 0.33 <= 0.6144 < 0.66 -> "spuerbar" (documented coarse bucketing)
+    expect(vm.fusion.tensionLevel).toBe("spuerbar");
+    expect(vm.fusion.coherenceIndex).toBeCloseTo(61.4, 1);
   });
 });
 
@@ -164,9 +196,10 @@ describe("normalizer vs REAL detail-endpoint shapes (one section each)", () => {
     expect(vm.wuxing.distribution[ElementType.METAL]).toBeCloseTo(6.5, 0);
   });
 
-  it("FusionResponse alone (harmony_index object + cosmic_state)", () => {
+  it("FusionResponse alone (calibration block beats harmony_index/cosmic_state)", () => {
     const vm = normalizeFuFireProfile({ fusion: fusionFixture }, INPUT, "fufire-orchestrated");
-    expect(vm.fusion.coherenceIndex).toBeCloseTo(90.8, 1);
+    expect(vm.fusion.coherenceIndex).toBeCloseTo(61.4, 1);
+    expect(vm.fusion.coherenceCalibrated).toBe(true);
     expect(vm.fusion.source).toBe("fufire");
   });
 });
