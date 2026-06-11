@@ -177,8 +177,9 @@ async function request(
 
   if (!res.ok) {
     // Read body for DST error detection: FuFirE marks non-existent local times
-    // (DST gap) with type="dst_error" in the 422 body. Only the discriminator
-    // is read — no upstream text is forwarded to the browser.
+    // (DST gap) with type="dst_error" in the 422 body. Defensive: also check 400
+    // in case the engine spec drifts. Only the discriminator is read — no upstream
+    // text is forwarded to the browser.
     let body: any = null;
     try { body = await res.json(); } catch { /* no JSON body — generic mapping */ }
     const isDst = (res.status === 422 || res.status === 400) && body?.type === "dst_error";

@@ -114,8 +114,8 @@ export default function Overview({ viewModel, onNavigate }: OverviewProps) {
             Hinweise zur Berechnung
           </span>
           <ul className="space-y-1">
-            {viewModel.warnings.map((w) => (
-              <li key={w} className="text-xs text-stone-400 font-sans leading-relaxed">{w}</li>
+            {viewModel.warnings.map((w, i) => (
+              <li key={i} className="text-xs text-stone-400 font-sans leading-relaxed">{w}</li>
             ))}
           </ul>
         </div>

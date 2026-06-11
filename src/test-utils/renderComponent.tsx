@@ -5,7 +5,7 @@ let root: Root | null = null;
 let container: HTMLElement | null = null;
 
 export function renderComponent(ui: React.ReactElement): HTMLElement {
-  cleanupComponent();
+  if (root) throw new Error("renderComponent(): previous mount still active — call cleanupComponent() first");
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);

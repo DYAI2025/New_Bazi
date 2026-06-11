@@ -111,7 +111,7 @@ export default function BaZiDetail({ viewModel }: BaZiDetailProps) {
 
               {/* Daymaster Text Analysis */}
               <div className="space-y-3 font-sans text-sm">
-                <span className="font-mono text-[9px] uppercase tracking-widest text-stone-600 font-bold" data-testid="daymaster-source-label">Kuratierte Element-Deutung (im Modell)</span>
+                <span className="font-mono text-[9px] uppercase tracking-widest text-stone-600 font-bold block mb-1" data-testid="daymaster-source-label">Kuratierte Element-Deutung (im Modell)</span>
                 <p className="text-stone-300 leading-relaxed font-light text-md italic">
                   &quot;{dayMaster.coreInterpretation}&quot;
                 </p>

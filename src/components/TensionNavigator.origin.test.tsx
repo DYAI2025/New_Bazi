@@ -52,6 +52,7 @@ describe("Navigator-Intro (B-010)", () => {
     const c1 = renderComponent(<TensionNavigator viewModel={fullVm()} />);
     clickTestId(c1, "tension-intro-dismiss");
     expect(c1.querySelector('[data-testid="tension-intro"]')).toBeNull();
+    cleanupComponent();
     const c2 = renderComponent(<TensionNavigator viewModel={fullVm()} />);
     expect(c2.querySelector('[data-testid="tension-intro"]')).toBeNull();
   });

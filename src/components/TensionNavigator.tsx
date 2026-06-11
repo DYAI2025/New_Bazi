@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import React from "react";
 import { ProfileViewModel, FusionData, SignalLevel } from "../viewmodels/profileViewModel";
 import { Shield, Activity } from "lucide-react";
@@ -113,6 +114,8 @@ const REACTIONS: { id: TensionReaction; label: string }[] = [
 // Komponente, deshalb reicht React-State allein nicht.
 let introDismissedThisSession = false;
 export function __resetIntroForTests(): void {
+  // Guard: no-op outside test environment; keeps this export inert in production.
+  if (import.meta.env.MODE !== "test") return;
   introDismissedThisSession = false;
 }
 

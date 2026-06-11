@@ -17,7 +17,7 @@ const DUMMY_INPUT = {
 afterEach(() => cleanupComponent());
 
 describe("Overview warnings (A13)", () => {
-  it("zeigt overview-warnings wenn viewModel.warnings nicht leer", async () => {
+  it("zeigt overview-warnings wenn viewModel.warnings nicht leer", () => {
     // empty raw → normalizer pushes 4 warnings (western/bazi/wuxing/fusion missing)
     const vm = normalizeFuFireProfile({}, DUMMY_INPUT, "fufire-chart");
     expect(vm.warnings.length).toBeGreaterThan(0);
@@ -29,7 +29,7 @@ describe("Overview warnings (A13)", () => {
     vm.warnings.forEach((w) => expect(el!.textContent).toContain(w));
   });
 
-  it("overview-warnings fehlt wenn keine Warnungen", async () => {
+  it("overview-warnings fehlt wenn keine Warnungen", () => {
     // Construct a minimal VM with empty warnings
     const vm = normalizeFuFireProfile({}, DUMMY_INPUT, "fufire-chart");
     const vmNoWarnings = { ...vm, warnings: [] };
