@@ -250,7 +250,7 @@ const fails = findings.filter((f) => f.status === "FAIL").length;
 for (const f of findings) {
   const icon = f.status === "PASS" ? "✓" : f.status === "FAIL" ? "✗" : "ℹ";
   console.log(`${icon}  [${f.status}] ${f.label}`);
-  if (f.status !== "PASS" || f.label.includes("CRITICAL") || f.status === "WARN") {
+  if (f.status !== "PASS" || f.label.includes("CRITICAL")) {
     console.log(`       ${f.detail}`);
   }
 }

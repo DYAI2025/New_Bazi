@@ -75,6 +75,7 @@ export interface BirthInputPayload {
   lon?: number;
   tz?: string;
   gender?: BirthData["gender"];
+  timeKnown?: boolean;
 }
 
 export class BazodiacRequestError extends Error {
@@ -132,7 +133,8 @@ export function toBirthInputPayload(data: BirthData): BirthInputPayload {
     lat: getNumber(raw.lat ?? raw.latitude ?? birthPlace?.lat ?? birthPlace?.latitude),
     lon: getNumber(raw.lon ?? raw.lng ?? raw.longitude ?? birthPlace?.lon ?? birthPlace?.lng ?? birthPlace?.longitude),
     tz: typeof tzCandidate === "string" ? tzCandidate.trim() : undefined,
-    gender: raw.gender
+    gender: raw.gender,
+    timeKnown: raw.timeKnown !== false ? undefined : false
   };
 }
 

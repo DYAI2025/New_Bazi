@@ -45,6 +45,16 @@ describe("toBirthInputPayload", () => {
     const payload = toBirthInputPayload({ ...LEGACY_INPUT, birthPlace: { ...(LEGACY_INPUT as any).birthPlace, timezone: "" } as any });
     expect(payload.tz).toBe("");
   });
+
+  it("passes timeKnown:false to BFF payload so BFF can substitute 12:00 placeholder", () => {
+    const payload = toBirthInputPayload({ ...LEGACY_INPUT, timeKnown: false } as BirthData);
+    expect(payload.timeKnown).toBe(false);
+  });
+
+  it("omits timeKnown from BFF payload when timeKnown is true or undefined (default)", () => {
+    expect(toBirthInputPayload(LEGACY_INPUT).timeKnown).toBeUndefined();
+    expect(toBirthInputPayload({ ...LEGACY_INPUT, timeKnown: true } as BirthData).timeKnown).toBeUndefined();
+  });
 });
 
 describe("BazodiacClient profile requests", () => {
