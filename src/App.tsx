@@ -4,6 +4,7 @@ import { BazodiacClient, getUserFacingErrorTitle, getUserFacingRequestMessage } 
 import { ProfileViewModel } from "./viewmodels/profileViewModel";
 
 import PageShell from "./components/PageShell";
+import AccountMenu from "./components/AccountMenu";
 import InputForm from "./components/InputForm";
 import Overview from "./components/Overview";
 import WesternAstrology from "./components/WesternAstrology";
@@ -139,8 +140,24 @@ export default function App() {
     }
   };
 
+  const handleProfileLoad = (data: BirthData) => {
+    setBirthData(data);
+    setActiveTab("overview");
+  };
+
   return (
-    <PageShell activeTab={activeTab} setActiveTab={setActiveTab} hasBirthData={!!viewModel}>
+    <PageShell
+      activeTab={activeTab}
+      setActiveTab={setActiveTab}
+      hasBirthData={!!viewModel}
+      headerSlot={
+        <AccountMenu
+          birthData={birthData}
+          hasResult={!!viewModel}
+          onProfileLoad={handleProfileLoad}
+        />
+      }
+    >
       {renderTab()}
     </PageShell>
   );

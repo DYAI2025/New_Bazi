@@ -19,9 +19,10 @@ interface PageShellProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   hasBirthData: boolean;
+  headerSlot?: React.ReactNode;
 }
 
-export default function PageShell({ children, activeTab, setActiveTab, hasBirthData }: PageShellProps) {
+export default function PageShell({ children, activeTab, setActiveTab, hasBirthData, headerSlot }: PageShellProps) {
   const [themeMode, setThemeMode] = React.useState<"dark" | "light">("dark");
 
   React.useEffect(() => {
@@ -90,8 +91,9 @@ export default function PageShell({ children, activeTab, setActiveTab, hasBirthD
             </p>
           </div>
 
-          {/* Theme customizer toggle */}
+          {/* Header slot (AccountMenu) + Theme toggle */}
           <div className="flex items-center space-x-3">
+            {headerSlot}
             <button
               id="theme-toggle"
               onClick={toggleTheme}

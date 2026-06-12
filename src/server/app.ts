@@ -1,4 +1,6 @@
-import express, { Express, Request, Response } from "express";
+import express, { Express, Request, Response, NextFunction } from "express";
+import { getServerSupabase } from "./supabase";
+import { requireUserAuth } from "./requireUserAuth";
 import { GoogleGenAI } from "@google/genai";
 
 import { FuFirEClient } from "../utils/fufireClient";
@@ -54,6 +56,8 @@ function logInvalidBirthInput(route: string, errors: unknown): void {
 
   console.warn("invalid_birth_input", { route, fields });
 }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Send a typed error, never leaking secrets or stack traces to the browser. */
 function sendError(res: Response, err: any, fallbackStatus = 500): void {
@@ -506,6 +510,100 @@ export function createApp(): Express {
       console.error("Gemini provider error (server-side only):", error?.message);
       sendError(res, { code: "gemini_error", httpStatus: 502, message: "Gemini-Deutung ist derzeit nicht verfügbar." });
     }
+  });
+
+  // --- Profil-Routen (hinter requireUserAuth; Service-Role + expliziter Owner-Filter) ---
+
+  app.get("/api/me/profiles", requireUserAuth, async (req, res) => {
+    const supabase = getServerSupabase()!;
+    const { data, error } = await supabase
+      .from("nb_profiles")
+      .select("id, label, birth_data, is_default, updated_at")
+      .eq("user_id", req.userId!)
+      .order("updated_at", { ascending: false });
+    if (error) { sendError(res, { code: "db_error", httpStatus: 502, message: "Datenbankfehler." }); return; }
+    res.json(data ?? []);
+  });
+
+  app.post("/api/me/profiles", requireUserAuth, async (req, res) => {
+    const { label = "Mein Profil", birth_data, makeDefault = false } = req.body ?? {};
+    const validation = validateBirthInput(birth_data ?? {});
+    if (!validation.valid) {
+      res.status(400).json({ error: "invalid_birth_input", fields: validation.errors });
+      return;
+    }
+    const supabase = getServerSupabase()!;
+    const userId = req.userId!;
+    if (makeDefault) {
+      const { error: clearErr } = await supabase
+        .from("nb_profiles")
+        .update({ is_default: false })
+        .eq("user_id", userId);
+      if (clearErr) { sendError(res, { code: "db_error", httpStatus: 502, message: "Datenbankfehler." }); return; }
+    }
+    const { data, error } = await supabase
+      .from("nb_profiles")
+      .insert({ user_id: userId, label, birth_data, is_default: !!makeDefault })
+      .select()
+      .single();
+    if (error) { sendError(res, { code: "db_error", httpStatus: 502, message: "Datenbankfehler." }); return; }
+    res.status(201).json(data);
+  });
+
+  app.delete("/api/me/profiles/:id", requireUserAuth, async (req, res) => {
+    if (!UUID_RE.test(req.params.id)) { res.status(400).json({ error: "invalid_id" }); return; }
+    const supabase = getServerSupabase()!;
+    const { error } = await supabase
+      .from("nb_profiles")
+      .delete()
+      .eq("id", req.params.id)
+      .eq("user_id", req.userId!);
+    if (error) { sendError(res, { code: "db_error", httpStatus: 502, message: "Datenbankfehler." }); return; }
+    res.status(204).send();
+  });
+
+  app.get("/api/me/partners", requireUserAuth, async (req, res) => {
+    const supabase = getServerSupabase()!;
+    const { data, error } = await supabase
+      .from("nb_partner_profiles")
+      .select("id, label, birth_data, created_at")
+      .eq("user_id", req.userId!)
+      .order("created_at", { ascending: false });
+    if (error) { sendError(res, { code: "db_error", httpStatus: 502, message: "Datenbankfehler." }); return; }
+    res.json(data ?? []);
+  });
+
+  app.post("/api/me/partners", requireUserAuth, async (req, res) => {
+    const { label, birth_data } = req.body ?? {};
+    if (!label) {
+      res.status(400).json({ error: "invalid_input", message: "label ist erforderlich." });
+      return;
+    }
+    const validation = validateBirthInput(birth_data ?? {});
+    if (!validation.valid) {
+      res.status(400).json({ error: "invalid_birth_input", fields: validation.errors });
+      return;
+    }
+    const supabase = getServerSupabase()!;
+    const { data, error } = await supabase
+      .from("nb_partner_profiles")
+      .insert({ user_id: req.userId!, label, birth_data })
+      .select()
+      .single();
+    if (error) { sendError(res, { code: "db_error", httpStatus: 502, message: "Datenbankfehler." }); return; }
+    res.status(201).json(data);
+  });
+
+  app.delete("/api/me/partners/:id", requireUserAuth, async (req, res) => {
+    if (!UUID_RE.test(req.params.id)) { res.status(400).json({ error: "invalid_id" }); return; }
+    const supabase = getServerSupabase()!;
+    const { error } = await supabase
+      .from("nb_partner_profiles")
+      .delete()
+      .eq("id", req.params.id)
+      .eq("user_id", req.userId!);
+    if (error) { sendError(res, { code: "db_error", httpStatus: 502, message: "Datenbankfehler." }); return; }
+    res.status(204).send();
   });
 
   return app;

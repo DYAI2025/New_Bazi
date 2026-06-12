@@ -6,6 +6,12 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
+# Supabase Anon-Key + URL werden zur Build-Zeit in das Browser-Bundle eingebettet.
+# Service-Role-Key NIEMALS als ARG/ENV hier — er gehört nur in die Railway-Laufzeit-Vars.
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
+ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
 RUN npm run build
 
 # ---- runner: production deps + built artifacts only ----
