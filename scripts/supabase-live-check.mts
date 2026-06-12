@@ -114,12 +114,12 @@ try {
     label: "Live-Check Profile",
     birth_data: {
       name: "Live Check",
-      date: "1990-06-15",
-      time: "14:30",
-      place: "Berlin",
+      birthDate: "1990-06-15",
+      birthTime: "14:30",
+      placeId: "ChIJAVkDl5cX5kcRGpo44WgMKS4",
       lat: 52.52,
-      lng: 13.405,
-      timezone: "Europe/Berlin",
+      lon: 13.405,
+      tz: "Europe/Berlin",
     },
   };
   const postProfile = await bff<{ id?: string }>("/api/me/profiles", token, {
@@ -146,12 +146,12 @@ try {
     label: "Live-Check Partner",
     birth_data: {
       name: "Partner Check",
-      date: "1985-03-22",
-      time: "09:15",
-      place: "München",
+      birthDate: "1985-03-22",
+      birthTime: "09:15",
+      placeId: "ChIJ2V-Mo_l1nkcRfZixfUscSkM",
       lat: 48.137,
-      lng: 11.576,
-      timezone: "Europe/Berlin",
+      lon: 11.576,
+      tz: "Europe/Berlin",
     },
   };
   const postPartner = await bff<{ id?: string }>("/api/me/partners", token, {

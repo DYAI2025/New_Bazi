@@ -92,6 +92,12 @@ beforeEach(() => {
   activeUserId = "user-A";
 });
 
+// UUID fixtures (must pass UUID_RE for DELETE routes)
+const UUID_A = "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa";
+const UUID_B = "bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb";
+const UUID_C = "cccccccc-cccc-4ccc-cccc-cccccccccccc";
+const UUID_D = "dddddddd-dddd-4ddd-dddd-dddddddddddd";
+
 // --- nb_profiles ---
 describe("GET /api/me/profiles", () => {
   it("gibt leere Liste zurück wenn keine Profile vorhanden", async () => {
@@ -102,13 +108,13 @@ describe("GET /api/me/profiles", () => {
 
   it("gibt nur eigene Profile zurück (owner filter)", async () => {
     store.set("nb_profiles", [
-      { id: "p1", user_id: "user-A", label: "Ich", birth_data: {}, is_default: true, updated_at: "2026-01-01" },
-      { id: "p2", user_id: "user-B", label: "Fremdes", birth_data: {}, is_default: false, updated_at: "2026-01-02" },
+      { id: UUID_A, user_id: "user-A", label: "Ich", birth_data: {}, is_default: true, updated_at: "2026-01-01" },
+      { id: UUID_B, user_id: "user-B", label: "Fremdes", birth_data: {}, is_default: false, updated_at: "2026-01-02" },
     ]);
     const res = await request(app).get("/api/me/profiles");
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(1);
-    expect(res.body[0].id).toBe("p1");
+    expect(res.body[0].id).toBe(UUID_A);
   });
 });
 
@@ -127,25 +133,45 @@ describe("POST /api/me/profiles", () => {
     expect(res.body.user_id).toBe("user-A");
     expect(res.body.label).toBe("Hauptprofil");
   });
+
+  it("makeDefault=true setzt vorhandene Profile auf is_default=false", async () => {
+    store.set("nb_profiles", [
+      { id: UUID_A, user_id: "user-A", label: "Alt-Default", birth_data: {}, is_default: true },
+    ]);
+    const res = await request(app)
+      .post("/api/me/profiles")
+      .send({ label: "Neu-Default", birth_data: VALID_BIRTH, makeDefault: true });
+    expect(res.status).toBe(201);
+    expect(res.body.is_default).toBe(true);
+    const existing = (store.get("nb_profiles") ?? []).find((r: Row) => r.id === UUID_A);
+    expect(existing?.is_default).toBe(false);
+  });
 });
 
 describe("DELETE /api/me/profiles/:id", () => {
+  it("400 bei ungültiger UUID", async () => {
+    const res = await request(app).delete("/api/me/profiles/not-a-uuid");
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("invalid_id");
+  });
+
   it("204 bei eigenem Profil", async () => {
     store.set("nb_profiles", [
-      { id: "p1", user_id: "user-A", label: "Ich", birth_data: {} },
+      { id: UUID_A, user_id: "user-A", label: "Ich", birth_data: {} },
     ]);
-    const res = await request(app).delete("/api/me/profiles/p1");
+    const res = await request(app).delete(`/api/me/profiles/${UUID_A}`);
     expect(res.status).toBe(204);
     expect(store.get("nb_profiles")).toHaveLength(0);
   });
 
   it("User B kann Profil von User A NICHT löschen (owner filter)", async () => {
     store.set("nb_profiles", [
-      { id: "p1", user_id: "user-A", label: "Ich", birth_data: {} },
+      { id: UUID_A, user_id: "user-A", label: "Ich", birth_data: {} },
     ]);
     activeUserId = "user-B";
-    await request(app).delete("/api/me/profiles/p1");
-    // Owner filter: eq('id','p1').eq('user_id','user-B') → kein Match → Profil bleibt
+    const res = await request(app).delete(`/api/me/profiles/${UUID_A}`);
+    expect(res.status).toBe(204);
+    // Owner filter: eq('id',UUID_A).eq('user_id','user-B') → kein Match → Profil bleibt
     expect(store.get("nb_profiles")).toHaveLength(1);
   });
 });
@@ -154,13 +180,13 @@ describe("DELETE /api/me/profiles/:id", () => {
 describe("GET /api/me/partners", () => {
   it("gibt nur eigene Partner-Profile zurück", async () => {
     store.set("nb_partner_profiles", [
-      { id: "pp1", user_id: "user-A", label: "Partner", birth_data: {} },
-      { id: "pp2", user_id: "user-B", label: "Fremd", birth_data: {} },
+      { id: UUID_C, user_id: "user-A", label: "Partner", birth_data: {} },
+      { id: UUID_D, user_id: "user-B", label: "Fremd", birth_data: {} },
     ]);
     const res = await request(app).get("/api/me/partners");
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(1);
-    expect(res.body[0].id).toBe("pp1");
+    expect(res.body[0].id).toBe(UUID_C);
   });
 });
 
@@ -181,12 +207,19 @@ describe("POST /api/me/partners", () => {
 });
 
 describe("DELETE /api/me/partners/:id", () => {
+  it("400 bei ungültiger UUID", async () => {
+    const res = await request(app).delete("/api/me/partners/not-a-uuid");
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("invalid_id");
+  });
+
   it("User B kann Partner von User A NICHT löschen", async () => {
     store.set("nb_partner_profiles", [
-      { id: "pp1", user_id: "user-A", label: "Partner", birth_data: {} },
+      { id: UUID_C, user_id: "user-A", label: "Partner", birth_data: {} },
     ]);
     activeUserId = "user-B";
-    await request(app).delete("/api/me/partners/pp1");
+    const res = await request(app).delete(`/api/me/partners/${UUID_C}`);
+    expect(res.status).toBe(204);
     expect(store.get("nb_partner_profiles")).toHaveLength(1);
   });
 });

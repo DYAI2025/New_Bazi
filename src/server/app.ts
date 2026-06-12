@@ -57,6 +57,8 @@ function logInvalidBirthInput(route: string, errors: unknown): void {
   console.warn("invalid_birth_input", { route, fields });
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /** Send a typed error, never leaking secrets or stack traces to the browser. */
 function sendError(res: Response, err: any, fallbackStatus = 500): void {
   const status = err && typeof err.httpStatus === "number" ? err.httpStatus : fallbackStatus;
@@ -533,7 +535,11 @@ export function createApp(): Express {
     const supabase = getServerSupabase()!;
     const userId = req.userId!;
     if (makeDefault) {
-      await supabase.from("nb_profiles").update({ is_default: false }).eq("user_id", userId);
+      const { error: clearErr } = await supabase
+        .from("nb_profiles")
+        .update({ is_default: false })
+        .eq("user_id", userId);
+      if (clearErr) { sendError(res, { code: "db_error", httpStatus: 502, message: "Datenbankfehler." }); return; }
     }
     const { data, error } = await supabase
       .from("nb_profiles")
@@ -545,6 +551,7 @@ export function createApp(): Express {
   });
 
   app.delete("/api/me/profiles/:id", requireUserAuth, async (req, res) => {
+    if (!UUID_RE.test(req.params.id)) { res.status(400).json({ error: "invalid_id" }); return; }
     const supabase = getServerSupabase()!;
     const { error } = await supabase
       .from("nb_profiles")
@@ -588,6 +595,7 @@ export function createApp(): Express {
   });
 
   app.delete("/api/me/partners/:id", requireUserAuth, async (req, res) => {
+    if (!UUID_RE.test(req.params.id)) { res.status(400).json({ error: "invalid_id" }); return; }
     const supabase = getServerSupabase()!;
     const { error } = await supabase
       .from("nb_partner_profiles")

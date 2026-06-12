@@ -86,13 +86,14 @@ export default function AccountMenu({ birthData, hasResult, onProfileLoad }: Acc
         setFeedback("Fehler beim Speichern.");
       }
     } catch { setFeedback("Netzwerkfehler."); }
-    setSaving(false);
+    finally { setSaving(false); }
   }
 
   async function logout() {
     if (!supabase) return;
     await supabase.auth.signOut();
     setOpen(false);
+    setView("menu");
     setProfiles([]);
   }
 

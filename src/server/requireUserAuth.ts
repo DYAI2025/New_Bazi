@@ -27,15 +27,17 @@ export async function requireUserAuth(req: Request, res: Response, next: NextFun
   const jwt = authHeader.slice(7);
   const supabase = getServerSupabase()!;
 
-  const timeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error("auth_timeout")), TIMEOUT_MS)
-  );
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("auth_timeout")), TIMEOUT_MS);
+  });
 
   try {
     const { data, error } = await Promise.race([
       supabase.auth.getUser(jwt),
       timeout,
     ]);
+    clearTimeout(timer!);
 
     if (error || !data?.user) {
       res.status(401).json({ error: "AUTH_REQUIRED", message: "Token ungültig oder abgelaufen." });
@@ -45,6 +47,7 @@ export async function requireUserAuth(req: Request, res: Response, next: NextFun
     req.userId = data.user.id;
     next();
   } catch {
+    clearTimeout(timer!);
     res.status(401).json({ error: "AUTH_REQUIRED", message: "Authentifizierung fehlgeschlagen." });
   }
 }
