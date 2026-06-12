@@ -13,6 +13,7 @@ export interface BirthInputCandidate {
   lon?: unknown;
   tz?: unknown;
   gender?: unknown;
+  timeKnown?: boolean;
 }
 
 export interface ValidatedBirthInput {
@@ -25,6 +26,7 @@ export interface ValidatedBirthInput {
   lon: number;
   tz: string;
   gender: string;
+  timeKnown: boolean;
 }
 
 export interface FieldError {
@@ -88,9 +90,16 @@ export function validateBirthInput(input: BirthInputCandidate): ValidationResult
   }
 
   // --- birthTime ---
-  const birthTime = typeof input.birthTime === "string" ? input.birthTime.trim() : "";
-  if (!TIME_RE.test(birthTime)) {
-    errors.push({ field: "birthTime", message: "Bitte eine gueltige Geburtszeit im Format HH:mm angeben." });
+  const timeKnown = input.timeKnown !== false;
+  const rawBirthTime = typeof input.birthTime === "string" ? input.birthTime.trim() : "";
+  let birthTime: string;
+  if (!timeKnown && !rawBirthTime) {
+    birthTime = "12:00";
+  } else {
+    birthTime = rawBirthTime;
+    if (!TIME_RE.test(birthTime)) {
+      errors.push({ field: "birthTime", message: "Bitte eine gueltige Geburtszeit im Format HH:mm angeben." });
+    }
   }
 
   // --- placeId ---
@@ -144,7 +153,8 @@ export function validateBirthInput(input: BirthInputCandidate): ValidationResult
       lat,
       lon,
       tz,
-      gender: typeof input.gender === "string" && input.gender.trim() ? input.gender.trim() : "Divers"
+      gender: typeof input.gender === "string" && input.gender.trim() ? input.gender.trim() : "Divers",
+      timeKnown,
     }
   };
 }

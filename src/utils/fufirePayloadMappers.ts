@@ -121,7 +121,7 @@ function buildBirthInput(input: ValidatedBirthInput): BirthInputPayload {
     lat: input.lat,
     lon: input.lon,
     place_label: input.birthPlaceLabel || null,
-    birth_time_known: true
+    birth_time_known: input.timeKnown !== false
   };
 }
 
@@ -137,7 +137,7 @@ export function buildWesternPayload(input: ValidatedBirthInput): WesternRequestP
     lat: input.lat,
     ambiguousTime: "earlier",
     nonexistentTime: "error",
-    birth_time_known: true,
+    birth_time_known: input.timeKnown !== false,
     zodiac_mode: "tropical"
   };
 }
@@ -152,7 +152,7 @@ export function buildBaziPayload(input: ValidatedBirthInput): BaziRequestPayload
     boundary: "midnight",
     ambiguousTime: "earlier",
     nonexistentTime: "error",
-    birth_time_known: true
+    birth_time_known: input.timeKnown !== false
   };
 }
 
@@ -175,7 +175,7 @@ export function buildFusionPayload(input: ValidatedBirthInput): FusionRequestPay
     lat: input.lat,
     ambiguousTime: "earlier",
     nonexistentTime: "error",
-    birth_time_known: true
+    birth_time_known: input.timeKnown !== false
   };
 }
 

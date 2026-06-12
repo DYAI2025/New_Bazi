@@ -89,3 +89,45 @@ describe("validateBirthInput", () => {
     expect(r.errors.length).toBeGreaterThanOrEqual(5);
   });
 });
+
+// REQ-P4-002: timeKnown:false mode
+describe("validateBirthInput — timeKnown:false mode", () => {
+  it("accepts missing birthTime when timeKnown:false, defaults to 12:00", () => {
+    const r = validateBirthInput({ ...VALID, birthTime: undefined, timeKnown: false });
+    expect(r.valid).toBe(true);
+    expect(r.value?.birthTime).toBe("12:00");
+    expect(r.value?.timeKnown).toBe(false);
+  });
+
+  it("accepts empty birthTime string when timeKnown:false, defaults to 12:00", () => {
+    const r = validateBirthInput({ ...VALID, birthTime: "", timeKnown: false });
+    expect(r.valid).toBe(true);
+    expect(r.value?.birthTime).toBe("12:00");
+    expect(r.value?.timeKnown).toBe(false);
+  });
+
+  it("accepts provided birthTime when timeKnown:false, preserves it but keeps flag false", () => {
+    const r = validateBirthInput({ ...VALID, birthTime: "14:30", timeKnown: false });
+    expect(r.valid).toBe(true);
+    expect(r.value?.birthTime).toBe("14:30");
+    expect(r.value?.timeKnown).toBe(false);
+  });
+
+  it("rejects missing birthTime when timeKnown:true (existing behavior unchanged)", () => {
+    const r = validateBirthInput({ ...VALID, birthTime: undefined, timeKnown: true });
+    expect(r.valid).toBe(false);
+    expect(fieldsOf(r.errors)).toContain("birthTime");
+  });
+
+  it("passes timeKnown:true through in valid result", () => {
+    const r = validateBirthInput({ ...VALID, timeKnown: true });
+    expect(r.valid).toBe(true);
+    expect(r.value?.timeKnown).toBe(true);
+  });
+
+  it("defaults timeKnown to true when not provided (backward compat)", () => {
+    const r = validateBirthInput(VALID);
+    expect(r.valid).toBe(true);
+    expect(r.value?.timeKnown).not.toBe(false);
+  });
+});

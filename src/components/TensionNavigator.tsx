@@ -617,6 +617,7 @@ function OriginLayer({ fusion }: { fusion: FusionData }) {
     coherenceIndex,
     coherenceCalibrated,
     signalLevel,
+    signalLevelSuffix,
     coherenceRating,
     coherenceExplanation,
     systemBridge,
@@ -694,6 +695,14 @@ function OriginLayer({ fusion }: { fusion: FusionData }) {
                   className="inline-block font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 rounded border text-gold-muted border-gold-muted/30 bg-gold-muted/10"
                 >
                   Ausprägung des Signals: {signalLabel}
+                </span>
+              )}
+              {signalLevelSuffix && (
+                <span
+                  data-testid="fusion-signal-level-suffix"
+                  className="inline-block font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 rounded border text-stone-400 border-stone-600/40 bg-stone-700/20"
+                >
+                  {signalLevelSuffix}
                 </span>
               )}
               <p className="text-xs text-stone-400 leading-relaxed font-light">{coherenceExplanation}</p>

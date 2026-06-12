@@ -28,6 +28,7 @@ const LABEL_CLASS =
 export default function InputForm({ birthData, onCalculate, timeError = null }: InputFormProps) {
   const [formData, setFormData] = React.useState<BirthData>({ ...EMPTY, ...(birthData || {}) });
   const [submitting, setSubmitting] = React.useState(false);
+  const [timeKnown, setTimeKnown] = React.useState<boolean>(birthData?.timeKnown ?? true);
 
   const placeResolved = Boolean(
     formData.placeId &&
@@ -39,7 +40,7 @@ export default function InputForm({ birthData, onCalculate, timeError = null }: 
   const canSubmit =
     formData.name.trim().length >= 2 &&
     Boolean(formData.birthDate) &&
-    Boolean(formData.birthTime) &&
+    (timeKnown ? Boolean(formData.birthTime) : true) &&
     placeResolved;
 
   const handleResolved = (place: ResolvedPlace) => {
@@ -62,7 +63,7 @@ export default function InputForm({ birthData, onCalculate, timeError = null }: 
     e.preventDefault();
     if (!canSubmit) return;
     setSubmitting(true);
-    onCalculate(formData);
+    onCalculate({ ...formData, timeKnown });
     setTimeout(() => setSubmitting(false), 600);
   };
 
@@ -152,8 +153,9 @@ export default function InputForm({ birthData, onCalculate, timeError = null }: 
                 <input
                   id="input-time"
                   type="time"
-                  required
-                  value={formData.birthTime}
+                  required={timeKnown}
+                  disabled={!timeKnown}
+                  value={timeKnown ? formData.birthTime : ""}
                   onChange={(e) => setFormData({ ...formData, birthTime: e.target.value })}
                   aria-invalid={!!timeError}
                   aria-describedby={timeError ? "time-field-error" : undefined}

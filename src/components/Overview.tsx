@@ -70,8 +70,10 @@ export default function Overview({ viewModel, onNavigate }: OverviewProps) {
             {viewModel.identity.name}
           </h2>
           <p className="font-sans text-sm text-stone-400 max-w-2xl leading-relaxed">
-            Geboren am <span className="text-slate-200 font-mono text-xs">{viewModel.identity.birthDate}</span> um{" "}
-            <span className="text-slate-200 font-mono text-xs">{viewModel.identity.birthTime} Uhr</span> in{" "}
+            Geboren am <span className="text-slate-200 font-mono text-xs">{viewModel.identity.birthDate}</span>
+            {viewModel.timeKnown && (
+              <> um <span className="text-slate-200 font-mono text-xs">{viewModel.identity.birthTime} Uhr</span></>
+            )} in{" "}
             <span className="text-slate-200 font-medium">{viewModel.identity.birthPlace}</span>.
             {viewModel.bazi.available && (
               <> Ihr Tagesmeister ist{" "}
@@ -160,8 +162,16 @@ export default function Overview({ viewModel, onNavigate }: OverviewProps) {
             </div>
             <div>
               <span className="font-mono text-[9px] uppercase tracking-widest text-gold-muted">Aszendent</span>
-              <h4 className="font-serif text-lg font-bold text-slate-100">{viewModel.western.ascendant}</h4>
-              <p className="text-xs text-stone-400 font-sans mt-0.5">Maske, Aufstieg & Lebensreise</p>
+              <h4 className="font-serif text-lg font-bold text-slate-100">
+                {viewModel.western.ascendant ?? "—"}
+              </h4>
+              {viewModel.western.ascendant === null ? (
+                <span className="font-mono text-[9px] uppercase tracking-widest text-stone-500 border border-stone-600/30 bg-stone-700/20 px-1.5 py-0.5 rounded">
+                  Zeit unbekannt
+                </span>
+              ) : (
+                <p className="text-xs text-stone-400 font-sans mt-0.5">Maske, Aufstieg & Lebensreise</p>
+              )}
             </div>
           </div>
         </div>

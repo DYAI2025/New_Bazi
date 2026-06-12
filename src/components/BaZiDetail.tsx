@@ -2,6 +2,7 @@ import React from "react";
 import { ProfileViewModel } from "../viewmodels/profileViewModel";
 import { Columns, Award, Key, ShieldCheck, AlertCircle } from "lucide-react";
 import { ElementType } from "../types";
+import { TimeDependencyNote } from "./TimeDependencyNote";
 
 interface BaZiDetailProps {
   viewModel: ProfileViewModel;
@@ -149,6 +150,12 @@ export default function BaZiDetail({ viewModel }: BaZiDetailProps) {
             </p>
 
             <div className="space-y-3 font-mono text-xs">
+              {!viewModel.bazi.hourAvailable && (
+                <div className="flex items-center justify-between p-3 rounded-lg bg-obsidian-deep/50 border border-gold-muted/5 gap-4 opacity-60">
+                  <span className="text-stone-500 font-medium">Stunde-Zweig</span>
+                  <TimeDependencyNote missingFields={["Stundensäule"]} variant="inline" />
+                </div>
+              )}
               {viewModel.bazi.pillars.map((pillar) => (
                 <div key={pillar.pillarKey} className="flex items-center justify-between p-3 rounded-lg bg-obsidian-deep/50 border border-gold-muted/5 gap-4">
                   <span className="text-stone-400 font-medium">{pillar.pillarKey}-Zweig — {pillar.branchAnimal} ({pillar.branchPinyin})</span>

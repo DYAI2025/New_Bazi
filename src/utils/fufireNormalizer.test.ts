@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { normalizeFuFireProfile } from "./fufireNormalizer";
 import { ElementType } from "../types";
+import unknownBazi from "../__fixtures__/fufire/unknown-time/bazi.json";
+import unknownWestern from "../__fixtures__/fufire/unknown-time/western.json";
+import unknownFusion from "../__fixtures__/fufire/unknown-time/fusion.json";
 
 const INPUT = { name: "Hannah Arendt", birthDate: "1906-10-14", birthTime: "21:15", birthPlaceLabel: "Linden", gender: "Weiblich" };
 
@@ -56,5 +59,113 @@ describe("normalizeFuFireProfile honesty for missing sections (real FuFirE sourc
     expect(vm.source).toBe("fallback-local");
     expect(vm.wuxing.available).toBe(true);
     expect(provFor(vm, "Wu Xing").source).toBe("fallback-local");
+  });
+
+  it("exposes timeKnown:true from input when not set (default)", () => {
+    const vm = normalizeFuFireProfile(FULL, INPUT, "fufire-chart");
+    expect(vm.timeKnown).toBe(true);
+  });
+});
+
+// REQ-P4-004: response-driven degradation using real unknown-time fixtures
+describe("normalizeFuFireProfile — unknown birth time degradation (REQ-P4-004)", () => {
+  const UNKNOWN_INPUT = {
+    name: "Test Person",
+    birthDate: "1990-06-15",
+    birthTime: "12:00",
+    birthPlaceLabel: "Berlin",
+    gender: "Divers",
+    timeKnown: false
+  };
+
+  const UNKNOWN_RAW = {
+    bazi: unknownBazi,
+    western: unknownWestern,
+    fusion: unknownFusion,
+    wuxing: {}
+  };
+
+  // F-01: Ascendant MUST be null — engine returns angles.Ascendant=163.89 but provisional_fields includes "ascendant"
+  it("[F-01] western.ascendant === null when provisional_fields includes ascendant (short-circuits angles.Ascendant)", () => {
+    const vm = normalizeFuFireProfile(UNKNOWN_RAW, UNKNOWN_INPUT, "fufire-orchestrated");
+    expect(unknownWestern.angles?.Ascendant).toBeGreaterThan(0); // fixture has non-null angles.Ascendant
+    expect(vm.western.ascendant).toBeNull(); // normalizer MUST not use angles.Ascendant
+  });
+
+  // F-02: Hour pillar MUST be null — engine returns pillars.hour populated but provisional_fields includes "hour"
+  it("[F-02] bazi.hourAvailable === false when provisional_fields includes hour", () => {
+    const vm = normalizeFuFireProfile(UNKNOWN_RAW, UNKNOWN_INPUT, "fufire-orchestrated");
+    expect(unknownBazi.pillars?.hour).toBeTruthy(); // fixture has non-null hour pillar
+    expect(vm.bazi.hourAvailable).toBe(false); // normalizer MUST mark it unavailable
+  });
+
+  // Houses must be empty when provisional_fields includes "houses"
+  it("western.housesAvailable === false when provisional_fields includes houses", () => {
+    const vm = normalizeFuFireProfile(UNKNOWN_RAW, UNKNOWN_INPUT, "fufire-orchestrated");
+    expect(vm.western.housesAvailable).toBe(false);
+    expect(vm.western.houses).toHaveLength(0);
+  });
+
+  // F-06: westernContributors must NOT include "Aszendent in ..." when ascendant is provisional
+  it("[F-06] westernContributors excludes Aszendent when ascendant is provisional", () => {
+    const vm = normalizeFuFireProfile(UNKNOWN_RAW, UNKNOWN_INPUT, "fufire-orchestrated");
+    const hasAsc = vm.fusion.westernContributors.some((c) => c.toLowerCase().includes("aszendent in"));
+    expect(hasAsc).toBe(false);
+  });
+
+  // timeKnown propagated from input to ViewModel
+  it("vm.timeKnown is false when input.timeKnown is false", () => {
+    const vm = normalizeFuFireProfile(UNKNOWN_RAW, UNKNOWN_INPUT, "fufire-orchestrated");
+    expect(vm.timeKnown).toBe(false);
+  });
+
+  // Fusion signalLevelSuffix set when hour/signature provisional
+  it("fusion.signalLevelSuffix is set when provisional_fields includes hour", () => {
+    const vm = normalizeFuFireProfile(UNKNOWN_RAW, UNKNOWN_INPUT, "fufire-orchestrated");
+    expect(vm.fusion.signalLevelSuffix).not.toBeNull();
+    expect(typeof vm.fusion.signalLevelSuffix).toBe("string");
+  });
+
+  // Moon 6° boundary heuristic — synthetic test data
+  it("western.moonIsApproximate:true when moon degree_in_sign < 6° from sign start", () => {
+    // Moon at degree_in_sign=3 → within 6° of sign start boundary
+    const syntheticWestern = {
+      ...unknownWestern,
+      bodies: {
+        ...unknownWestern.bodies,
+        Moon: { ...(unknownWestern.bodies as any).Moon, degree_in_sign: 3.0, zodiac_sign: 0 }
+      }
+    };
+    const vm = normalizeFuFireProfile({ ...UNKNOWN_RAW, western: syntheticWestern }, UNKNOWN_INPUT, "fufire-orchestrated");
+    expect(vm.western.moonIsApproximate).toBe(true);
+  });
+
+  it("western.moonIsApproximate:true when moon degree_in_sign > 24° (within 6° of sign end)", () => {
+    const syntheticWestern = {
+      ...unknownWestern,
+      bodies: {
+        ...unknownWestern.bodies,
+        Moon: { ...(unknownWestern.bodies as any).Moon, degree_in_sign: 27.0, zodiac_sign: 0 }
+      }
+    };
+    const vm = normalizeFuFireProfile({ ...UNKNOWN_RAW, western: syntheticWestern }, UNKNOWN_INPUT, "fufire-orchestrated");
+    expect(vm.western.moonIsApproximate).toBe(true);
+  });
+
+  it("western.moonIsApproximate:false when moon is well clear of sign boundaries (>= 6°)", () => {
+    const syntheticWestern = {
+      ...unknownWestern,
+      bodies: {
+        ...unknownWestern.bodies,
+        Moon: { ...(unknownWestern.bodies as any).Moon, degree_in_sign: 14.0, zodiac_sign: 0 }
+      }
+    };
+    const vm = normalizeFuFireProfile({ ...UNKNOWN_RAW, western: syntheticWestern }, UNKNOWN_INPUT, "fufire-orchestrated");
+    expect(vm.western.moonIsApproximate).toBe(false);
+  });
+
+  it("moonIsApproximate:false for timeKnown:true (boundary only applies to unknown time)", () => {
+    const vm = normalizeFuFireProfile(UNKNOWN_RAW, { ...UNKNOWN_INPUT, timeKnown: true }, "fufire-orchestrated");
+    expect(vm.western.moonIsApproximate).toBe(false);
   });
 });

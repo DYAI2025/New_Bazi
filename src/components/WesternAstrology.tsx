@@ -2,6 +2,7 @@ import React from "react";
 import { ProfileViewModel } from "../viewmodels/profileViewModel";
 import { Compass, Orbit, Table, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { TimeDependencyNote } from "./TimeDependencyNote";
 
 interface WesternAstrologyProps {
   viewModel: ProfileViewModel;
@@ -99,9 +100,19 @@ export default function WesternAstrology({ viewModel }: WesternAstrologyProps) {
               <Compass className="h-4.5 w-4.5 text-gold-muted" />
               <span>Die 12 Sektoren des Himmels (Häuser)</span>
             </h4>
-            <p className="text-xs text-stone-400 leading-relaxed mb-4">
-              Klicken Sie auf ein Lebenshaus, um seine governing Kraft zu offenbaren und zu sehen, welche Ihrer Planeten darin angesiedelt sind.
-            </p>
+
+            {!viewModel.western.housesAvailable ? (
+              <div className="py-2">
+                <TimeDependencyNote
+                  missingFields={["Aszendent", "Häuser"]}
+                  workingFields={["Sonne, Mond und alle Planeten-Zeichen", "Wu-Xing-Analyse", "BaZi Tagessäulen"]}
+                />
+              </div>
+            ) : (
+              <>
+                <p className="text-xs text-stone-400 leading-relaxed mb-4">
+                  Klicken Sie auf ein Lebenshaus, um seine governing Kraft zu offenbaren und zu sehen, welche Ihrer Planeten darin angesiedelt sind.
+                </p>
 
             <div className="space-y-2">
               {viewModel.western.houses.map((house) => {
@@ -191,6 +202,8 @@ export default function WesternAstrology({ viewModel }: WesternAstrologyProps) {
                 );
               })}
             </div>
+              </>
+            )}
           </div>
         </div>
 
