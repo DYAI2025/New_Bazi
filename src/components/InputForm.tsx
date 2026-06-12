@@ -155,10 +155,16 @@ export default function InputForm({ birthData, onCalculate, timeError = null }: 
                   required
                   value={formData.birthTime}
                   onChange={(e) => setFormData({ ...formData, birthTime: e.target.value })}
+                  aria-invalid={!!timeError}
+                  aria-describedby={timeError ? "time-field-error" : undefined}
                   className={`${FIELD_CLASS} font-mono`}
                 />
                 {timeError && (
-                  <p className="mt-1.5 text-[11px] text-red-400 font-sans leading-relaxed" data-testid="time-field-error">
+                  <p
+                    id="time-field-error"
+                    className="mt-1.5 text-[11px] text-red-400 font-sans leading-relaxed"
+                    data-testid="time-field-error"
+                  >
                     {timeError}
                   </p>
                 )}
