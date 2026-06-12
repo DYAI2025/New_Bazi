@@ -281,6 +281,105 @@ describe("normalizer degrades per-section instead of throwing", () => {
       "fufire-orchestrated"
     );
     expect(vm.western.planets).toEqual([]);
-    expect(vm.fusion.coherenceIndex).toBe(0);
+    expect(vm.fusion.coherenceIndex).toBeNull();
+  });
+
+  it("liefert coherenceIndex null, wenn weder Kalibrierung noch Legacy-Wert existieren (B-002)", () => {
+    const vm = normalizeFuFireProfile(
+      { fusion: { calibration: { h_raw: 0.5, h_baseline: 0.25, h_sigma: 0.25 } } },
+      INPUT, "fufire-orchestrated"
+    );
+    expect(vm.fusion.coherenceIndex).toBeNull();
+    expect(vm.fusion.coherenceCalibrated).toBe(false);
+    expect(vm.fusion.signalLevel).toBe("spuerbar");
+    expect(vm.fusion.coherenceRating).toBe("Keine Kohärenz-Daten verfügbar");
+  });
+
+  it("lokaler Fallback erfindet keine 75 mehr (B-002)", async () => {
+    const { getRawSimulatedProfileFromLocal } = await import("./fufireNormalizer");
+    const raw = getRawSimulatedProfileFromLocal({ birthDate: "1990-06-15", birthTime: "14:30", name: "X" } as any);
+    expect((raw.fusion as any)?.coherenceIndex).toBeUndefined();
+    const vm = normalizeFuFireProfile(raw, INPUT, "fallback-local");
+    expect(vm.fusion.coherenceIndex).toBeNull();
+    expect(vm.fusion.coherenceCalibrated).toBe(false);
+  });
+});
+
+describe("B-007 Pinning: Aszendent/Mond/Haus-Texte kreuzen sich nie", () => {
+  const vm = () => normalizeFuFireProfile({ western: westernFixture }, INPUT, "fufire-orchestrated");
+
+  it("Aszendent (→ Waage) und Mond (→ Fische) sind getrennt und korrekt", () => {
+    const v = vm();
+    expect(v.western.ascendant).toBe("Waage");
+    expect(v.western.moonSign).toBe("Fische");
+    expect(v.western.ascendant).not.toBe(v.western.moonSign);
+  });
+
+  it("der Mond steht per Server-Cusps in Haus 5 — NIE pauschal in Haus 1", () => {
+    const moon = vm().western.planets.find((p) => p.name === "Mond")!;
+    expect(moon.sign).toBe("Fische");
+    expect(moon.house).toBe(5);
+  });
+
+  it("Haus-1-Text referenziert den Aszendenten und listet KEINEN Mond (Fixture: Haus 1 leer)", () => {
+    const h1 = vm().western.houses.find((h) => h.number === 1)!;
+    expect(h1.description).toContain("Aszendent");
+    expect(h1.signResonance).toContain("Waage");
+    expect(h1.signResonance).not.toContain("Fische");
+    expect(h1.planets).toEqual([]);
+  });
+
+  it("Haus 5 listet den Mond mit Zeichen Fische — kein Kreuz-Label-Aszendent", () => {
+    const v = vm();
+    const h5 = v.western.houses.find((h) => h.number === 5)!;
+    const moonEntry = h5.planets.find((p) => p.name === "Mond")!;
+    expect(moonEntry).toBeDefined();
+    expect(moonEntry.sign).toBe("Fische");
+    expect(h5.description).toContain("Mond (Fische)");
+    expect(h5.description).not.toContain("Aszendent");
+    const asc = v.western.planets.find((p) => p.name === "Aszendent");
+    if (asc) expect(asc.sign).toBe(v.western.ascendant);
+  });
+});
+
+describe("A14 — DAY_MASTER_TEXTS element-spezifische Fallback-Texte", () => {
+  const INPUT = {
+    name: "Test", birthDate: "1990-01-01", birthTime: "12:00",
+    birthPlace: "Berlin", birthPlaceLabel: "Berlin", placeId: "p1", gender: "Divers" as const
+  };
+
+  it("METAL-Tagesmeister (Xin) liefert Metall-Modell-Text (kein 'Ausgewogenheit')", () => {
+    const fullRaw = {
+      western: westernFixture, bazi: baziFixture, wuxing: wuxingFixture, fusion: fusionFixture
+    };
+    const vm = normalizeFuFireProfile(fullRaw, INPUT, "fufire-chart");
+    expect(vm.bazi.dayMaster.element).toBe(ElementType.METAL);
+    expect(vm.bazi.dayMaster.strengths).toContain("Im BaZi-Modell");
+    expect(vm.bazi.dayMaster.strengths).not.toBe("Ausgewogenheit, Feinfühligkeit");
+    expect(vm.bazi.dayMaster.strengths).toContain("Klarheit");
+    expect(vm.bazi.dayMaster.shadow).toContain("Im BaZi-Modell");
+    expect(vm.bazi.dayMaster.coreInterpretation).toContain("im BaZi-Modell");
+  });
+
+  it.each([
+    ["Holz", ElementType.WOOD, "Wachstumsorientierung"],
+    ["Feuer", ElementType.FIRE, "Ausdrucksstärke"],
+    ["Erde", ElementType.EARTH, "Verlässlichkeit"],
+    ["Metall", ElementType.METAL, "Klarheit"],
+    ["Wasser", ElementType.WATER, "Anpassungsfähigkeit"],
+  ])("Element %s → strengths enthält '%s'", (_label, element, keyword) => {
+    const rawWithElement = { bazi: { dayMaster: element } };
+    const vm = normalizeFuFireProfile(rawWithElement, INPUT, "fufire-chart");
+    expect(vm.bazi.dayMaster.element).toBe(element);
+    expect(vm.bazi.dayMaster.strengths).toContain(keyword);
+    expect(vm.bazi.dayMaster.strengths).toContain("Im BaZi-Modell");
+    expect(vm.bazi.dayMaster.shadow).toContain("Im BaZi-Modell");
+    expect(vm.bazi.dayMaster.coreInterpretation).toContain("im BaZi-Modell");
+  });
+
+  it("Engine-Wert rawBazi.strengths hat Vorrang vor DAY_MASTER_TEXTS", () => {
+    const rawWithCustom = { bazi: { dayMaster: ElementType.FIRE, strengths: "Direkter Engine-Wert" } };
+    const vm = normalizeFuFireProfile(rawWithCustom, INPUT, "fufire-chart");
+    expect(vm.bazi.dayMaster.strengths).toBe("Direkter Engine-Wert");
   });
 });

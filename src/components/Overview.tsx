@@ -107,6 +107,20 @@ export default function Overview({ viewModel, onNavigate }: OverviewProps) {
         </div>
       </div>
 
+      {/* Berechnungs-Hinweise */}
+      {viewModel.warnings.length > 0 && (
+        <div className="glass-card p-4 rounded-2xl border border-gold-muted/10 bg-obsidian-deep/40" data-testid="overview-warnings">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-stone-500 font-bold block mb-2">
+            Hinweise zur Berechnung
+          </span>
+          <ul className="space-y-1">
+            {viewModel.warnings.map((w, i) => (
+              <li key={i} className="text-xs text-stone-400 font-sans leading-relaxed">{w}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Astro Triad Grid */}
       <section className="space-y-4">
         <h3 className="font-serif text-xl font-semibold text-gold-light tracking-wide flex items-center space-x-2">

@@ -57,6 +57,34 @@ const ELEMENT_COACHING: Record<ElementType, { title: string; keynote: string; fo
   }
 };
 
+const DAY_MASTER_TEXTS: Record<ElementType, { coreInterpretation: string; strengths: string; shadow: string }> = {
+  [ElementType.WOOD]: {
+    coreInterpretation: "Der Holz-Tagesmeister steht im BaZi-Modell für aufstrebende, wachsende Energie — Richtungssinn und Gestaltungswillen prägen dieses Muster.",
+    strengths: "Im BaZi-Modell: Wachstumsorientierung, Entscheidungsfreude, Visionskraft. Das Holzelement steht für aufstrebende Energie und Gestaltungswillen.",
+    shadow: "Im BaZi-Modell: Ungeduld, Starrheit in Überzeugungen, Schwierigkeiten bei Rückzug und Erneuerung."
+  },
+  [ElementType.FIRE]: {
+    coreInterpretation: "Der Feuer-Tagesmeister steht im BaZi-Modell für strahlende, nach außen gerichtete Energie — Ausdruckskraft und Begeisterung prägen dieses Muster.",
+    strengths: "Im BaZi-Modell: Ausdrucksstärke, Begeisterungsfähigkeit, soziale Wärme. Das Feuerelement steht für Sichtbarkeit und emotionale Intensität.",
+    shadow: "Im BaZi-Modell: Impulsivität, emotionale Überhitzung, Erschöpfung nach Hochphasen."
+  },
+  [ElementType.EARTH]: {
+    coreInterpretation: "Der Erde-Tagesmeister steht im BaZi-Modell für stabilisierende, vermittelnde Energie — Beständigkeit und Gründlichkeit prägen dieses Muster.",
+    strengths: "Im BaZi-Modell: Verlässlichkeit, Durchhaltevermögen, vermittelnde Kraft. Das Erdelement steht für Stabilität und Zentrierung.",
+    shadow: "Im BaZi-Modell: Grübeln, Festhalten an Vertrautem, Tendenz zur Überanalyse."
+  },
+  [ElementType.METAL]: {
+    coreInterpretation: "Der Metall-Tagesmeister steht im BaZi-Modell für klärende, präzisierende Energie — Urteilsschärfe und Prinzipientreue prägen dieses Muster.",
+    strengths: "Im BaZi-Modell: Klarheit, Prinzipientreue, Fokus auf Qualität. Das Metallelement steht für Präzision und Urteilsvermögen.",
+    shadow: "Im BaZi-Modell: Rigidität, Kritikneigung, Schwierigkeiten mit Mehrdeutigkeit."
+  },
+  [ElementType.WATER]: {
+    coreInterpretation: "Der Wasser-Tagesmeister steht im BaZi-Modell für fließende, tiefgründige Energie — Intuition und Anpassungsvermögen prägen dieses Muster.",
+    strengths: "Im BaZi-Modell: Anpassungsfähigkeit, Tiefgründigkeit, Intuition. Das Wasserelement steht für Fluss und Reflexionsvermögen.",
+    shadow: "Im BaZi-Modell: Überwältigung durch Tiefe, Entscheidungsverzögerung, Tendenz zum Grübeln."
+  }
+};
+
 const PLANET_SYMBOLS: Record<string, string> = {
   Sonne: "☉", Moon: "☽", Mond: "☽", Merkur: "☿", Venus: "♀", Mars: "♂",
   Jupiter: "♃", Saturn: "♄", Uranus: "♅", Neptun: "♆", Pluto: "♇",
@@ -464,9 +492,9 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
     pinyin: dmName,
     chinese: dmChinese,
     polarity: dmPolarity,
-    coreInterpretation: rawBazi.coreInterpretation || `Der ${dmElement}-Tagesmeister steuert Ihre innere Energieleitbahn. Seine Natur spiegelt Ihren tiefsten wahren Wesenskern wider.`,
-    strengths: rawBazi.strengths || "Ausgewogenheit, Feinfühligkeit",
-    shadow: rawBazi.shadow || "Schatten weisen auf harmonisierenden Ergänzungsbedarf hin."
+    coreInterpretation: rawBazi.coreInterpretation || DAY_MASTER_TEXTS[dmElement].coreInterpretation,
+    strengths: rawBazi.strengths || DAY_MASTER_TEXTS[dmElement].strengths,
+    shadow: rawBazi.shadow || DAY_MASTER_TEXTS[dmElement].shadow
   };
 
   // D. WU XING DISTRIBUTION
@@ -557,7 +585,7 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
     : typeof rawFusion.coherenceIndex === "number" ? rawFusion.coherenceIndex
     : typeof rawFusion.coherence_index === "number" ? rawFusion.coherence_index
     : realCoherence01 !== null ? Math.round((realCoherence01 <= 1 ? realCoherence01 * 100 : realCoherence01) * 10) / 10
-    : 0;
+    : null;
 
   // Signal level: how VISIBLE the West-Ost congruence pattern is, i.e. how
   // far the raw harmony sits from the engine's random baseline, in baseline
@@ -581,9 +609,10 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
     signalLevel = hCalibrated < 0.33 ? "leise" : hCalibrated < 0.66 ? "spuerbar" : "dominant";
   }
 
-  // Custom label rating
+  // Custom label rating — NIE aus einem fehlenden Wert ableiten (null < 60 wäre sonst true).
   let coherenceRating = "Harmonische Ausgewogenheit";
-  if (coherenceIndex > 80) coherenceRating = "Exzellente System-Resonanz";
+  if (coherenceIndex === null) coherenceRating = "Keine Kohärenz-Daten verfügbar";
+  else if (coherenceIndex > 80) coherenceRating = "Exzellente System-Resonanz";
   else if (coherenceIndex < 60) coherenceRating = "Spannungsgeladene Dynamik";
   // The engine's own interpretation beats any locally derived label.
   if (harmonyObj && typeof harmonyObj.interpretation === "string" && harmonyObj.interpretation) {
@@ -770,9 +799,7 @@ export function getRawSimulatedProfileFromLocal(birthData: any) {
     wuxing: {
       wu_xing_vector: chart.bazi.wuXing
     },
-    fusion: {
-      coherenceIndex: 75
-    }
+    fusion: {}
   };
 }
 

@@ -39,7 +39,8 @@ export interface ElementCardData {
 export type SignalLevel = "leise" | "spuerbar" | "dominant";
 
 export interface FusionData {
-  coherenceIndex: number;
+  /** null = weder Kalibrierung noch Legacy-Wert vorhanden — UI zeigt Missing-State. */
+  coherenceIndex: number | null;
   /**
    * true  -> coherenceIndex is the engine's calibrated value
    *          (calibration.h_calibrated, structure congruence vs. random baseline)

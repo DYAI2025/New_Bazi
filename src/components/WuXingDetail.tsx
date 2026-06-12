@@ -24,35 +24,35 @@ const elementDetailsText = {
     productiveDesc: "Holz nährt das Feuer: Es opfert seine organische Substanz, um die lodernde Flamme von Ausdruck und Aktivität anzufachen.",
     destructiveDesc: "Holz kontrolliert die Erde: Seine Wurzeln bohren sich tief in den Boden und beherrschen die Festigkeit der Erdmasse.",
     strengths: "Vision, Flexibilität, Erneuerung, Tatendrang.",
-    coachingText: "Beginnen Sie neue schöpferische Zyklen, aber hüten Sie sich vor blockierender Sturheit oder impulsiven Ausbrüchen."
+    reflectionText: "Beginnen Sie neue schöpferische Zyklen, aber hüten Sie sich vor blockierender Sturheit oder impulsiven Ausbrüchen."
   },
   [ElementType.FIRE]: {
     phase: "Feuer (Huǒ) — Sommer & Leidenschaft",
     productiveDesc: "Feuer gebiert die Erde: Als Asche sinkt das verglommene Feuer herab und nährt die schützende Erdschicht mit Mineralien.",
     destructiveDesc: "Feuer schmilzt das Metall: Extreme Hitze bricht die Kälte und Festigkeit der Metalle und macht sie formbar.",
     strengths: "Charisma, Transformation, Intuition, Begeisterung.",
-    coachingText: "Lassen Sie Ihr inneres Charisma leuchten, doch meiden Sie die Überhitzung durch emotionale Verausgabung."
+    reflectionText: "Lassen Sie Ihr inneres Charisma leuchten, doch meiden Sie die Überhitzung durch emotionale Verausgabung."
   },
   [ElementType.EARTH]: {
     phase: "Erde (Tǔ) — Spätsommer & Stabilität",
     productiveDesc: "Erde birgt das Metall: Fest verdichtet im stillen Schoß der Erde reifen kristalline Erze und Metalle heran.",
     destructiveDesc: "Erde dämmt das Wasser: Feste Ufer fassen die Fluten ein; Erde absorbiert und klärt unkontrollierte Ströme.",
     strengths: "Stabilität, Zuverlässigkeit, Schutz, Balance.",
-    coachingText: "Gewähren Sie anderen Erdung und Halt, ohne dabei in starrer Bequemlichkeit oder passivem Gedankenkreisen zu verharren."
+    reflectionText: "Gewähren Sie anderen Erdung und Halt, ohne dabei in starrer Bequemlichkeit oder passivem Gedankenkreisen zu verharren."
   },
   [ElementType.METAL]: {
     phase: "Metall (Jīn) — Herbst & Struktur",
     productiveDesc: "Metall leitet das Wasser: An kühlen Metallen kondensiert der feine Abendtau und speist die Bäche mit klaren Mineralien.",
     destructiveDesc: "Metall spaltet das Holz: Die geschärfte Klinge des Metalls trennt unkontrollierte Triebe und bringt das Holz in Form.",
     strengths: "Struktur, Präzision, Entschlossenheit, Klarheit.",
-    coachingText: "Schaffen Sie Struktur und Ordnung in Ihren Angelegenheiten, aber meiden Sie mentale Härte oder absolute Unnachgiebigkeit."
+    reflectionText: "Schaffen Sie Struktur und Ordnung in Ihren Angelegenheiten, aber meiden Sie mentale Härte oder absolute Unnachgiebigkeit."
   },
   [ElementType.WATER]: {
     phase: "Wasser (Shuǐ) — Winter & Tiefe",
     productiveDesc: "Wasser nährt das Holz: Sänftigende Regenfälle wecken schlummernde Samen im Erdboden und bringen das Holz zum Grünen.",
     destructiveDesc: "Wasser löscht das Feuer: Seine unendliche kühle Tiefe bezwingt und dämpft hitzige, lodernde Feuersignale.",
     strengths: "Weisheit, Wille, Anpassungsfähigkeit, Fluss.",
-    coachingText: "Fließen Sie sanftmütig um klobige Hindernisse herum, ohne sich im Strudel lähmender Ängste zu verlieren."
+    reflectionText: "Fließen Sie sanftmütig um klobige Hindernisse herum, ohne sich im Strudel lähmender Ängste zu verlieren."
   },
 };
 
@@ -580,13 +580,13 @@ export default function WuXingDetail({ viewModel }: WuXingDetailProps) {
 
               </div>
 
-              {/* Coaching details */}
+              {/* Alltagsimpuls */}
               <div className="p-4 rounded-xl bg-obsidian-deep/70 border border-gold-muted/5 space-y-1">
                 <span className="font-mono text-[9px] uppercase font-bold text-gold-muted tracking-wider block">
-                  Metaphysischer Ratschlag (Coaching-Vektor)
+                  Alltagsimpuls
                 </span>
                 <p className="text-xs text-stone-350 font-light leading-relaxed italic">
-                  &quot;{textMeta.coachingText}&quot;
+                  &quot;{textMeta.reflectionText}&quot;
                 </p>
               </div>
 
@@ -660,11 +660,11 @@ export default function WuXingDetail({ viewModel }: WuXingDetailProps) {
           </div>
         </div>
 
-        {/* Right Column: Coaching analysis based on ViewModel advices */}
+        {/* Right Column: Element-Balance-Hinweise aus dem ViewModel */}
         <div className="lg:col-span-7 space-y-6">
           <div className="glass-card p-6 rounded-2xl space-y-6">
             <h4 className="font-serif text-xl font-bold text-gold-light flex items-center space-x-2 border-b border-gold-muted/10 pb-4">
-              <span>Harmonisierung nach Wu Xing (Lifestyle Coaching)</span>
+              <span>Harmonisierung nach Wu Xing (Alltags-Balance)</span>
             </h4>
             
             <p className="text-xs text-stone-400 leading-relaxed">

@@ -23,6 +23,7 @@ export default function App() {
   const [loading, setLoading] = React.useState<boolean>(false);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
   const [errorTitle, setErrorTitle] = React.useState<string>("Profil konnte nicht geladen werden");
+  const [errorCode, setErrorCode] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!birthData) return;
@@ -31,6 +32,7 @@ export default function App() {
       setLoading(true);
       setErrorMsg(null);
       setErrorTitle("Profil konnte nicht geladen werden");
+      setErrorCode(null);
       try {
         const compiled = await BazodiacClient.fetchProfile(birthData);
         if (active) setViewModel(compiled);
@@ -39,6 +41,7 @@ export default function App() {
         if (active) {
           setErrorTitle(getUserFacingErrorTitle(err));
           setErrorMsg(getUserFacingRequestMessage(err));
+          setErrorCode(err?.code ?? null);
         }
       } finally {
         if (active) setLoading(false);
@@ -57,7 +60,7 @@ export default function App() {
 
   const renderTab = () => {
     if (activeTab === "input") {
-      return <InputForm birthData={birthData} onCalculate={handleCalculate} />;
+      return <InputForm birthData={birthData} onCalculate={handleCalculate} timeError={errorCode === "invalid_birth_time_dst" ? errorMsg : null} />;
     }
 
     if (loading) {

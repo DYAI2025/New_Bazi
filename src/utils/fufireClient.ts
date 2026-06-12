@@ -33,6 +33,7 @@ export type FuFirEErrorCode =
   | "missing_fufire_key"
   | "fufire_auth_failed"
   | "invalid_fufire_payload"
+  | "invalid_birth_time_dst"
   | "fufire_route_not_found"
   | "fufire_rate_limited"
   | "fufire_unavailable";
@@ -42,6 +43,7 @@ const ERROR_HTTP_STATUS: Record<FuFirEErrorCode, number> = {
   missing_fufire_key: 503,
   fufire_auth_failed: 502,
   invalid_fufire_payload: 502,
+  invalid_birth_time_dst: 400,
   fufire_route_not_found: 502,
   fufire_rate_limited: 503,
   fufire_unavailable: 502
@@ -52,6 +54,7 @@ const SAFE_MESSAGES: Record<FuFirEErrorCode, string> = {
   missing_fufire_key: "FuFirE-API-Schluessel ist serverseitig nicht konfiguriert.",
   fufire_auth_failed: "FuFirE-Authentifizierung fehlgeschlagen.",
   invalid_fufire_payload: "FuFirE hat die uebermittelten Geburtsdaten abgelehnt.",
+  invalid_birth_time_dst: "Diese Uhrzeit existiert am Umstellungstag nicht (Sommerzeit). Bitte eine Zeit vor 02:00 oder nach 03:00 wählen.",
   fufire_route_not_found: "FuFirE-Route ist derzeit nicht erreichbar.",
   fufire_rate_limited: "FuFirE ist aktuell ratenbegrenzt. Bitte spaeter erneut versuchen.",
   fufire_unavailable: "FuFirE ist derzeit nicht erreichbar."
@@ -173,7 +176,14 @@ async function request(
   }
 
   if (!res.ok) {
-    const error = mapStatusToError(res.status);
+    // Read body for DST error detection: FuFirE marks non-existent local times
+    // (DST gap) with type="dst_error" in the 422 body. Defensive: also check 400
+    // in case the engine spec drifts. Only the discriminator is read — no upstream
+    // text is forwarded to the browser.
+    let body: any = null;
+    try { body = await res.json(); } catch { /* no JSON body — generic mapping */ }
+    const isDst = (res.status === 422 || res.status === 400) && body?.type === "dst_error";
+    const error = isDst ? new FuFirEError("invalid_birth_time_dst") : mapStatusToError(res.status);
     logUpstreamError(method, endpoint, pathPrefix, res.status, error.code);
     throw error;
   }

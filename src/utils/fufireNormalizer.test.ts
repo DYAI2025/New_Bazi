@@ -40,7 +40,7 @@ describe("normalizeFuFireProfile honesty for missing sections (real FuFirE sourc
     const { fusion, ...rest } = FULL;
     const vm = normalizeFuFireProfile(rest, INPUT, "fufire-chart");
     expect(vm.fusion.source).toBe("missing");
-    expect(vm.fusion.coherenceIndex).toBe(0);
+    expect(vm.fusion.coherenceIndex).toBeNull();
   });
 
   it("marks bazi unavailable when bazi is missing", () => {

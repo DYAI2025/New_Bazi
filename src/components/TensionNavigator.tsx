@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import React from "react";
 import { ProfileViewModel, FusionData, SignalLevel } from "../viewmodels/profileViewModel";
 import { Shield, Activity } from "lucide-react";
@@ -108,6 +109,16 @@ const REACTIONS: { id: TensionReaction; label: string }[] = [
   { id: "passt_nicht", label: "Passt nicht" },
 ];
 
+// B-010: Anti-Reification-Intro — einmal pro JS-Session (Modul-Flag, bewusst KEIN
+// localStorage: Konzept-Entscheid „per session"). Tab-Wechsel remountet die
+// Komponente, deshalb reicht React-State allein nicht.
+let introDismissedThisSession = false;
+export function __resetIntroForTests(): void {
+  // Guard: no-op outside test environment; keeps this export inert in production.
+  if (import.meta.env.MODE !== "test") return;
+  introDismissedThisSession = false;
+}
+
 interface LoopState {
   state: TensionState;
   mode: ReactionMode;
@@ -158,6 +169,11 @@ export default function TensionNavigator({
   // Herkunft-Layer: öffnet sich bei Reaktion „Trifft" ODER per explizitem
   // „Herkunft & Methode"-Link (Konzept §12: Premium klappt in Herkunft auf).
   const [originOpen, setOriginOpen] = React.useState(false);
+  const [introVisible, setIntroVisible] = React.useState(() => !introDismissedThisSession);
+  const dismissIntro = () => {
+    introDismissedThisSession = true;
+    setIntroVisible(false);
+  };
 
   // Profilwechsel → Reaktions-Loop zurücksetzen.
   React.useEffect(() => {
@@ -256,6 +272,26 @@ export default function TensionNavigator({
   return (
     <div id="tension-navigator" className="space-y-6" data-testid="tension-navigator">
       <div className="glass-card p-4 sm:p-6 rounded-2xl relative overflow-hidden gold-glow-border">
+        {introVisible && (
+          <div
+            className="flex items-start justify-between gap-3 mb-3 px-2 py-2 rounded-lg border border-gold-muted/15 bg-obsidian-deep/40"
+            data-testid="tension-intro"
+          >
+            <p className="text-xs text-stone-400 leading-relaxed">
+              Kein Urteil. Das Modell zeigt eine prüfbare Spannungsfrage — du entscheidest,
+              ob sie trägt.
+            </p>
+            <button
+              type="button"
+              onClick={dismissIntro}
+              aria-label="Intro ausblenden"
+              className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-gold-muted hover:text-gold-light transition-colors duration-200"
+              data-testid="tension-intro-dismiss"
+            >
+              Verstanden
+            </button>
+          </div>
+        )}
         <div className="relative">
           <svg
             viewBox="-150 0 1020 720"
@@ -608,30 +644,43 @@ function OriginLayer({ fusion }: { fusion: FusionData }) {
               {coherenceCalibrated ? "Kalibrierter Kohärenzindex" : "System-Kohärenzindex"}
             </span>
 
-            <div className="relative flex items-center justify-center">
-              <svg className="w-40 h-40 transform -rotate-90">
-                <circle cx="80" cy="80" r="70" className="stroke-stone-800" strokeWidth="8" fill="transparent" />
-                <circle
-                  cx="80"
-                  cy="80"
-                  r="70"
-                  className="stroke-[#D4AF37] transition-all duration-700"
-                  strokeWidth="8"
-                  fill="transparent"
-                  strokeDasharray={440}
-                  strokeDashoffset={440 - (440 * coherenceIndex) / 100}
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="absolute flex flex-col items-center justify-center">
-                <span className="text-4xl font-serif font-bold text-gold-light tracking-tight" data-testid="fusion-coherence-value">
-                  {coherenceIndex}%
-                </span>
-                <span className="font-mono text-[8px] uppercase text-[#9A8F80] tracking-wider mt-0.5 max-w-[110px] text-center leading-snug">
-                  {coherenceCalibrated ? "kalibrierte Strukturkongruenz vs. Zufallsbaseline" : "Deckung"}
+            {coherenceIndex === null ? (
+              <div
+                className="flex flex-col items-center justify-center text-center space-y-2 py-8"
+                data-testid="fusion-coherence-missing"
+              >
+                <span className="font-serif text-xl text-stone-400">nicht verfügbar</span>
+                <span className="font-mono text-[8px] uppercase text-[#9A8F80] tracking-wider max-w-[180px] leading-snug">
+                  Die Engine lieferte keinen kalibrierten Kohärenzwert — es wird bewusst
+                  keine Zahl erfunden.
                 </span>
               </div>
-            </div>
+            ) : (
+              <div className="relative flex items-center justify-center">
+                <svg className="w-40 h-40 transform -rotate-90">
+                  <circle cx="80" cy="80" r="70" className="stroke-stone-800" strokeWidth="8" fill="transparent" />
+                  <circle
+                    cx="80"
+                    cy="80"
+                    r="70"
+                    className="stroke-[#D4AF37] transition-all duration-700"
+                    strokeWidth="8"
+                    fill="transparent"
+                    strokeDasharray={440}
+                    strokeDashoffset={440 - (440 * coherenceIndex) / 100}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute flex flex-col items-center justify-center">
+                  <span className="text-4xl font-serif font-bold text-gold-light tracking-tight" data-testid="fusion-coherence-value">
+                    {coherenceIndex}%
+                  </span>
+                  <span className="font-mono text-[8px] uppercase text-[#9A8F80] tracking-wider mt-0.5 max-w-[110px] text-center leading-snug">
+                    {coherenceCalibrated ? "kalibrierte Strukturkongruenz vs. Zufallsbaseline" : "Deckung"}
+                  </span>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2">
               <h4 className="text-md font-serif font-bold text-[#E0D8D0] tracking-wide" data-testid="fusion-coherence-rating">

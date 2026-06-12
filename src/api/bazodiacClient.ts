@@ -166,6 +166,10 @@ function formatValidationFields(fields: unknown): string {
 
 export function getUserFacingRequestMessage(error: unknown): string {
   if (error instanceof BazodiacRequestError) {
+    if (error.code === "invalid_birth_time_dst") {
+      return error.message;
+    }
+
     if ((error.status === 400 || error.status === 422) && error.code === "invalid_birth_input") {
       return `Geburtsdaten konnten nicht verarbeitet werden. Bitte prüfe Datum, Uhrzeit, Geburtsort und Zeitzone. Fehlercode: ${error.code || "invalid_birth_input"}.${formatValidationFields(error.fields)}`;
     }
@@ -185,6 +189,7 @@ export function getUserFacingRequestMessage(error: unknown): string {
 
 export function getUserFacingErrorTitle(error: unknown): string {
   if (error instanceof BazodiacRequestError) {
+    if (error.code === "invalid_birth_time_dst") return "Geburtszeit existiert nicht (Zeitumstellung)";
     if (error.status === 400 || error.status === 422) return "Geburtsdaten ungültig";
     if (error.status && error.status >= 500) return "Serverfehler";
     if (error.isNetworkError) return "Kosmische Verbindung offline";

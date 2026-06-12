@@ -1,0 +1,8 @@
+feature: bazi-sprint-p1-p2-ehrlichkeit
+started: 2026-06-11
+canvas: docs/canvas/bazi-sprint-p1-p2-ehrlichkeit.canvas.md
+prd: docs/prd/bazi-sprint-p1-p2-ehrlichkeit.prd.md
+vision: docs/vision/bazi-sprint-p1-p2-ehrlichkeit.vision.md
+p1-branch: fix/sprint-p1-kritische-fixes
+p2-branch: feat/sprint-p2-daily-field-dayun
+p2b-branch: feat/sprint-p2b-dayun-client
