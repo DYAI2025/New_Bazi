@@ -164,6 +164,42 @@ describe("normalizeFuFireProfile — unknown birth time degradation (REQ-P4-004)
     expect(vm.western.moonIsApproximate).toBe(false);
   });
 
+
+  it("degrades unknown-time /chart profiles even when chart response omits provisional_fields", () => {
+    const chartRaw = {
+      western: {
+        sunSign: "Waage",
+        moonSign: "Stier",
+        angles: { Ascendant: 163.89 },
+        houses: {
+          "1": 163.89, "2": 190, "3": 220, "4": 250, "5": 280, "6": 310,
+          "7": 343.89, "8": 10, "9": 40, "10": 70, "11": 100, "12": 130
+        },
+        planets: []
+      },
+      bazi: {
+        pillars: {
+          hour: {
+            stem: { name: "Bǐng", chinese: "丙", element: ElementType.FIRE, yinYang: "Yang" },
+            branch: { name: "Wǔ", chinese: "午", element: ElementType.FIRE, animal: "Pferd", hiddenStems: ["Ding"], yinYang: "Yang" }
+          }
+        }
+      },
+      wuxing: {},
+      fusion: { coherenceIndex: 50 }
+    };
+
+    const vm = normalizeFuFireProfile(chartRaw, { ...INPUT, birthTime: "12:00", timeKnown: false }, "fufire-chart");
+
+    expect(vm.timeKnown).toBe(false);
+    expect(vm.western.ascendant).toBeNull();
+    expect(vm.western.housesAvailable).toBe(false);
+    expect(vm.western.houses).toHaveLength(0);
+    expect(vm.bazi.hourAvailable).toBe(false);
+    expect(vm.fusion.signalLevelSuffix).toBe("(ohne Stundensäule)");
+    expect(vm.fusion.westernContributors.some((c) => c.toLowerCase().includes("aszendent in"))).toBe(false);
+  });
+
   it("moonIsApproximate:false for timeKnown:true (boundary only applies to unknown time)", () => {
     const vm = normalizeFuFireProfile(UNKNOWN_RAW, { ...UNKNOWN_INPUT, timeKnown: true }, "fufire-orchestrated");
     expect(vm.western.moonIsApproximate).toBe(false);

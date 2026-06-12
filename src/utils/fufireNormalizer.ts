@@ -225,10 +225,21 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
     gender: input.gender || "Divers"
   };
 
-  // P4: provisional_fields per endpoint — response-driven degradation
+  // P4: provisional_fields per endpoint — response-driven degradation.
+  // Unknown-time requests can arrive through /chart, whose payload currently
+  // does not echo birth_time_known:false or precision.provisional_fields. Seed
+  // the same provisional state from the user's input so 12:00 placeholder
+  // ascendant, houses, and hour-pillar values never leak into chart profiles.
   const timeKnown: boolean = input.timeKnown !== false;
-  const westernProvisionalFields: string[] = Array.isArray(raw.western?.precision?.provisional_fields) ? raw.western.precision.provisional_fields : [];
-  const fusionProvisionalFields: string[] = Array.isArray(raw.fusion?.precision?.provisional_fields) ? raw.fusion.precision.provisional_fields : [];
+  const inputTimeUnknown = !timeKnown;
+  const westernProvisionalFields: string[] = [
+    ...(Array.isArray(raw.western?.precision?.provisional_fields) ? raw.western.precision.provisional_fields : []),
+    ...(inputTimeUnknown ? ["ascendant", "houses", "mc"] : [])
+  ];
+  const fusionProvisionalFields: string[] = [
+    ...(Array.isArray(raw.fusion?.precision?.provisional_fields) ? raw.fusion.precision.provisional_fields : []),
+    ...(inputTimeUnknown ? ["signature", "hour", "ascendant", "houses"] : [])
+  ];
   const ascendantProvisional = westernProvisionalFields.includes("ascendant");
   const housesProvisional = westernProvisionalFields.includes("houses");
 
@@ -432,7 +443,10 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
   // C. BAZI PILLARS
   const rawBazi = raw.bazi && typeof raw.bazi === "object" ? raw.bazi : {};
   const rawPillars: any = rawBazi.pillars && typeof rawBazi.pillars === "object" ? rawBazi.pillars : {};
-  const baziProvisionalFields: string[] = Array.isArray(rawBazi.precision?.provisional_fields) ? rawBazi.precision.provisional_fields : [];
+  const baziProvisionalFields: string[] = [
+    ...(Array.isArray(rawBazi.precision?.provisional_fields) ? rawBazi.precision.provisional_fields : []),
+    ...(inputTimeUnknown ? ["hour"] : [])
+  ];
   const hourProvisional = baziProvisionalFields.includes("hour");
 
   // REAL shapes use English pillar keys (BaziPillarsResponse/BaziSection:
