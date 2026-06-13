@@ -328,13 +328,6 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
         || (houseCusps ? signNameDeFromLongitude(houseCusps[0]) : null)
         || "Unbekannt");
 
-  // Moon 6° boundary heuristic: only applies when timeKnown:false.
-  // degree_in_sign < 6 → within 6° of sign start; > 24 → within 6° of sign end.
-  const moonBody: any = rawWest.bodies?.Moon || rawWest.bodies?.Mond;
-  const moonDegreeInSign = typeof moonBody?.degree_in_sign === "number" ? moonBody.degree_in_sign : null;
-  const moonIsApproximate = !timeKnown && moonDegreeInSign !== null
-    && (moonDegreeInSign < 6 || moonDegreeInSign > 24);
-
   // Map 12 Houses (with actual missing state fallback if there is zero house data)
   // When houses are provisional (birth_time_known:false), return empty array — no 12:00-computed houses displayed.
   let houses: HouseMeaning[] = [];
@@ -767,7 +760,6 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
       sunSign,
       moonSign,
       ascendant,
-      moonIsApproximate,
       housesAvailable: !housesProvisional,
       planets,
       aspects,

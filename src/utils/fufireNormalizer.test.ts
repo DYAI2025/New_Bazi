@@ -126,46 +126,4 @@ describe("normalizeFuFireProfile — unknown birth time degradation (REQ-P4-004)
     expect(typeof vm.fusion.signalLevelSuffix).toBe("string");
   });
 
-  // Moon 6° boundary heuristic — synthetic test data
-  it("western.moonIsApproximate:true when moon degree_in_sign < 6° from sign start", () => {
-    // Moon at degree_in_sign=3 → within 6° of sign start boundary
-    const syntheticWestern = {
-      ...unknownWestern,
-      bodies: {
-        ...unknownWestern.bodies,
-        Moon: { ...(unknownWestern.bodies as any).Moon, degree_in_sign: 3.0, zodiac_sign: 0 }
-      }
-    };
-    const vm = normalizeFuFireProfile({ ...UNKNOWN_RAW, western: syntheticWestern }, UNKNOWN_INPUT, "fufire-orchestrated");
-    expect(vm.western.moonIsApproximate).toBe(true);
-  });
-
-  it("western.moonIsApproximate:true when moon degree_in_sign > 24° (within 6° of sign end)", () => {
-    const syntheticWestern = {
-      ...unknownWestern,
-      bodies: {
-        ...unknownWestern.bodies,
-        Moon: { ...(unknownWestern.bodies as any).Moon, degree_in_sign: 27.0, zodiac_sign: 0 }
-      }
-    };
-    const vm = normalizeFuFireProfile({ ...UNKNOWN_RAW, western: syntheticWestern }, UNKNOWN_INPUT, "fufire-orchestrated");
-    expect(vm.western.moonIsApproximate).toBe(true);
-  });
-
-  it("western.moonIsApproximate:false when moon is well clear of sign boundaries (>= 6°)", () => {
-    const syntheticWestern = {
-      ...unknownWestern,
-      bodies: {
-        ...unknownWestern.bodies,
-        Moon: { ...(unknownWestern.bodies as any).Moon, degree_in_sign: 14.0, zodiac_sign: 0 }
-      }
-    };
-    const vm = normalizeFuFireProfile({ ...UNKNOWN_RAW, western: syntheticWestern }, UNKNOWN_INPUT, "fufire-orchestrated");
-    expect(vm.western.moonIsApproximate).toBe(false);
-  });
-
-  it("moonIsApproximate:false for timeKnown:true (boundary only applies to unknown time)", () => {
-    const vm = normalizeFuFireProfile(UNKNOWN_RAW, { ...UNKNOWN_INPUT, timeKnown: true }, "fufire-orchestrated");
-    expect(vm.western.moonIsApproximate).toBe(false);
-  });
 });

@@ -106,10 +106,10 @@ describe("validateBirthInput — timeKnown:false mode", () => {
     expect(r.value?.timeKnown).toBe(false);
   });
 
-  it("accepts provided birthTime when timeKnown:false, preserves it but keeps flag false", () => {
+  it("ignores provided birthTime when timeKnown:false — always uses 12:00 placeholder", () => {
     const r = validateBirthInput({ ...VALID, birthTime: "14:30", timeKnown: false });
     expect(r.valid).toBe(true);
-    expect(r.value?.birthTime).toBe("14:30");
+    expect(r.value?.birthTime).toBe("12:00");
     expect(r.value?.timeKnown).toBe(false);
   });
 

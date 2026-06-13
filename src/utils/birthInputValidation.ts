@@ -91,12 +91,11 @@ export function validateBirthInput(input: BirthInputCandidate): ValidationResult
 
   // --- birthTime ---
   const timeKnown = input.timeKnown !== false;
-  const rawBirthTime = typeof input.birthTime === "string" ? input.birthTime.trim() : "";
   let birthTime: string;
-  if (!timeKnown && !rawBirthTime) {
+  if (!timeKnown) {
     birthTime = "12:00";
   } else {
-    birthTime = rawBirthTime;
+    birthTime = typeof input.birthTime === "string" ? input.birthTime.trim() : "";
     if (!TIME_RE.test(birthTime)) {
       errors.push({ field: "birthTime", message: "Bitte eine gueltige Geburtszeit im Format HH:mm angeben." });
     }

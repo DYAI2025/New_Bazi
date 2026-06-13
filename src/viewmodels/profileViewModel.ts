@@ -98,7 +98,6 @@ export interface ProfileViewModel {
     sunSign: string;
     moonSign: string;
     ascendant: string | null;
-    moonIsApproximate: boolean;
     housesAvailable: boolean;
     planets: {
       name: string;
