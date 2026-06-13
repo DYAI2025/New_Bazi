@@ -12,6 +12,7 @@
     "src/components/wordingHonesty.test.ts",
     "src/utils/analytics.ts",
     "src/utils/analytics.test.ts",
+    "src/index.css",
     "tests/e2e/**"
   ]
 }

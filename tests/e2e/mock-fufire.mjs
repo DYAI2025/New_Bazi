@@ -80,6 +80,23 @@ const CHART = {
 // DIFFERENT elemental_comparison so the pair tension has a clear top axis:
 // Metall person-weights 0.282 (A) vs 0.600 (B) → |diff| 0.318 → Struktur↔Fluss,
 // Person-B-Überschuss (Blau).
+// P5-T3: unknown-time persona for the ExplanationLayer absence test.
+// The BFF /chart body has no birth_time_known field, so the mock keys off the
+// dedicated NO_TIME birth date (1985-03-10, used only by explanation-layer.spec.ts):
+// it returns western.precision.provisional_fields=["ascendant","houses","mc"]
+// (mirrors the CONFIRMED real unknown-time western shape — see
+// src/__fixtures__/fufire/unknown-time/README.md F-01) so the normalizer
+// short-circuits and honestly nulls the ascendant. ascendant is also nulled at
+// source so no 12:00-computed sign can leak.
+const NO_TIME_CHART = {
+  ...CHART,
+  western: {
+    ...CHART.western,
+    ascendant: null,
+    precision: { provisional_fields: ["ascendant", "houses", "mc"] }
+  }
+};
+
 const PARTNER_CHART = {
   ...CHART,
   fusion: {
@@ -197,17 +214,26 @@ const server = http.createServer(async (req, res) => {
   const rawBody = await readBody(req);
 
   if (req.method === "POST" && url === "/chart") {
-    // Partner persona (different birth date) → variant fusion distribution,
-    // so synastry pair tension is non-degenerate. Primary persona unchanged.
-    let isPartner = false;
+    // Persona routing by birth date (local_datetime):
+    //   1985-03-10 → NO_TIME persona: provisional ascendant → normalizer nulls it
+    //                (P5-T3 ExplanationLayer absence test).
+    //   anything other than 1990-05-15 → partner persona: variant fusion
+    //                distribution so synastry pair tension is non-degenerate.
+    //   1990-05-15 (primary) → unchanged CHART.
+    let chartVariant = CHART;
     try {
       const parsed = JSON.parse(rawBody || "{}");
-      isPartner = typeof parsed.local_datetime === "string" && !parsed.local_datetime.startsWith("1990-05-15");
+      const dt = typeof parsed.local_datetime === "string" ? parsed.local_datetime : "";
+      if (dt.startsWith("1985-03-10")) {
+        chartVariant = NO_TIME_CHART;
+      } else if (dt && !dt.startsWith("1990-05-15")) {
+        chartVariant = PARTNER_CHART;
+      }
     } catch {
       // keep primary chart
     }
     res.writeHead(200);
-    res.end(JSON.stringify(isPartner ? PARTNER_CHART : CHART));
+    res.end(JSON.stringify(chartVariant));
     return;
   }
   if (req.method === "POST" && url === "/v1/calculate/western") { res.writeHead(200); res.end(JSON.stringify({ western: CHART.western })); return; }
