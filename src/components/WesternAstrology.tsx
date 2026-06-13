@@ -3,9 +3,39 @@ import { ProfileViewModel } from "../viewmodels/profileViewModel";
 import { Compass, Orbit, Table, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { TimeDependencyNote } from "./TimeDependencyNote";
+import { getEntry } from "../content/registry";
 
 interface WesternAstrologyProps {
   viewModel: ProfileViewModel;
+}
+
+/** Literal anchor slot every registry `long` ends with (see registry/types.ts). */
+const ANCHOR_SLOT = " {anchor}";
+
+/**
+ * Splice the house's real cusp datum into the registry `long` " {anchor}" slot.
+ * When there is no honest cusp sign, the slot fragment is removed cleanly so no
+ * dangling "{anchor}" or invented placement leaks into the UI. Mirrors the
+ * ExplanationLayer.renderLong contract.
+ */
+function renderHouseLong(long: string, anchorText: string | null): string {
+  if (anchorText && anchorText.trim().length > 0) {
+    return long.replace(ANCHOR_SLOT, ` — in deinem Profil: ${anchorText}`);
+  }
+  return long.replace(ANCHOR_SLOT, "");
+}
+
+/**
+ * Extract the honest cusp sign from the viewModel's `signResonance` string
+ * (normalizer shape: e.g. "Krebs (12.0°)"). Returns null when there is no real
+ * cusp datum — i.e. the "missing (source=missing)" sentinel — so the UI omits
+ * the sign context instead of inventing one.
+ */
+function houseCuspSign(signResonance: string | null | undefined): string | null {
+  if (!signResonance) return null;
+  if (/missing/i.test(signResonance)) return null;
+  const sign = signResonance.replace(/\s*\(.*\)\s*$/, "").trim();
+  return sign.length > 0 ? sign : null;
 }
 
 export default function WesternAstrology({ viewModel }: WesternAstrologyProps) {
@@ -117,6 +147,8 @@ export default function WesternAstrology({ viewModel }: WesternAstrologyProps) {
             <div className="space-y-2">
               {viewModel.western.houses.map((house) => {
                 const isOpen = expandedHouse === house.number;
+                const entry = getEntry(`house.${house.number}`);
+                const cuspSign = houseCuspSign(house.signResonance);
                 return (
                   <div 
                     key={house.number} 
@@ -163,14 +195,42 @@ export default function WesternAstrology({ viewModel }: WesternAstrologyProps) {
                           transition={{ duration: 0.25, ease: [0.04, 0.62, 0.23, 0.98] }}
                           className="overflow-hidden"
                         >
-                          <div className="px-4 pb-4 pt-2 border-t border-gold-muted/5 space-y-3">
-                            <div className="text-xs text-stone-400 leading-relaxed space-y-1">
-                              <div className="flex flex-wrap gap-x-4 text-[10px] font-mono text-gold-muted uppercase">
-                                <span>RESONANZ: {house.signResonance}</span>
-                                <span>FOKUS: {house.governs}</span>
+                          <div className="px-4 pb-4 pt-2 border-t border-gold-muted/5 space-y-3" data-testid={`house-detail-${house.number}`}>
+                            {/* Thema — registry house.N short (real substance, no bare list) */}
+                            {entry && (
+                              <div className="space-y-1" data-testid={`house-thema-${house.number}`}>
+                                <span className="font-mono text-[9px] uppercase tracking-wider text-gold-muted/80 block">
+                                  Thema
+                                </span>
+                                <p className="text-xs text-stone-300 leading-relaxed">{entry.short}</p>
                               </div>
-                              <p className="text-stone-350">{house.description}</p>
+                            )}
+
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-mono text-gold-muted uppercase">
+                              {cuspSign ? (
+                                <span>ZEICHEN AN DER SPITZE: {house.signResonance}</span>
+                              ) : (
+                                <span className="text-stone-500 normal-case italic">
+                                  Kein Spitzen-Zeichen vorliegend
+                                </span>
+                              )}
+                              <span>FOKUS: {house.governs}</span>
                             </div>
+
+                            {/* Interpretation — registry house.N long, anchor slot filled with the cusp sign if present */}
+                            {entry && (
+                              <div className="space-y-1" data-testid={`house-interpretation-${house.number}`}>
+                                <span className="font-mono text-[9px] uppercase tracking-wider text-slate-400 block">
+                                  Einordnung
+                                </span>
+                                <p className="text-xs text-stone-350 leading-relaxed">
+                                  {renderHouseLong(
+                                    entry.long,
+                                    cuspSign ? `${house.number}. Haus ab ${house.signResonance}` : null,
+                                  )}
+                                </p>
+                              </div>
+                            )}
 
                             {house.planets.length > 0 ? (
                               <div className="pt-2">
