@@ -30,7 +30,7 @@ links back to the source artifacts.
 | REQ-P5-007 | T5 | Hidden-Stems already works (canonical EARTHLY_BRANCHES); honest empty-state only for unresolvable defaultBranch | real-boundary | ja | canvas Amendment A | aligned |
 | REQ-P5-008 | T4 | WesternAstrology houses deepening; P4 timeKnown:false → note only; P1 label regression stays green | unit + e2e | ja | canvas §4 | aligned |
 | REQ-P5-009 | T3 | analytics card_click/layer_open event spy (unit) + beta-smoke ≥1 open; owner = Benjamin | real-boundary-smoke (local) | event fires locally; **beta-smoke ≥1 PENDING** | canvas §4 (Amendment B) | value-risk — beta-smoke not yet run |
-| REQ-P5-010 | T6 | gates (lint/test/build/playwright) all green + MISSING list; live-smoke 2 open layers PENDING deploy | real-boundary-smoke (local) — **production-verified PENDING deploy** | local only; prod PENDING merge+deploy | canvas §5 | PENDING live-smoke (not yet production-verified) |
+| REQ-P5-010 | T6 | gates all green + MISSING list; deployed 235a8d3 (RUNNING); served prod bundle asset-verified (explanation-layer/card_click/Kuratierte Einordnung/registry texts present) | **production-served (asset-verified)** + local e2e | **deployed + served in prod**; interactive prod-click smoke PENDING (Chrome remote-debugging) | canvas §5 | deployed+served+asset-verified; interactive prod-click smoke pending |
 
 Anti-reification (NFR-01, Amendment D): every one of the 55 texts passes the literal-token
 regex AND a per-text semantic sign-off (forbidden meaning, not just words). Astro-Noctum
