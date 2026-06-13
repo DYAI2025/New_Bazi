@@ -82,10 +82,11 @@ export default function InputForm({ birthData, onCalculate, timeError = null }: 
           <div className="absolute top-0 right-0 p-4 opacity-5">
             <Compass className="h-40 w-40 text-gold-muted" />
           </div>
-          <h2 className="font-serif text-3xl font-bold tracking-tight text-gold-light mb-4">Metaphysisches Portal</h2>
+          <h2 className="font-serif text-3xl font-bold tracking-tight text-gold-light mb-4">Bazodiac</h2>
           <p className="text-sm text-stone-400 leading-relaxed font-sans mb-4">
-            Willkommen bei <strong className="text-gold-muted font-medium">Bazodiac</strong>. Westliche Planetenpositionen
-            und BaZi-Säulen werden serverseitig über die FuFirE-Engine berechnet.
+            <strong className="text-gold-muted font-medium">Bazodiac</strong> verbindet westliche Astrologie und
+            chinesisches BaZi zu einem gemeinsamen Bild. Positionen und Säulen werden serverseitig über die
+            FuFirE-Engine berechnet.
           </p>
           <p className="text-xs text-stone-500 leading-relaxed">
             Geben Sie Ihre echten Geburtskoordinaten ein. Der Ort wird über die Vorschlagsliste serverseitig in

@@ -92,7 +92,7 @@ export default function BaZiDetail({ viewModel }: BaZiDetailProps) {
           <Columns className="h-10 w-10 text-gold-muted" />
           <h3 className="font-serif text-2xl font-bold text-gold-light">BaZi-Säulen nicht verfügbar</h3>
           <p className="text-sm text-stone-400 max-w-md">
-            FuFirE hat keine BaZi-Schicksalssäulen geliefert. Es werden keine Platzhalter-Stämme oder -Zweige als
+            FuFirE hat keine BaZi-Säulen geliefert. Es werden keine Platzhalter-Stämme oder -Zweige als
             Wahrheit dargestellt.
           </p>
         </div>
@@ -108,7 +108,7 @@ export default function BaZiDetail({ viewModel }: BaZiDetailProps) {
         <div className="flex items-center space-x-3 pb-4 border-b border-gold-muted/10 mb-4">
           <Columns className="h-6 w-6 text-gold-muted animate-pulse" />
           <h3 className="font-serif text-2xl font-bold text-gold-light">
-            BaZi Suanming (Die 4 Schicksalssäulen)
+            BaZi Suanming (Die 4 Säulen)
           </h3>
         </div>
         <p className="text-sm text-stone-400 leading-relaxed max-w-3xl">
@@ -137,7 +137,7 @@ export default function BaZiDetail({ viewModel }: BaZiDetailProps) {
                     <h5 className="font-serif text-md font-bold text-slate-100 block">
                       {dayMaster.pinyin} — {dayMaster.element} ({dayMaster.polarity})
                     </h5>
-                    <p className="text-xs text-stone-400 mt-0.5">Repräsentiert Ihre Seele, Ihren materiellen Filter und Ihr wahres Ich.</p>
+                    <p className="text-xs text-stone-400 mt-0.5">Der Tagesmeister — dein Tagesstamm und der Kern der BaZi-Analyse.</p>
                   </div>
                 </div>
                 <div className="text-right shrink-0">

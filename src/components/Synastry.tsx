@@ -74,7 +74,7 @@ export default function Synastry({ viewModel, birthData }: SynastryProps) {
       <div className="glass-card p-6 rounded-2xl">
         <div className="flex items-center space-x-3 pb-4 border-b border-gold-muted/10 mb-4 font-serif">
           <Users className="h-6 w-6 text-gold-muted shrink-0" />
-          <h3 className="text-2xl font-bold text-gold-light">Synastrie (Beziehungsresonanz)</h3>
+          <h3 className="text-2xl font-bold text-gold-light">Synastrie (Beziehungsvergleich)</h3>
         </div>
         <p className="text-sm text-stone-400 leading-relaxed max-w-3xl">
           Beide Profile werden einzeln aus FuFirE bezogen; der Vergleich selbst wird lokal abgeleitet
@@ -172,7 +172,7 @@ export default function Synastry({ viewModel, birthData }: SynastryProps) {
                     <span>VERGLEICH LÄUFT...</span>
                   </>
                 ) : (
-                  <span>RESONANZ VERGLEICHEN</span>
+                  <span>PARTNER VERGLEICHEN</span>
                 )}
               </button>
               {!canSubmit && (
@@ -232,12 +232,12 @@ export default function Synastry({ viewModel, birthData }: SynastryProps) {
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <span className="font-serif text-2xl font-bold text-slate-100">{synastryResult.score}%</span>
-                      <span className="font-mono text-[8px] text-stone-400 uppercase tracking-widest">Resonanz</span>
+                      <span className="font-mono text-[8px] text-stone-400 uppercase tracking-widest">Übereinstimmung</span>
                     </div>
                   </div>
 
                   <div className="flex-grow space-y-1 font-sans">
-                    <span className="font-mono text-[9px] uppercase tracking-widest text-[#D4AF37] font-bold">Harmonie-Resonanz</span>
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-[#D4AF37] font-bold">Harmonie-Wert</span>
                     <h5 className="font-serif text-md font-bold text-slate-100">
                       {synastryResult.userRef.name} <ArrowRight className="inline h-4 w-4 mx-1 text-[#D4AF37]" /> {synastryResult.partnerRef.name}
                     </h5>

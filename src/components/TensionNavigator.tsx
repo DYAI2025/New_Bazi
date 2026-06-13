@@ -744,7 +744,7 @@ function OriginLayer({ fusion }: { fusion: FusionData }) {
             {elementalComparison.length > 0 && (
               <div className="space-y-4 pt-4 border-t border-gold-muted/5">
                 <span className="font-mono text-[10px] uppercase font-bold text-gold-muted tracking-widest block">
-                  Element-Resonanz: West vs. BaZi
+                  Element-Abgleich: West vs. BaZi
                 </span>
                 <div className="space-y-3" data-testid="fusion-elemental-comparison">
                   {elementalComparison.map((cmp) => (

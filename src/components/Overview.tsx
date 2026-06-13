@@ -163,7 +163,7 @@ export default function Overview({ viewModel, onNavigate }: OverviewProps) {
           <div className="flex items-center space-x-2">
             <span className="h-2 w-2 rounded-full bg-gold-muted animate-ping" />
             <span className="font-mono text-[10px] tracking-widest text-gold-muted uppercase font-bold">
-              Kollationierte Seelensignatur geladen
+              Signatur geladen
             </span>
           </div>
           <h2 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight text-gold-light">
@@ -216,7 +216,7 @@ export default function Overview({ viewModel, onNavigate }: OverviewProps) {
             onClick={() => onNavigate("synastry")}
             className="px-4 py-2 bg-obsidian-card/40 border border-white/5 rounded-lg text-xs font-mono font-medium text-stone-100 hover:border-gold-muted/30 hover:text-gold-light transition duration-300 cursor-pointer"
           >
-            Seelenpartner abgleichen
+            Partner abgleichen
           </button>
         </div>
       </div>
@@ -285,7 +285,7 @@ export default function Overview({ viewModel, onNavigate }: OverviewProps) {
                 <div>
                   <span className="font-mono text-[9px] uppercase tracking-widest text-gold-muted">Mond</span>
                   <h4 className="font-serif text-lg font-bold text-slate-100">{viewModel.western.moonSign}</h4>
-                  <p className="text-xs text-stone-400 font-sans mt-0.5">Unterbewusstsein, Seele & Intuition</p>
+                  <p className="text-xs text-stone-400 font-sans mt-0.5">Maske, Auftreten & erster Eindruck</p>
                 </div>
               </div>
             );
@@ -334,7 +334,7 @@ export default function Overview({ viewModel, onNavigate }: OverviewProps) {
       <section className="space-y-4">
         <h3 className="font-serif text-xl font-semibold text-gold-light tracking-wide flex items-center space-x-2">
           <Award className="h-4.5 w-4.5 text-gold-muted" />
-          <span>Das östliche BaZi-Spektrum (Vier Säulen des Schicksals)</span>
+          <span>Das östliche BaZi-Spektrum (Vier Säulen / BaZi)</span>
         </h3>
         
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
