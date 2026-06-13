@@ -1,7 +1,9 @@
+import fs from "fs";
 import path from "path";
 import dotenv from "dotenv";
 
 import { createApp } from "./src/server/app";
+import { getViteAllowedHosts, shouldServeProductionAssets } from "./src/server/runtime";
 
 dotenv.config();
 
@@ -10,20 +12,27 @@ async function startServer() {
   const PORT = Number(process.env.PORT || 3000);
 
   // Static / dev middleware AFTER the same-origin /api routes.
-  if (process.env.NODE_ENV !== "production") {
+  if (!shouldServeProductionAssets()) {
     // vite is dev-only: imported dynamically so the production container never loads it.
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        allowedHosts: getViteAllowedHosts(),
+        middlewareMode: true
+      },
       appType: "spa"
     });
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
+    const indexPath = path.join(distPath, "index.html");
+    if (!fs.existsSync(indexPath)) {
+      throw new Error(`Production assets are missing at ${indexPath}. Run npm run build before starting the server.`);
+    }
     const express = (await import("express")).default;
     app.use(express.static(distPath));
     app.get("*", (_req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
+      res.sendFile(indexPath);
     });
   }
 

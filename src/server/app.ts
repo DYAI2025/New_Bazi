@@ -5,20 +5,27 @@ import { FuFirEClient } from "../utils/fufireClient";
 import {
   getAutocompletePredictions,
   getPlaceDetails,
-  getTimezone,
-  getGoogleApiKey
+  getTimezone
 } from "../utils/mapsService";
 import { validateBirthInput, ValidatedBirthInput } from "../utils/birthInputValidation";
 import {
+  buildWesternPayload,
+  buildBaziPayload,
+  buildWuxingPayload,
+  buildFusionPayload,
+  buildBootstrapPayload,
+  buildDailyPayload,
+  extractSoulprintSectors
+} from "../utils/fufirePayloadMappers";
+import {
   buildProfile,
   buildLocalFallbackProfile,
-  buildFuFirEPayload,
   pickSection,
   ProfileServiceResult
 } from "../utils/profileService";
 import { normalizeFuFireProfile } from "../utils/fufireNormalizer";
-import { ProfileViewModel } from "../viewmodels/profileViewModel";
-import { ElementType } from "../types";
+import { compareProfiles } from "../utils/synastry";
+import { fuseElementalWeights } from "../utils/tensionPair";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -28,9 +35,24 @@ function localFallbackEnabled(): boolean {
   return process.env.ENABLE_LOCAL_ASTROLOGY_FALLBACK === "true";
 }
 
-function hasRealGoogleKey(): boolean {
-  const key = (getGoogleApiKey() || "").trim();
-  return Boolean(key) && key !== "YOUR_API_KEY" && key !== "replace_me" && key !== "MY_GOOGLE_MAPS_PLATFORM_KEY";
+function logInvalidBirthInput(route: string, errors: unknown): void {
+  const fields = Array.isArray(errors)
+    ? errors
+        .map((error: any) => {
+          const field = error?.field;
+          const side = error?.side;
+
+          if (!field) return null;
+
+          // Normalize to dot-notation: "user.tz", "partner.birthDate"
+          return side ? `${side}.${field}` : String(field);
+        })
+        .filter((value): value is string => Boolean(value))
+    : typeof errors === "string"
+      ? [errors]
+      : [];
+
+  console.warn("invalid_birth_input", { route, fields });
 }
 
 /** Send a typed error, never leaking secrets or stack traces to the browser. */
@@ -40,6 +62,16 @@ function sendError(res: Response, err: any, fallbackStatus = 500): void {
     error: (err && err.code) || "internal_error",
     message: err && err.message ? String(err.message) : "Unerwarteter Fehler."
   });
+}
+
+function getFuFireConfigSummary(): { pathPrefix: string; releaseVersion: string | null; versionPrefix: string } {
+  const pathPrefix = FuFirEClient.getPathPrefix();
+  return {
+    pathPrefix,
+    releaseVersion: FuFirEClient.getReleaseVersion(),
+    // Backward compatibility: versionPrefix now means actual route prefix, not release metadata.
+    versionPrefix: pathPrefix
+  };
 }
 
 /** FuFirE-first with explicit, opt-in local fallback only on missing config. */
@@ -55,99 +87,156 @@ async function resolveProfile(value: ValidatedBirthInput): Promise<ProfileServic
   }
 }
 
-// --- Local-only synastry comparison helpers (clearly labelled, never FuFirE) ---
-
-const GENERATING: Record<string, string> = {
-  [ElementType.WOOD]: ElementType.FIRE,
-  [ElementType.FIRE]: ElementType.EARTH,
-  [ElementType.EARTH]: ElementType.METAL,
-  [ElementType.METAL]: ElementType.WATER,
-  [ElementType.WATER]: ElementType.WOOD
-};
-const CONTROLLING: Record<string, string> = {
-  [ElementType.WOOD]: ElementType.EARTH,
-  [ElementType.EARTH]: ElementType.WATER,
-  [ElementType.WATER]: ElementType.FIRE,
-  [ElementType.FIRE]: ElementType.METAL,
-  [ElementType.METAL]: ElementType.WOOD
-};
-
-function westernElement(sign: string): string {
-  if (["Widder", "Löwe", "Schütze"].includes(sign)) return "Feuer";
-  if (["Stier", "Jungfrau", "Steinbock"].includes(sign)) return "Erde";
-  if (["Zwillinge", "Waage", "Wassermann"].includes(sign)) return "Luft";
-  return "Wasser";
-}
-
-function compareProfiles(a: ProfileViewModel, b: ProfileViewModel) {
-  // BaZi day-master element relationship.
-  const ea = a.bazi.dayMaster.element;
-  const eb = b.bazi.dayMaster.element;
-  let baziScore = 65;
-  if (ea === eb) baziScore = 85;
-  else if (GENERATING[ea] === eb || GENERATING[eb] === ea) baziScore = 78;
-  else if (CONTROLLING[ea] === eb || CONTROLLING[eb] === ea) baziScore = 52;
-
-  // Western sun-sign element resonance.
-  const wa = westernElement(a.western.sunSign);
-  const wb = westernElement(b.western.sunSign);
-  const compatible = (wa === wb) || (["Feuer", "Luft"].includes(wa) && ["Feuer", "Luft"].includes(wb)) || (["Erde", "Wasser"].includes(wa) && ["Erde", "Wasser"].includes(wb));
-  const westernScore = wa === wb ? 82 : compatible ? 70 : 56;
-
-  const score = Math.round((baziScore + westernScore) / 2);
-  const harmonyAnalysis = `Lokaler Vergleich der FuFirE-Profile: BaZi-Tagesmeister ${ea} und ${eb} ergeben ${baziScore}%, die westlichen Sonnenelemente ${wa}/${wb} ${westernScore}%.`;
-  const advice = score >= 75
-    ? "Die Elementeflüsse stützen sich gegenseitig; pflegen Sie gemeinsame Routinen."
-    : score >= 60
-      ? "Unterschiedliche Rhythmen verlangen bewusste Kommunikation und Geduld."
-      : "Gegensätzliche Kontrollzyklen — Reibung ist lehrreich, erfordert aber klare Grenzen.";
-
-  return { score, westernScore, baziScore, harmonyAnalysis, advice };
-}
-
 // --- Daily pulse from FuFirE experience (no local prose fabrication) ---
 
-function normalizeDaily(daily: any): {
+interface DailySectionVM {
+  summary: string | null;
+  themes: string[];
+  caution: string | null;
+  opportunity: string | null;
+}
+
+interface DailyEasternVM extends DailySectionVM {
+  dayMaster: string | null;
+  dailyPillar: { stem: string; branch: string } | null;
+  relationToDayMaster: string | null;
+  jieqi: string | null;
+}
+
+interface DailyPulseVM {
   date: string;
-  qiResonance: number | null;
-  dominantPhase: string | null;
-  coachingKeyword: string | null;
+  western: DailySectionVM | null;
+  eastern: DailyEasternVM | null;
+  fusion: { summary: string | null; synthesis: string | null } | null;
+  action: string | null;
+  pushText: string | null;
+  pushworthy: boolean;
+  jieqiNote: string | null;
+  weekdayNote: string | null;
   description: string | null;
   source: "fufire" | "missing";
   available: boolean;
-} {
-  const d = daily || {};
-  const qiResonance = typeof d.qiResonance === "number" ? d.qiResonance
-    : typeof d.qi_resonance === "number" ? d.qi_resonance : null;
-  const dominantPhase = d.dominantPhase || d.dominant_phase || null;
-  const coachingKeyword = d.coachingKeyword || d.coaching_keyword || null;
-  const description = d.description || d.text || null;
+}
 
-  // Require user-facing text: a bare metric without a description is treated as missing.
-  const available = Boolean(description) && (qiResonance !== null || Boolean(dominantPhase));
+function dailyText(v: unknown): string | null {
+  return typeof v === "string" && v.trim() !== "" ? v : null;
+}
+
+function dailySection(raw: any): DailySectionVM | null {
+  if (!raw || typeof raw !== "object") return null;
+  const section: DailySectionVM = {
+    summary: dailyText(raw.summary),
+    themes: Array.isArray(raw.themes) ? raw.themes.filter((t: unknown) => typeof t === "string" && t.trim() !== "") : [],
+    caution: dailyText(raw.caution),
+    opportunity: dailyText(raw.opportunity)
+  };
+  const hasContent = section.summary || section.caution || section.opportunity || section.themes.length > 0;
+  return hasContent ? section : null;
+}
+
+/**
+ * Maps the engine DailyResponse (see DailyFusion in the FuFirE OpenAPI spec)
+ * into the view model. The engine sends western.*, eastern.* (incl. the
+ * day-master daily reference under evidence), fusion.{summary,synthesis,action},
+ * push_text/pushworthy and jieqi/weekday context notes — all of it is surfaced.
+ * No metrics are invented: fields the engine does not send do not exist here.
+ */
+function normalizeDaily(daily: any): DailyPulseVM {
+  const d = daily || {};
+  const western = dailySection(d.western);
+
+  const easternBase = dailySection(d.eastern);
+  const evidence = d.eastern && typeof d.eastern === "object" && d.eastern.evidence && typeof d.eastern.evidence === "object"
+    ? d.eastern.evidence
+    : {};
+  const pillarRaw = evidence.daily_pillar;
+  const dailyPillar = pillarRaw && typeof pillarRaw === "object" && dailyText(pillarRaw.stem) && dailyText(pillarRaw.branch)
+    ? { stem: String(pillarRaw.stem), branch: String(pillarRaw.branch) }
+    : null;
+  const eastern: DailyEasternVM | null = easternBase
+    ? {
+        ...easternBase,
+        dayMaster: dailyText(evidence.day_master),
+        dailyPillar,
+        relationToDayMaster: dailyText(evidence.relation_to_day_master),
+        jieqi: dailyText(evidence.jieqi)
+      }
+    : null;
+
+  const f = d.fusion && typeof d.fusion === "object" ? d.fusion : null;
+  const fusion = f ? { summary: dailyText(f.summary), synthesis: dailyText(f.synthesis) } : null;
+  const fusionText = fusion ? fusion.synthesis || fusion.summary : null;
+  const description = dailyText(d.description) || dailyText(d.text) || fusionText;
+
+  // Context notes: fusion-level first, section-level as fallback.
+  const jieqiNote = dailyText(f?.jieqi_note) || dailyText(d.eastern?.jieqi_note) || dailyText(d.western?.jieqi_note);
+  const weekdayNote = dailyText(f?.weekday_note) || dailyText(d.western?.weekday_note) || dailyText(d.eastern?.weekday_note);
+
+  // Available = the engine delivered real user-facing content for the day.
+  const available = Boolean(description || western || eastern);
   return {
-    date: new Date().toISOString().split("T")[0],
-    qiResonance,
-    dominantPhase,
-    coachingKeyword,
+    date: dailyText(d.date) || dailyText(d.target_date) || new Date().toISOString().split("T")[0],
+    western,
+    eastern,
+    fusion: fusion && (fusion.summary || fusion.synthesis) ? fusion : null,
+    action: f ? dailyText(f.action) : null,
+    pushText: f ? dailyText(f.push_text) : null,
+    pushworthy: Boolean(f?.pushworthy),
+    jieqiNote,
+    weekdayNote,
     description,
     source: available ? "fufire" : "missing",
     available
   };
 }
 
+/**
+ * Tagesnavigation: the UI may request a specific target_date (±7 days around
+ * today). One extra day of tolerance absorbs the timezone skew between the
+ * browser's local date and the server clock.
+ */
+const DAILY_TARGET_RANGE_DAYS = 7;
+
+function resolveTargetDate(raw: unknown): { value?: string; error?: string } {
+  if (raw === undefined || raw === null || raw === "") return {};
+  if (typeof raw !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return { error: "targetDate muss das Format YYYY-MM-DD haben." };
+  }
+  const target = new Date(`${raw}T00:00:00Z`);
+  if (Number.isNaN(target.getTime()) || target.toISOString().slice(0, 10) !== raw) {
+    return { error: "targetDate ist kein gueltiger Kalendertag." };
+  }
+  const today = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`);
+  const diffDays = Math.round((target.getTime() - today.getTime()) / 86400000);
+  if (Math.abs(diffDays) > DAILY_TARGET_RANGE_DAYS + 1) {
+    return { error: `targetDate darf hoechstens ${DAILY_TARGET_RANGE_DAYS} Tage vom heutigen Datum abweichen.` };
+  }
+  return { value: raw };
+}
+
 // --- Detail endpoint factory ---
 
 type ChartMethod = "postWestern" | "postBazi" | "postWuxing" | "postFusion";
+
+// Each /v1/calculate/* endpoint has its own request model (NOT the /chart
+// shape) — pick the matching mapper per upstream method.
+const DETAIL_PAYLOAD_BUILDERS: Record<ChartMethod, (input: ValidatedBirthInput) => unknown> = {
+  postWestern: buildWesternPayload,
+  postBazi: buildBaziPayload,
+  postWuxing: buildWuxingPayload,
+  postFusion: buildFusionPayload
+};
+
 function detailHandler(method: ChartMethod, key: "western" | "bazi" | "wuxing" | "fusion") {
   return async (req: Request, res: Response): Promise<void> => {
     const { valid, errors, value } = validateBirthInput(req.body || {});
     if (!valid || !value) {
+      logInvalidBirthInput(req.path, errors);
       res.status(400).json({ error: "invalid_birth_input", fields: errors });
       return;
     }
     try {
-      const payload = buildFuFirEPayload(value);
+      const payload = DETAIL_PAYLOAD_BUILDERS[method](value);
       const resp = await (FuFirEClient[method] as (p: any) => Promise<any>)(payload);
       const raw: any = { [key]: pickSection(resp, key) };
       const vm = normalizeFuFireProfile(raw, value, "fufire-orchestrated");
@@ -170,33 +259,33 @@ export function createApp(): Express {
 
   app.get("/api/config", (_req, res) => {
     const fufire = FuFirEClient.isConfigured();
-    const placesConfigured = hasRealGoogleKey();
     res.json({
       status: "operational",
       version: "2.0.0-fufire-bff",
       fufire: {
         baseUrlConfigured: fufire.url,
         apiKeyConfigured: fufire.key,
-        versionPrefix: (process.env.FUFIRE_API_VERSION || "v1").replace(/^\/|\/$/g, "")
+        ...getFuFireConfigSummary()
       },
       places: {
-        provider: "google",
-        apiKeyConfigured: placesConfigured
+        // Keyless providers: Photon (OSM) for search, tz-lookup offline for timezones.
+        provider: "photon+tz-lookup",
+        keyRequired: false
       },
       flags: {
         localAstrologyFallback: localFallbackEnabled(),
         demoProfiles: process.env.ENABLE_DEMO_PROFILES === "true"
       },
       capabilities: [
-        { feature: "profile", appEndpoint: "/api/azodiac/profile", upstream: "/v1/chart (+ /v1/calculate/*)", status: fufire.url && fufire.key ? "server-used" : "missing", source: fufire.url && fufire.key ? "fufire" : "missing" },
+        { feature: "profile", appEndpoint: "/api/azodiac/profile", upstream: "/chart (+ /v1/calculate/*)", status: fufire.url && fufire.key ? "server-used" : "missing", source: fufire.url && fufire.key ? "fufire" : "missing" },
         { feature: "western", appEndpoint: "/api/azodiac/western", upstream: "/v1/calculate/western", status: fufire.url && fufire.key ? "server-used" : "missing", source: "fufire" },
         { feature: "bazi", appEndpoint: "/api/azodiac/bazi", upstream: "/v1/calculate/bazi", status: fufire.url && fufire.key ? "server-used" : "missing", source: "fufire" },
         { feature: "wuxing", appEndpoint: "/api/azodiac/wuxing", upstream: "/v1/calculate/wuxing", status: fufire.url && fufire.key ? "server-used" : "missing", source: "fufire" },
         { feature: "fusion", appEndpoint: "/api/azodiac/fusion", upstream: "/v1/calculate/fusion", status: fufire.url && fufire.key ? "server-used" : "missing", source: "fufire" },
         { feature: "daily", appEndpoint: "/api/azodiac/daily", upstream: "/v1/experience/bootstrap + /v1/experience/daily", status: fufire.url && fufire.key ? "server-used" : "missing", source: "fufire" },
-        { feature: "synastry", appEndpoint: "/api/azodiac/synastry", upstream: "2× /v1/chart + lokaler Vergleich", status: fufire.url && fufire.key ? "server-used" : "missing", source: "fufire-profiles-local-comparison" },
+        { feature: "synastry", appEndpoint: "/api/azodiac/synastry", upstream: "2× /chart + lokaler Vergleich", status: fufire.url && fufire.key ? "server-used" : "missing", source: "fufire-profiles-local-comparison" },
         { feature: "dayun", appEndpoint: "/api/azodiac/bazi/dayun", upstream: "—", status: "missing-capability", source: "missing" },
-        { feature: "places", appEndpoint: "/api/places/*", upstream: "Google Maps Platform", status: placesConfigured ? "server-used" : "missing", source: "google" }
+        { feature: "places", appEndpoint: "/api/places/*", upstream: "Photon (OSM) + tz-lookup (offline)", status: "server-used", source: "photon" }
       ]
     });
   });
@@ -216,8 +305,8 @@ export function createApp(): Express {
     res.json({
       baseUrlConfigured: fufire.url,
       apiKeyConfigured: fufire.key,
-      versionPrefix: (process.env.FUFIRE_API_VERSION || "v1").replace(/^\/|\/$/g, ""),
-      endpoints: ["/v1/chart", "/v1/calculate/western", "/v1/calculate/bazi", "/v1/calculate/wuxing", "/v1/calculate/fusion", "/v1/calculate/tst", "/v1/experience/bootstrap", "/v1/experience/daily", "/v1/info/wuxing-mapping"]
+      ...getFuFireConfigSummary(),
+      endpoints: ["/chart", "/v1/calculate/western", "/v1/calculate/bazi", "/v1/calculate/wuxing", "/v1/calculate/fusion", "/v1/calculate/tst", "/v1/experience/bootstrap", "/v1/experience/daily", "/v1/info/wuxing-mapping"]
     });
   });
 
@@ -289,6 +378,7 @@ export function createApp(): Express {
   app.post("/api/azodiac/profile", async (req, res) => {
     const { valid, errors, value } = validateBirthInput(req.body || {});
     if (!valid || !value) {
+      logInvalidBirthInput(req.path, errors);
       res.status(400).json({ error: "invalid_birth_input", fields: errors });
       return;
     }
@@ -312,13 +402,30 @@ export function createApp(): Express {
   app.post("/api/azodiac/daily", async (req, res) => {
     const { valid, errors, value } = validateBirthInput(req.body || {});
     if (!valid || !value) {
+      logInvalidBirthInput(req.path, errors);
       res.status(400).json({ error: "invalid_birth_input", fields: errors });
       return;
     }
+    const targetDate = resolveTargetDate((req.body || {}).targetDate);
+    if (targetDate.error) {
+      res.status(400).json({ error: "invalid_target_date", message: targetDate.error });
+      return;
+    }
     try {
-      const payload = buildFuFirEPayload(value);
-      await FuFirEClient.postExperienceBootstrap(payload);
-      const daily = await FuFirEClient.postExperienceDaily(payload);
+      // BootstrapRequest/DailyRequest wrap a BirthInput — NOT the /chart shape.
+      const bootstrap = await FuFirEClient.postExperienceBootstrap(buildBootstrapPayload(value));
+      // DailyRequest requires the 12-sector soulprint from the bootstrap
+      // response. Never fabricate sectors — missing ring = upstream failure.
+      const sectors = extractSoulprintSectors(bootstrap);
+      if (!sectors) {
+        sendError(res, {
+          code: "fufire_unavailable",
+          httpStatus: 502,
+          message: "FuFirE-Bootstrap lieferte keine gueltigen Soulprint-Sektoren."
+        });
+        return;
+      }
+      const daily = await FuFirEClient.postExperienceDaily(buildDailyPayload(value, sectors, targetDate.value));
       res.json(normalizeDaily(daily));
     } catch (err) {
       sendError(res, err);
@@ -332,6 +439,7 @@ export function createApp(): Express {
     const userV = validateBirthInput(userBirthData || {});
     const partnerV = validateBirthInput(partnerBirthData || {});
     if (!userV.valid || !partnerV.valid || !userV.value || !partnerV.value) {
+      logInvalidBirthInput(req.path, { user: userV.errors, partner: partnerV.errors });
       res.status(400).json({
         error: "invalid_birth_input",
         fields: { user: userV.errors, partner: partnerV.errors }
@@ -345,7 +453,13 @@ export function createApp(): Express {
         ...comparison,
         source: "fufire-profiles-local-comparison",
         userRef: { name: a.viewModel.identity.name, sunSign: a.viewModel.western.sunSign, dayMaster: a.viewModel.bazi.dayMaster.element },
-        partnerRef: { name: b.viewModel.identity.name, sunSign: b.viewModel.western.sunSign, dayMaster: b.viewModel.bazi.dayMaster.element }
+        partnerRef: { name: b.viewModel.identity.name, sunSign: b.viewModel.western.sunSign, dayMaster: b.viewModel.bazi.dayMaster.element },
+        // Additiv (Spannungsnavigator-Paar-Modus): per-Element-Verteilung beider
+        // Personen aus deren bereits aufgelösten Fusion-Daten — die Route holt
+        // ohnehin beide vollen FuFirE-Profile, kein zusätzlicher Engine-Call.
+        // Leer ([]), wenn ein Profil kein elemental_comparison liefert.
+        elementalA: fuseElementalWeights(a.viewModel.fusion.elementalComparison),
+        elementalB: fuseElementalWeights(b.viewModel.fusion.elementalComparison)
       });
     } catch (err) {
       sendError(res, err);

@@ -1,0 +1,280 @@
+{
+  "engine_version": "1.0.0-rc1-20260220",
+  "parameter_set_id": "pz_2026_02_core",
+  "time_scales": {
+    "utc": "1990-06-15T12:30:00+00:00",
+    "civil_local": "1990-06-15T14:30:00+02:00",
+    "jd_ut": 2448058.0208333335,
+    "tlst_hours": 14.4995,
+    "eot_min": -0.027,
+    "dst_status": "ok",
+    "dst_fold": 0,
+    "tz_abbrev": "CEST",
+    "quality": {
+      "tlst": "ok"
+    }
+  },
+  "positions": [
+    {
+      "name": "Sun",
+      "longitude_deg": 84.14945336465065,
+      "latitude_deg": 0.00011986822788892058,
+      "speed_deg_per_day": 0.9551005546726715,
+      "distance_au": 1.0157673563052372,
+      "is_retrograde": false,
+      "sign_index": 2,
+      "sign_name": "Gemini",
+      "sign_name_de": "Zwillinge",
+      "degree_in_sign": 24.149453364650654
+    },
+    {
+      "name": "Moon",
+      "longitude_deg": 345.6364878977143,
+      "latitude_deg": 3.1500123289125312,
+      "speed_deg_per_day": 13.369194495735348,
+      "distance_au": 0.0025425117109936133,
+      "is_retrograde": false,
+      "sign_index": 11,
+      "sign_name": "Pisces",
+      "sign_name_de": "Fische",
+      "degree_in_sign": 15.63648789771429
+    },
+    {
+      "name": "Mercury",
+      "longitude_deg": 65.72646036760291,
+      "latitude_deg": -1.6592551321747149,
+      "speed_deg_per_day": 1.7168992893166661,
+      "distance_au": 1.111223220879633,
+      "is_retrograde": false,
+      "sign_index": 2,
+      "sign_name": "Gemini",
+      "sign_name_de": "Zwillinge",
+      "degree_in_sign": 5.726460367602911
+    },
+    {
+      "name": "Venus",
+      "longitude_deg": 48.80209770444003,
+      "latitude_deg": -1.9456115960017546,
+      "speed_deg_per_day": 1.1760048233837401,
+      "distance_au": 1.254861873838325,
+      "is_retrograde": false,
+      "sign_index": 1,
+      "sign_name": "Taurus",
+      "sign_name_de": "Stier",
+      "degree_in_sign": 18.80209770444003
+    },
+    {
+      "name": "Mars",
+      "longitude_deg": 11.056287539244787,
+      "latitude_deg": -1.9853891189885517,
+      "speed_deg_per_day": 0.7189216535492677,
+      "distance_au": 1.2789474604776525,
+      "is_retrograde": false,
+      "sign_index": 0,
+      "sign_name": "Aries",
+      "sign_name_de": "Widder",
+      "degree_in_sign": 11.056287539244787
+    },
+    {
+      "name": "Jupiter",
+      "longitude_deg": 105.89399979111127,
+      "latitude_deg": 0.18566264599455728,
+      "speed_deg_per_day": 0.21665164190090355,
+      "distance_au": 6.140714491737711,
+      "is_retrograde": false,
+      "sign_index": 3,
+      "sign_name": "Cancer",
+      "sign_name_de": "Krebs",
+      "degree_in_sign": 15.89399979111127
+    },
+    {
+      "name": "Saturn",
+      "longitude_deg": 294.0307129688255,
+      "latitude_deg": 0.11655824432734296,
+      "speed_deg_per_day": -0.05865874370814165,
+      "distance_au": 9.119577933139926,
+      "is_retrograde": true,
+      "sign_index": 9,
+      "sign_name": "Capricorn",
+      "sign_name_de": "Steinbock",
+      "degree_in_sign": 24.030712968825526
+    },
+    {
+      "name": "Uranus",
+      "longitude_deg": 278.16439992360364,
+      "latitude_deg": -0.3237866684764595,
+      "speed_deg_per_day": -0.03893300962507279,
+      "distance_au": 18.422457625290136,
+      "is_retrograde": true,
+      "sign_index": 9,
+      "sign_name": "Capricorn",
+      "sign_name_de": "Steinbock",
+      "degree_in_sign": 8.16439992360364
+    },
+    {
+      "name": "Neptune",
+      "longitude_deg": 283.7165557538578,
+      "latitude_deg": 0.8762258071407427,
+      "speed_deg_per_day": -0.025031046517932316,
+      "distance_au": 29.247667450390583,
+      "is_retrograde": true,
+      "sign_index": 9,
+      "sign_name": "Capricorn",
+      "sign_name_de": "Steinbock",
+      "degree_in_sign": 13.71655575385779
+    },
+    {
+      "name": "Pluto",
+      "longitude_deg": 225.40108591074318,
+      "latitude_deg": 15.853623347108691,
+      "speed_deg_per_day": -0.020170566988465345,
+      "distance_au": 28.88959433652288,
+      "is_retrograde": true,
+      "sign_index": 7,
+      "sign_name": "Scorpio",
+      "sign_name_de": "Skorpion",
+      "degree_in_sign": 15.401085910743177
+    },
+    {
+      "name": "Chiron",
+      "longitude_deg": 106.06262396363272,
+      "latitude_deg": -6.26658570748104,
+      "speed_deg_per_day": 0.10124932584649317,
+      "distance_au": 11.92861151796172,
+      "is_retrograde": false,
+      "sign_index": 3,
+      "sign_name": "Cancer",
+      "sign_name_de": "Krebs",
+      "degree_in_sign": 16.062623963632717
+    },
+    {
+      "name": "Lilith",
+      "longitude_deg": 234.95366107040303,
+      "latitude_deg": -4.964973542749779,
+      "speed_deg_per_day": 0.11196005677634187,
+      "distance_au": 0.002710625131722547,
+      "is_retrograde": false,
+      "sign_index": 7,
+      "sign_name": "Scorpio",
+      "sign_name_de": "Skorpion",
+      "degree_in_sign": 24.95366107040303
+    },
+    {
+      "name": "NorthNode",
+      "longitude_deg": 309.69678030129785,
+      "latitude_deg": 0,
+      "speed_deg_per_day": -0.0529702875526864,
+      "distance_au": 0.0025695552897999903,
+      "is_retrograde": true,
+      "sign_index": 10,
+      "sign_name": "Aquarius",
+      "sign_name_de": "Wassermann",
+      "degree_in_sign": 9.69678030129785
+    },
+    {
+      "name": "TrueNorthNode",
+      "longitude_deg": 308.122192666179,
+      "latitude_deg": 0,
+      "speed_deg_per_day": 0.013152413609334987,
+      "distance_au": 0.0026285286466034632,
+      "is_retrograde": false,
+      "sign_index": 10,
+      "sign_name": "Aquarius",
+      "sign_name_de": "Wassermann",
+      "degree_in_sign": 8.12219266617899
+    }
+  ],
+  "bazi": {
+    "ruleset_id": "standard_bazi_2026",
+    "pillars": {
+      "year": {
+        "stem_index": 6,
+        "branch_index": 6,
+        "stem": "Geng",
+        "branch": "Wu",
+        "animal": "Horse",
+        "element": "Metall"
+      },
+      "month": {
+        "stem_index": 8,
+        "branch_index": 6,
+        "stem": "Ren",
+        "branch": "Wu",
+        "animal": "Horse",
+        "element": "Wasser"
+      },
+      "day": {
+        "stem_index": 7,
+        "branch_index": 11,
+        "stem": "Xin",
+        "branch": "Hai",
+        "animal": "Pig",
+        "element": "Metall"
+      },
+      "hour": {
+        "stem_index": 1,
+        "branch_index": 7,
+        "stem": "Yi",
+        "branch": "Wei",
+        "animal": "Goat",
+        "element": "Holz"
+      }
+    },
+    "day_master": "Xin",
+    "dates": {
+      "birth_local": "1990-06-15T14:30:00+02:00",
+      "birth_utc": "1990-06-15T12:30:00+00:00",
+      "lichun_local": "1990-02-04T03:14:00.239874+01:00"
+    },
+    "transition": {
+      "solar_year": 1990,
+      "is_before_lichun": false,
+      "lichun_year_start": "1990-02-04T03:14:00.239874+01:00",
+      "lichun_next": "1991-02-04T09:08:24.135199+01:00"
+    },
+    "time_standard_requested": "CIVIL",
+    "time_standard_used": "CIVIL"
+  },
+  "wuxing": {
+    "from_planets": {
+      "Holz": 4.6,
+      "Feuer": 3.3,
+      "Erde": 2.3,
+      "Metall": 1,
+      "Wasser": 4.3
+    },
+    "from_bazi": {
+      "Holz": 1.8,
+      "Feuer": 2.5,
+      "Erde": 2,
+      "Metall": 2,
+      "Wasser": 2
+    },
+    "harmony_index": 0.908,
+    "dominant_planet": "Holz",
+    "dominant_bazi": "Feuer"
+  },
+  "houses": {
+    "1": 190.04613317082595,
+    "2": 214.88758754988305,
+    "3": 246.1121104949077,
+    "4": 283.2895416472227,
+    "5": 318.90605898078934,
+    "6": 347.69598681507955,
+    "7": 10.046133170825954,
+    "8": 34.88758754988305,
+    "9": 66.11211049490771,
+    "10": 103.2895416472227,
+    "11": 138.90605898078934,
+    "12": 167.69598681507958
+  },
+  "angles": {
+    "Ascendant": 190.04613317082595,
+    "MC": 103.2895416472227,
+    "Vertex": 23.1375975714282
+  },
+  "validation": {
+    "ok": false,
+    "error": "Validation unavailable"
+  }
+}

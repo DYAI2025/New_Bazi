@@ -1,0 +1,45 @@
+{
+  "profile": {
+    "sun_sign": "Zwillinge",
+    "moon_sign": "Fische",
+    "ascendant_sign": "Waage",
+    "day_master": "Xin",
+    "harmony_index": 0.6144
+  },
+  "soulprint_sectors": [
+    0.0697,
+    0.101788,
+    0.243949,
+    0.043493,
+    0.086053,
+    0.04256,
+    0.129119,
+    0.032088,
+    0.043641,
+    0.024569,
+    0,
+    0.18304
+  ],
+  "signature_blueprint": {
+    "seed": "sig_v1_364aee7058b441a5",
+    "visual": {
+      "symmetry": 0.3155,
+      "curvature": 1,
+      "angularity": 0.7705,
+      "density": 0.5561,
+      "contrast": 0.2439,
+      "orbit_count": 5
+    },
+    "elements": {
+      "Holz": 0.4992,
+      "Feuer": 0.4885,
+      "Erde": 0.3683,
+      "Metall": 0.282,
+      "Wasser": 0.5009
+    }
+  },
+  "meta": {
+    "engine_version": "1.0.0-rc1-20260220",
+    "generated_at": "2026-06-10T22:16:24Z"
+  }
+}

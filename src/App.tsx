@@ -1,6 +1,6 @@
 import React from "react";
 import { BirthData } from "./types";
-import { BazodiacClient } from "./api/bazodiacClient";
+import { BazodiacClient, getUserFacingErrorTitle, getUserFacingRequestMessage } from "./api/bazodiacClient";
 import { ProfileViewModel } from "./viewmodels/profileViewModel";
 
 import PageShell from "./components/PageShell";
@@ -9,7 +9,7 @@ import Overview from "./components/Overview";
 import WesternAstrology from "./components/WesternAstrology";
 import BaZiDetail from "./components/BaZiDetail";
 import WuXingDetail from "./components/WuXingDetail";
-import FusionDetail from "./components/FusionDetail";
+import TensionNavigator from "./components/TensionNavigator";
 import DailyPulse from "./components/DailyPulse";
 import Synastry from "./components/Synastry";
 import Methodology from "./components/Methodology";
@@ -22,6 +22,8 @@ export default function App() {
   const [viewModel, setViewModel] = React.useState<ProfileViewModel | null>(null);
   const [loading, setLoading] = React.useState<boolean>(false);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
+  const [errorTitle, setErrorTitle] = React.useState<string>("Profil konnte nicht geladen werden");
+  const [errorCode, setErrorCode] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!birthData) return;
@@ -29,12 +31,18 @@ export default function App() {
     const loadProfile = async () => {
       setLoading(true);
       setErrorMsg(null);
+      setErrorTitle("Profil konnte nicht geladen werden");
+      setErrorCode(null);
       try {
         const compiled = await BazodiacClient.fetchProfile(birthData);
         if (active) setViewModel(compiled);
       } catch (err: any) {
         console.error("Failed to compile profile via client:", err);
-        if (active) setErrorMsg(err.message || "Fehler beim Laden des kosmischen Profils.");
+        if (active) {
+          setErrorTitle(getUserFacingErrorTitle(err));
+          setErrorMsg(getUserFacingRequestMessage(err));
+          setErrorCode(err?.code ?? null);
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -52,7 +60,7 @@ export default function App() {
 
   const renderTab = () => {
     if (activeTab === "input") {
-      return <InputForm birthData={birthData} onCalculate={handleCalculate} />;
+      return <InputForm birthData={birthData} onCalculate={handleCalculate} timeError={errorCode === "invalid_birth_time_dst" ? errorMsg : null} />;
     }
 
     if (loading) {
@@ -75,7 +83,7 @@ export default function App() {
     if (errorMsg) {
       return (
         <div className="flex-grow flex flex-col items-center justify-center p-12 text-center space-y-4">
-          <div className="text-red-400 font-serif text-3xl font-bold">Kosmische Verbindung offline</div>
+          <div className="text-red-400 font-serif text-3xl font-bold">{errorTitle}</div>
           <p className="text-sm text-stone-400 max-w-md font-sans" data-testid="profile-error">{errorMsg}</p>
           <div className="flex gap-3">
             {birthData && (
@@ -123,7 +131,7 @@ export default function App() {
       case "western": return <WesternAstrology viewModel={viewModel} />;
       case "bazi": return <BaZiDetail viewModel={viewModel} />;
       case "wuxing": return <WuXingDetail viewModel={viewModel} />;
-      case "fusion": return <FusionDetail viewModel={viewModel} />;
+      case "fusion": return <TensionNavigator viewModel={viewModel} />;
       case "daily": return <DailyPulse viewModel={viewModel} birthData={birthData} />;
       case "synastry": return <Synastry viewModel={viewModel} birthData={birthData} />;
       case "methode": return <Methodology viewModel={viewModel} />;

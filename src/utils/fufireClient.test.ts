@@ -19,6 +19,7 @@ beforeEach(() => {
   process.env.FUFIRE_API_URL = "https://fufire.example.com";
   process.env.FUFIRE_API_KEY = "secret-key-123";
   process.env.FUFIRE_API_VERSION = "v1";
+  delete process.env.FUFIRE_API_PATH_PREFIX;
   process.env.REQUEST_TIMEOUT_MS = "12000";
 });
 
@@ -47,25 +48,53 @@ describe("FuFirEClient configuration", () => {
 });
 
 describe("FuFirEClient request shape", () => {
-  it("posts to versioned /v1/chart with X-API-Key header and JSON body", async () => {
+  it("posts to UNPREFIXED /chart (engine mounts chart outside /v1) with X-API-Key header and JSON body", async () => {
     const fetchMock = mockFetchOnce(200, { ok: true });
     const payload = { local_datetime: "1990-01-01T12:00:00", tz_id: "Europe/Berlin", geo_lat_deg: 52.5, geo_lon_deg: 13.4 };
     await FuFirEClient.postChart(payload as any);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, opts] = fetchMock.mock.calls[0];
-    expect(url).toBe("https://fufire.example.com/v1/chart");
+    expect(url).toBe("https://fufire.example.com/chart");
     expect(opts.method).toBe("POST");
     expect(opts.headers["X-API-Key"]).toBe("secret-key-123");
     expect(opts.headers["Content-Type"]).toBe("application/json");
     expect(JSON.parse(opts.body)).toEqual(payload);
   });
 
-  it("uses configurable version prefix", async () => {
-    process.env.FUFIRE_API_VERSION = "v2";
+  it("chart stays unprefixed even with explicit FUFIRE_API_PATH_PREFIX", async () => {
+    process.env.FUFIRE_API_PATH_PREFIX = "v2";
+    const fetchMock = mockFetchOnce(200, {});
+    await FuFirEClient.postChart({} as any);
+    expect(fetchMock.mock.calls[0][0]).toBe("https://fufire.example.com/chart");
+  });
+
+  it("other endpoints keep the /v1 prefix (chart is the only exception)", async () => {
+    const fetchMock = mockFetchOnce(200, {});
+    await FuFirEClient.postBazi({} as any);
+    expect(fetchMock.mock.calls[0][0]).toBe("https://fufire.example.com/v1/calculate/bazi");
+  });
+
+  it("keeps release labels out of upstream routes", async () => {
+    process.env.FUFIRE_API_VERSION = "1.0.0-rc1-20260220";
+    const fetchMock = mockFetchOnce(200, {});
+    await FuFirEClient.postBazi({} as any);
+    expect(fetchMock.mock.calls[0][0]).toBe("https://fufire.example.com/v1/calculate/bazi");
+  });
+
+  it("uses explicit FUFIRE_API_PATH_PREFIX for upstream routes", async () => {
+    process.env.FUFIRE_API_VERSION = "1.0.0-rc1-20260220";
+    process.env.FUFIRE_API_PATH_PREFIX = "v2";
     const fetchMock = mockFetchOnce(200, {});
     await FuFirEClient.postBazi({} as any);
     expect(fetchMock.mock.calls[0][0]).toBe("https://fufire.example.com/v2/calculate/bazi");
+  });
+
+  it("supports legacy FUFIRE_API_VERSION=v1 as the /v1 route prefix", async () => {
+    process.env.FUFIRE_API_VERSION = "/v1";
+    const fetchMock = mockFetchOnce(200, {});
+    await FuFirEClient.postWestern({} as any);
+    expect(fetchMock.mock.calls[0][0]).toBe("https://fufire.example.com/v1/calculate/western");
   });
 
   it("does NOT leak the api key into thrown error messages", async () => {
@@ -102,9 +131,19 @@ describe("FuFirEClient error mapping", () => {
     await expect(FuFirEClient.postChart({} as any)).rejects.toMatchObject({ code: "fufire_auth_failed" });
   });
 
+  it("maps 400 to invalid_fufire_payload", async () => {
+    mockFetchOnce(400, {});
+    await expect(FuFirEClient.postChart({} as any)).rejects.toMatchObject({ code: "invalid_fufire_payload" });
+  });
+
   it("maps 422 to invalid_fufire_payload", async () => {
     mockFetchOnce(422, {});
     await expect(FuFirEClient.postChart({} as any)).rejects.toMatchObject({ code: "invalid_fufire_payload" });
+  });
+
+  it("maps 404 to fufire_route_not_found", async () => {
+    mockFetchOnce(404, {});
+    await expect(FuFirEClient.postChart({} as any)).rejects.toMatchObject({ code: "fufire_route_not_found" });
   });
 
   it("maps 429 to fufire_rate_limited", async () => {
@@ -146,5 +185,23 @@ describe("FuFirEClient error mapping", () => {
     expect(err).toBeInstanceOf(FuFirEError);
     expect(typeof err.httpStatus).toBe("number");
     expect(err.httpStatus).toBeGreaterThanOrEqual(500);
+  });
+
+  it("maps 422 mit type=dst_error auf invalid_birth_time_dst (400, klare Anleitung)", async () => {
+    const dstBody = (await import("../__fixtures__/fufire/chart-422-dst.json")).default;
+    mockFetchOnce(422, dstBody);
+    const err = await FuFirEClient.postChart({} as any).catch((e) => e);
+    expect(err.code).toBe("invalid_birth_time_dst");
+    expect(err.httpStatus).toBe(400);
+    expect(err.message).toContain("existiert am Umstellungstag nicht");
+    expect(err.message).toContain("vor 02:00 oder nach 03:00");
+  });
+
+  it("422 OHNE dst_error bleibt invalid_fufire_payload (502)", async () => {
+    mockFetchOnce(422, { error: "validation_error", detail: { errors: [] } });
+    await expect(FuFirEClient.postChart({} as any)).rejects.toMatchObject({
+      code: "invalid_fufire_payload",
+      httpStatus: 502
+    });
   });
 });

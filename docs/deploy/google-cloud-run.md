@@ -43,7 +43,7 @@ gcloud run deploy "$SERVICE" \
   --source=. \
   --allow-unauthenticated \
   --port=8080 \
-  --set-env-vars="NODE_ENV=production,APP_URL=https://<your-cloud-run-url>,FUFIRE_API_URL=https://<fufire-host>,FUFIRE_API_VERSION=v1,REQUEST_TIMEOUT_MS=12000,ENABLE_LOCAL_ASTROLOGY_FALLBACK=false,ENABLE_DEMO_PROFILES=false" \
+  --set-env-vars="NODE_ENV=production,APP_URL=https://<your-cloud-run-url>,FUFIRE_API_URL=https://<fufire-host>,FUFIRE_API_PATH_PREFIX=v1,FUFIRE_API_VERSION=,REQUEST_TIMEOUT_MS=12000,ENABLE_LOCAL_ASTROLOGY_FALLBACK=false,ENABLE_DEMO_PROFILES=false" \
   --set-secrets="FUFIRE_API_KEY=FUFIRE_API_KEY:latest,GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest"
 ```
 
@@ -99,7 +99,8 @@ GitHub repo **Variables** (Settings → Secrets and variables → Actions → Va
 | `GCP_SERVICE_ACCOUNT` | `gh-deployer@your-project.iam.gserviceaccount.com` |
 | `APP_URL` | `https://bazodiac-xxxx.run.app` |
 | `FUFIRE_API_URL` | `https://<fufire-host>` |
-| `FUFIRE_API_VERSION` | `v1` |
+| `FUFIRE_API_PATH_PREFIX` | `v1` |
+| `FUFIRE_API_VERSION` | optional release label only (leave empty unless needed for display) |
 
 The FuFirE/Google/Gemini **keys live in Secret Manager only** (above) and are mapped
 via `--set-secrets`. No secret is stored in GitHub or baked into the image.
