@@ -36,16 +36,18 @@ die v1-Bestätigung verfällt, bis der User v2 re-bestätigt.
 - **B — Engagement-Signal (Challenger + Critic, unabhängig):** alle Erfolgssignale waren
   test-grün; nichts misst, ob Karten geklickt werden. **Adoptiert:** ein leichtes
   `card_click`/`layer_open`-Analytics-Event in Task 3 + ein Verhaltens-Smoke-Ziel
-  (≥1 Layer-Open im Beta-Smoke). Owner des Engagement-Signals wird benannt (Team-Lücke geschlossen).
+  (≥1 Layer-Open im Beta-Smoke). Owner des Engagement-Signals = **Benjamin** (User-bestätigt 2026-06-13; Team-Lücke geschlossen).
 - **C — Scope:** Council empfahl Wedge (zodiac+houses zuerst). **User-Entscheidung: NICHT adoptiert
   — volle 55 Texte in einem PR.** Der Split-PR bleibt nur Zeitdruck-Ventil (wie v1), nicht Default.
 
 **Ohne Rückfrage gehärtet (in-scope, kein Request-Change — fließt in PRD-Acceptance/NFR):**
 - **D — Anti-Reifikation semantisch:** der Review-Agent prüft alle 55 Texte gegen verbotene
   *Bedeutung* (z. B. „prägt dich", „bestimmt dich"), nicht nur die Literal-Token der Regex.
-- **E — Astro-Noctum-Pivot-Gate:** findet Task 1 für ≥2 ganze Domänen keine Quelltexte, ist das
-  ein „nicht wie spezifiziert fortfahren"-Zustand → an den User eskalieren (kein stiller
-  Erfind-durch-Umlabeln-Sprint).
+- **E — Astro-Noctum-Quell-Posture (User-Entscheidung 2026-06-13):** fehlende Quelltexte (auch
+  ≥2 Domänen) → KURATIEREN statt Stoppen; jede kuratierte Domäne in `content-sources.md` als
+  `kuratiert` geflaggt, jeder Text `source:"curated"`, Per-Text-Semantik-Sign-off (Amendment D)
+  + Benjamin-PR-Review. Schutz gegen Erfind-durch-Umlabeln = Flag + Semantik-Review + menschliche
+  PR-Abnahme (kein Pause-Stop, kein stilles Umlabeln).
 
 ---
 
