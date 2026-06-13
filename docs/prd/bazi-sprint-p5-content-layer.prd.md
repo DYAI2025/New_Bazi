@@ -2,6 +2,7 @@
 
 **Feature-Slug:** bazi-sprint-p5-content-layer
 **Status:** user-confirmed
+<!-- Status: user-confirmed -->
 **Confirmed by user:** yes — "GO" (2026-06-13, Vision-GO-Gate; PRD+Vision+Canvas v3 confirmed)
 **Erstellt:** 2026-06-13
 **Canvas-Link:** docs/canvas/bazi-sprint-p5-content-layer.canvas.md (Status: user-confirmed, v2 re-bestätigt 2026-06-13 post-Council)

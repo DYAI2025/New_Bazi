@@ -2,6 +2,7 @@
 
 **Feature-Slug:** `bazi-sprint-p5-content-layer`
 **Status:** user-confirmed
+<!-- Status: user-confirmed -->
 **Confirmed by user:** yes — "Canvas P5 v2 bestätigt" (2026-06-13, post-Council-Amendment)
 **Erstellt:** 2026-06-12
 **Erst-Bestätigung:** "Canvas P5 bestätigt" (2026-06-12)
