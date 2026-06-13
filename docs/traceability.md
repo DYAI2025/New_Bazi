@@ -16,7 +16,7 @@ links back to the source artifacts.
 - Canvas: [docs/canvas/bazi-sprint-p5-content-layer.canvas.md](canvas/bazi-sprint-p5-content-layer.canvas.md) — `Status: user-confirmed` (v2 + BLOCKER-1 correction, re-confirmed 2026-06-13)
 - PRD: [docs/prd/bazi-sprint-p5-content-layer.prd.md](prd/bazi-sprint-p5-content-layer.prd.md) — `Status: user-confirmed` (full matrix REQ-P5-001..010 with all six canvas-* fields, evidence-class, wired-in-prod?, true-line-status)
 - Vision: [docs/vision/bazi-sprint-p5-content-layer.vision.md](vision/bazi-sprint-p5-content-layer.vision.md) — `Status: user-confirmed`
-- Source coverage gate (T1): [docs/contracts/content-sources.md](contracts/content-sources.md) — 43 port / 12 reuse / 0 curate
+- Source coverage gate (T1): [docs/contracts/content-sources.md](contracts/content-sources.md) — 43 port / 12 reuse / **0 invent-from-scratch**. (Two distinct axes: the T1 *disposition* `curate`=no-source-exists=**0**; the registry `source` field is a 2-value enum {astro-noctum | curated}, so the 12 **reuse**-and-expand house entries ship `source:"curated"` — they are New_Bazi's own templates expanded, NOT invented and NOT 1:1 AN ports.)
 - Allowed change list: see `docs/scope/` JSON for this feature (consumed by the PRIL scope guard)
 
 | REQ | Task | Test (real) | evidence-class | wired-in-prod? | canvas-link | true-line-status |
@@ -29,10 +29,10 @@ links back to the source artifacts.
 | REQ-P5-006 | T5 | BaZiDetail pillar deepening; branch hiddenStems render (existing realshapes.test.ts:103 proves non-empty) | unit + real-boundary | ja | canvas §4/§8 | aligned |
 | REQ-P5-007 | T5 | Hidden-Stems already works (canonical EARTHLY_BRANCHES); honest empty-state only for unresolvable defaultBranch | real-boundary | ja | canvas Amendment A | aligned |
 | REQ-P5-008 | T4 | WesternAstrology houses deepening; P4 timeKnown:false → note only; P1 label regression stays green | unit + e2e | ja | canvas §4 | aligned |
-| REQ-P5-009 | T3 | analytics card_click/layer_open event spy + beta-smoke ≥1 open; owner = Benjamin | real-boundary-smoke | ja (event live) | canvas §4 (Amendment B) | value-risk→aligned when event live |
-| REQ-P5-010 | T6 | gates (lint/test/build/playwright) + live-smoke 2 open layers + MISSING list | production-verified (live-smoke) | ja | canvas §5 | aligned |
+| REQ-P5-009 | T3 | analytics card_click/layer_open event spy (unit) + beta-smoke ≥1 open; owner = Benjamin | real-boundary-smoke (local) | event fires locally; **beta-smoke ≥1 PENDING** | canvas §4 (Amendment B) | value-risk — beta-smoke not yet run |
+| REQ-P5-010 | T6 | gates (lint/test/build/playwright) all green + MISSING list; live-smoke 2 open layers PENDING deploy | real-boundary-smoke (local) — **production-verified PENDING deploy** | local only; prod PENDING merge+deploy | canvas §5 | PENDING live-smoke (not yet production-verified) |
 
 Anti-reification (NFR-01, Amendment D): every one of the 55 texts passes the literal-token
 regex AND a per-text semantic sign-off (forbidden meaning, not just words). Astro-Noctum
 (NFR-06, Amendment E): missing source → curate, flagged `source:"curated"` + sign-off +
-Benjamin PR review (T1 found 0 curation needed).
+Benjamin PR review. (T1 found **0 domains lacking a source** — nothing had to be invented from scratch; the 12 house entries are reuse+expand of New_Bazi's own HOUSE_TEMPLATES, flagged `source:"curated"` because the registry enum has no separate "reuse" value.)

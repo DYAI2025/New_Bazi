@@ -187,8 +187,11 @@ benötigt Längen- + Voice-Kuratierung (auf 60–120 W, neutral-deskriptiv).
 
 ## Kuratierungs-Last (Effort-Signal für T2)
 
-- **Curate-Count (echte Neukuratierung, `source:"curated"`): 0.** Für keinen der 55 Einträge fehlt eine Quelle
-  komplett. Es muss kein Text from-scratch erfunden werden.
+- **Invent-from-scratch-Count (Disposition `curate` = Quelle fehlt komplett): 0.** Für keinen der 55 Einträge fehlt
+  eine Quelle; kein Text wird aus dem Kopf erfunden. **Achtung — zwei verschiedene Achsen:** das Registry-Feld
+  `source` ist ein 2-Wert-Enum `{astro-noctum | curated}`. Die 12 **reuse**-Einträge (houses) tragen deshalb
+  `source:"curated"` (das Enum hat keinen eigenen `reuse`-Wert) — sie sind New_Bazi-eigene HOUSE_TEMPLATES,
+  erweitert/voiced, **nicht** from-scratch erfunden. „0 curate" (Disposition) ≠ „source:curated"-Feld (= 12).
 - **Domains, die mehrheitlich/komplett `curate` sind: KEINE.** Die einzige Domain mit `domainQuality: "fehlt"` ist
   **houses**, aber „fehlt" bezieht sich dort nur auf **fehlende AN-PORT-Prosa** — eine vollständige New_Bazi-`reuse`-Basis
   existiert. houses ist damit **reuse-heavy, nicht curate-heavy**.
