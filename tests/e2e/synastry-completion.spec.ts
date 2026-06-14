@@ -36,12 +36,12 @@ async function runSynastry(page: Page) {
   await expect(page.getByTestId("synastry-source")).toBeVisible({ timeout: 15000 });
 }
 
-test("score is demoted to a heuristic 'Kohärenz-Index' with a 'kein Messwert' note", async ({ page }) => {
+test("score is demoted to a heuristic 'Primus-Aspectus (PA)' with a 'kein Messwert' note", async ({ page }) => {
   await page.goto("/");
   await computeProfile(page);
   await runSynastry(page);
 
-  await expect(page.getByText("Kohärenz-Index").first()).toBeVisible();
+  await expect(page.getByText(/Primus-Aspectus/).first()).toBeVisible();
   // The old authoritative label must be gone.
   await expect(page.getByText("Harmonie-Wert")).toHaveCount(0);
   await expect(page.getByTestId("synastry-score-note")).toContainText(/kein Messwert/i);

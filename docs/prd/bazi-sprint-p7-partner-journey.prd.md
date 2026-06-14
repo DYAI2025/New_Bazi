@@ -39,10 +39,12 @@ present in fixtures; no new FuFirE endpoint needed.
 **Resolved at the USER GATE (2026-06-14):**
 - **D-SCOPE = full 4-layer journey** (user confirmed full scope; the `ungeprüft` couple-engagement
   risk is carried, not promoted).
-- **D-SCORE = keep the number, visually subordinate, rename "Harmonie-Wert" → "Kohärenz-Index"**,
-  add the "kein Messwert / keine Beziehungsdiagnose" note (REQ-F-006 label updated from the plan's
-  "Heuristischer Gesamteindruck" to the user's "Kohärenz-Index"). ⚠ Naming collision with the
-  existing natal fusion "Kohärenz-Index" (`fusion-coherence-*`) flagged to the user for veto.
+- **D-SCORE = keep the number, visually subordinate, rename "Harmonie-Wert" → "Primus-Aspectus (PA)"**,
+  add the "kein Messwert" note (REQ-F-006 label: plan's "Heuristischer Gesamteindruck" → user's final
+  "Primus-Aspectus (PA)", chosen 2026-06-14). The earlier interim name "Kohärenz-Index" collided with
+  the natal calibrated *Kohärenzindex*; **renaming to Primus-Aspectus RESOLVES that collision** (no
+  "Kohärenz" term in the synastry path). PA = a deliberately surface "first-glance" read of the two
+  main character symbols (BaZi day-master element + sun-sign element), not a calibrated metric.
 - **GO = CORE** mode.
 
 ## Drifts to handle during build (TASK-000)

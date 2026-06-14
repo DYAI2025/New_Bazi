@@ -23,7 +23,7 @@ derived from the two already-resolved profile ViewModels; **no new FuFirE endpoi
 | REQ-F-003 | BaZi pillar compare: stem Sheng/Ke + branch San-He/Liu-He/Chong | unit + e2e |
 | REQ-F-004 | WuXing element mirror for both people | e2e |
 | REQ-F-005 | Five pair pole-axes from signed elementalComparison | unit + e2e |
-| REQ-F-006 | Score demoted to heuristic "Kohärenz-Index" + "kein Messwert" note | e2e |
+| REQ-F-006 | Score demoted to heuristic "Primus-Aspectus (PA)" + "kein Messwert" note | e2e |
 | REQ-F-007 | Guided partner journey UI (sequence, not data dump) | e2e + review |
 | REQ-D-001 | Missing data → null/[]/visible missing-state, never fake | unit + e2e |
 | REQ-D-002 | Every interpretation names a data anchor | unit + e2e |
@@ -48,7 +48,7 @@ derived from the two already-resolved profile ViewModels; **no new FuFirE endpoi
 - T4 — `pairAspectInterpretation` (+7) + `content/pairAxisTexts.ts` (10 texts).
 - T5 — `derivePairAxes` (5 pole-axes from signed differences). +7 tests.
 - T6 — server response additive fields + client `SynastryResponse` types. 2 server tests.
-- T7 — score relabel "Harmonie-Wert"→"Kohärenz-Index", "Match"→"Vergleich", "kein Messwert" note.
+- T7 — score relabel "Harmonie-Wert"→"Primus-Aspectus (PA)", "Match"→"Vergleich", "kein Messwert" note.
 - T8 — `PartnerJourney.tsx`: axes / inter-aspects / pillars / element-mirror + journey header + next-question.
 - T9 — anti-claim scanner: `src/__tests__/synastryWording.test.ts` (widened reifiers; runtime copy + comment-stripped chrome).
 - T10 — e2e: `mock-fufire.mjs` PARTNER_CHART variant pillars (San-He Jahr, Chong Tag) + `synastry-completion.spec.ts` + `e2e` npm script.
@@ -71,7 +71,7 @@ Unit: interAspects (aspect types/orbs/sort/filter), baziCompare (all triads/pair
 derivePairAxes (harmonie/reibung/ausgeglichen/missing), pairAxisTexts (10 unique), ascendantLongitude
 (real→number, missing→null), synastryWording (widened). Server: additive fields present, missing→[],
 no extra engine call, backward-compat. E2E: full partner journey, ≥3 inter-aspects, 4 pillars incl
-San-He+Chong, 5 element rows, 5 pair axes incl one opposite-lean, Kohärenz-Index + note, widened
+San-He+Chong, 5 element rows, 5 pair axes incl one opposite-lean, Primus-Aspectus (PA) + note, widened
 forbidden-copy rendered scan. Gates A–E + human acceptance + post-merge live-smoke.
 
 ## MISSING (carried, not laundered)
@@ -82,7 +82,7 @@ Railway live-smoke. e2e exercises a deterministic fixture engine, so couple data
 output is not yet observed (carried as `ungeprüft`).
 
 ## Open value-risks surfaced to the user (PR)
-- "Kohärenz-Index" naming collision with the natal calibrated *Kohärenzindex* (user's explicit
-  D-SCORE label choice — veto/rename at the user's discretion).
+- Score name = "Primus-Aspectus (PA)" (user-chosen 2026-06-14). The interim "Kohärenz-Index"
+  collided with the natal *Kohärenzindex*; the rename resolved it.
 - `derivePairAxes` shape divergence from the 2026-06-11 Annex §5 (`leanA/B` pole-strings +
   "ausgeglichen" + `magnitude`) — defensible improvement, for user ratification.

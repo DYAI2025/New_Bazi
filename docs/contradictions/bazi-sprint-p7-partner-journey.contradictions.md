@@ -35,9 +35,9 @@
 
 ## Open value-risk carried to the user (not a contradiction, surfaced not laundered)
 
-- **"Kohärenz-Index" naming collision** with the natal calibrated *Kohärenzindex* (same word, same
-  %-gauge, opposite epistemic status). This is the user's explicit D-SCORE label choice (2026-06-14)
-  — flagged at the gate and in the PR for the user to veto/rename; not self-reclassified.
+- **"Kohärenz-Index" naming collision** with the natal calibrated *Kohärenzindex* — **RESOLVED
+  2026-06-14**: the user renamed the synastry score to **"Primus-Aspectus (PA)"** after the collision
+  was explained. No "Kohärenz" term remains in the synastry path; the collision is gone.
 - **derivePairAxes shape divergence** from the 2026-06-11 plan Annex §5 (`leanA/B` pole-strings +
   "ausgeglichen" bucket + `magnitude` vs the plan's `"a"|"b"`): a defensible improvement, surfaced
   in the PR for user ratification.

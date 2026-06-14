@@ -5,7 +5,7 @@
 
 **Feature slug:** `bazi-sprint-p7-partner-journey`
 **Status:** user-confirmed  ·  **Confirmed by user:** yes (2026-06-14)
-**User decisions (2026-06-14):** D-SCOPE = full 4-layer journey · D-SCORE = keep number, subordinate, rename "Harmonie-Wert" → "Kohärenz-Index" + "kein Messwert" note (collision-with-natal-Kohärenz-Index flagged to user) · GO CORE.
+**User decisions (2026-06-14):** D-SCOPE = full 4-layer journey · D-SCORE = keep number, subordinate, rename "Harmonie-Wert" → "Primus-Aspectus (PA)" + "kein Messwert" note (user-chosen 2026-06-14 after the natal-"Kohärenzindex" collision was explained; PA avoids the collision) · GO CORE.
 **PRD:** `docs/prd/bazi-sprint-p7-partner-journey.prd.md`
 **Vision:** `docs/vision/bazi-sprint-p7-partner-journey.vision.md`
 **Reference plan (PRD-equivalent):** `docs/plans/2026-06-14-sprint-p7-partner-journey.md`

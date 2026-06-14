@@ -24,7 +24,7 @@ links back to the source artifacts.
 - canvas-target-user: the couple-curious entertainment/reflection user (Canvas §2)
 - canvas-value-claim: a data-anchored partner field — inter-aspects, pillar relations, element mirror, pair pole-axes; each anchored, each reflection not verdict (Canvas §4)
 - canvas-success-signal: page read as a sequence; every interpretation visibly anchored; missing-states visible; zero anti-reification/pair-claim regex hits; live-smoke clean (Canvas §5)
-- canvas-risk-status: **aligned** for all REQ (council reification risks R1–R4 mitigated by the widened scanner + per-section framing + score demotion; "Kohärenz-Index" natal-collision flagged to user, not a non-goal violation)
+- canvas-risk-status: **aligned** for all REQ (council reification risks R1–R4 mitigated by the widened scanner + per-section framing + score demotion; the interim "Kohärenz-Index" name was renamed by the user to "Primus-Aspectus (PA)" — natal-collision resolved)
 
 | REQ | Task | Test (real) | evidence-class | wired-in-prod? | true-line-status |
 |-----|------|-------------|----------------|----------------|------------------|
@@ -33,7 +33,7 @@ links back to the source artifacts.
 | REQ-F-003 pillar compare | T3/T6 | baziCompare.test.ts (35) + e2e pillar-compare-card (San-He/Chong) | real-boundary-smoke | ja | aligned |
 | REQ-F-004 element mirror | T8 | e2e synastry-elements 5 rows (Gold=A/Blau=B) | real-boundary-smoke | ja | aligned |
 | REQ-F-005 pair axes | T5/T6 | tensionPair.test.ts derivePairAxes (7) + app.test.ts pairAxes + e2e 5 cards/1 reibung | real-boundary-smoke | ja | aligned |
-| REQ-F-006 score → Kohärenz-Index | T7 | e2e: "Kohärenz-Index" + "kein Messwert" note, old "Harmonie-Wert" gone | real-boundary-smoke | ja | aligned |
+| REQ-F-006 score → Primus-Aspectus (PA) | T7 | e2e: "Primus-Aspectus" + "kein Messwert" note, old "Harmonie-Wert" gone | real-boundary-smoke | ja | aligned |
 | REQ-F-007 partner journey UI | T8 | e2e: journey-header + axes/aspects/pillars/elements + next-question | real-boundary-smoke | ja | aligned |
 | REQ-D-001 missing → null/[] | T6/T8 | app.test.ts (FULL_CHART → comparison/pairAxes []) + PartnerJourney empty-states | unit + real-boundary | ja | aligned |
 | REQ-D-002 data anchors | T4/T9 | synastryWording.test.ts + pairAxisTexts/baziCompare anchor tests + e2e anchor lines | unit + real-boundary | ja | aligned |

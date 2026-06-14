@@ -238,7 +238,7 @@ export default function Synastry({ viewModel, birthData }: SynastryProps) {
                   </div>
 
                   <div className="flex-grow space-y-1 font-sans">
-                    <span className="font-mono text-[9px] uppercase tracking-widest text-[#D4AF37] font-bold">Kohärenz-Index</span>
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-[#D4AF37] font-bold">Primus-Aspectus (PA)</span>
                     <h5 className="font-serif text-md font-bold text-slate-100">
                       {synastryResult.userRef.name} <ArrowRight className="inline h-4 w-4 mx-1 text-[#D4AF37]" /> {synastryResult.partnerRef.name}
                     </h5>
