@@ -44,8 +44,10 @@ mystique ("TRANSCENDENT CLARITY"/"Luxury … Harmony Engine"/"KOSMISCHES SPEKTRU
 first viewport (Vision contradiction + R4 coverage gap). Re-aligned: shell copy de-mystified +
 `redesignWording.test.ts` extended to scan PageShell/InputForm (R4 now enforced, 4/4). See
 `docs/contradictions/bazodiac-redesign.contradictions.md`. Gate-C "scanner flakiness" was a false alarm
-(parallel-panel mutation race), not a defect. `previewFromTension` + `leanColor` were trimmed (code-review,
-unused on the demo-only landing). REQ-RD-O-001 is now **production-verified** (RD-7 live-smoke).
+(parallel-panel mutation race), not a defect. `previewFromTension` + `leanColor` remain implemented +
+unit-tested as the §5.3 `computed`-mode / polar contracts but are **not yet wired** into the rendered
+landing (a code-review trim was reverted to preserve the contracts for a future personalized landing).
+REQ-RD-O-001 is now **production-verified** (RD-7 live-smoke).
 **Live-smoke finding (RD-7):** the static `index.html` head still carried the old "Luxury Astrology" title +
 `lang="en"` (a mystique surface the de-mystification missed) → fixed to a calc-not-claim title + `lang="de"`
 + anti-reification meta description. Pre-existing PageShell header overflow at mobile-360 logged as follow-up #58.

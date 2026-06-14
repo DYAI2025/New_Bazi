@@ -58,4 +58,24 @@ describe("redesign wording (RD-5) — anti-reification", () => {
       expect(hit, `surviving mystique "${hit?.[0]}" in components/${rel}`).toBeNull();
     }
   });
+
+  // RD-7 live-smoke regression guard: the mystique once survived in the STATIC index.html
+  // <head> ("Luxury Astrology", lang="en") because the React-copy scanners above never read it.
+  // NOTE: "Kein Horoskop" is a legit anti-reification negation in the description → the mystique
+  // set deliberately omits "horoskop" so this stays a true-positive guard, not a false alarm.
+  it("the static index.html head carries a real, non-mystique title + de locale (RD-7)", () => {
+    const HEAD_MYSTIQUE = /transcendent|\bluxury\b|harmony engine|kosmisches spektrum|planetengrid|metaphysisch|wahres ich|\bschicksal\b/i;
+    const html = readFileSync(join(__dirname, "..", "..", "index.html"), "utf8");
+
+    const title = html.match(/<title>([^<]*)<\/title>/i)?.[1] ?? "";
+    expect(title.trim().length, "index.html <title> must be non-empty").toBeGreaterThan(0);
+    expect(title, `mystique in <title>: "${title}"`).not.toMatch(HEAD_MYSTIQUE);
+
+    const head = html.match(/<head>([\s\S]*?)<\/head>/i)?.[1] ?? "";
+    const hit = head.match(HEAD_MYSTIQUE);
+    expect(hit, `mystique "${hit?.[0]}" in index.html <head>`).toBeNull();
+
+    // the document language must track the (predominantly German) app, not a stale en
+    expect(html, "<html> must declare lang=\"de\"").toMatch(/<html[^>]*\blang="de"/i);
+  });
 });
