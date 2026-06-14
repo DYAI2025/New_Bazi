@@ -43,9 +43,3 @@ export function blend(t: number): string {
   const blue = [39, 200, 238];
   return `#${hex(blue[0] + (gold[0] - blue[0]) * t)}${hex(blue[1] + (gold[1] - blue[1]) * t)}${hex(blue[2] + (gold[2] - blue[2]) * t)}`;
 }
-
-/** Node colour from lean ("a"=Gold/West, "b"=Blau/BaZi) + strength [0,1]. */
-export function leanColor(lean: "a" | "b", strength: number): string {
-  const direction = lean === "a" ? 1 : -1;
-  return blend(0.5 + direction * clamp(strength, 0, 1) * 0.5);
-}

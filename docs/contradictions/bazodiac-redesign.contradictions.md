@@ -32,10 +32,14 @@
   to prove the scanner bites, then reverted) racing Gate C's read in the **parallel** panel. On the
   clean tree the scanner is deterministic — verified green 3/3 twice, then 4/4 after the shell extension.
   "du bist" exists only in `engineBento.test.ts` (a `.test.ts`, which the scanner does not read).
-- **`previewFromTension` is implemented-but-not-wired** (code-review medium): it is the brief's
-  §5.3 `computed`/`fufire-viewmodel` data-model contract for a future returning-user personalized
-  landing; the current landing is demo-only (no profile pre-input). Kept + unit-tested as the contract;
-  surfaced here as not-yet-wired, NOT claimed as used.
+- **`previewFromTension` + `leanColor` TRIMMED** (code-review /code-review-excellence): both were
+  exported + unit-tested but unused on the demo-only landing → removed (YAGNI) to kill the
+  "looks-done-isn't" surface. The `computed` mode stays only as a TYPE for a future returning-user
+  personalized landing; git history preserves the mapper for re-add.
+- **SVG colors hardened** (code-review important): FusionHero migrated from `fill="var(--…)"`
+  presentation attributes to Tailwind `fill-*`/`stroke-*` classes (CSS `fill: var()` — reliably
+  supported); secondary axes now rendered distinctly. Removes the green-while-paint-absent risk
+  (still confirmed visually in the post-merge live-smoke).
 - **Geometry is a pinned duplicate, not a true extraction** (council R2 wording, Gate C/E low):
   `polar.ts` re-houses TensionNavigator's geometry **byte-identical** + `polar.test.ts` pins it; the
   shipped `TensionNavigator.tsx` (out of the redesign scope) keeps its own copy. Deliberate (avoid

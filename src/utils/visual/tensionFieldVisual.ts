@@ -1,8 +1,7 @@
-import type { TensionState } from "../tensionNavigator";
-
-// FusionHero preview state (RD-2). Pure: maps a real TensionState (or its absence) to the
-// minimal shape the hero renders. The landing has no profile yet → demo/missing modes carry
-// NO fabricated personalized values; `demo` is visibly labelled at the call site.
+// FusionHero preview state (RD-2). The landing has no profile → it renders the static `demo`
+// (or `missing`) state; NO fabricated personalized values. The `computed` mode + a
+// TensionState→preview mapper were trimmed (code-review: unused on a demo-only landing); the
+// type keeps the mode so a future returning-user personalized landing can re-add the mapper.
 
 export type TensionAxisId =
   | "structure_flow"
@@ -55,16 +54,3 @@ export function missingPreview(): TensionPreviewState {
   };
 }
 
-/** Map a real computed TensionState → preview. Null (no usable tension) → missing. */
-export function previewFromTension(state: TensionState | null): TensionPreviewState {
-  if (!state || !state.activeAxis) return missingPreview();
-  const activeAxis = state.activeAxis.id as TensionAxisId;
-  return {
-    mode: "computed",
-    activeAxis,
-    signalLevel: state.signalLevel as PreviewSignal,
-    secondaryAxes: state.secondaries.map((s) => s.id as TensionAxisId),
-    question: AXIS_QUESTION[activeAxis] ?? null,
-    source: "fufire-viewmodel",
-  };
-}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { polar, curvePath, clamp, blend, leanColor } from "./polar";
+import { polar, curvePath, clamp, blend } from "./polar";
 
 // Pins the re-housed FusionHero geometry to the SAME output as TensionNavigator's
 // originals (CX/CY 360, R 240). If either copy drifts, these + the tension-navigator
@@ -46,9 +46,4 @@ describe("polar geometry (FusionHero, re-housed from TensionNavigator)", () => {
     expect(clamp(0.3, 0, 1)).toBe(0.3);
   });
 
-  it("leanColor: a→toward Gold, b→toward Blau, strength scales", () => {
-    expect(leanColor("a", 1)).toBe(blend(1)); // full Gold lean
-    expect(leanColor("b", 1)).toBe(blend(0)); // full Blau lean
-    expect(leanColor("a", 0)).toBe(blend(0.5)); // no strength → neutral
-  });
 });

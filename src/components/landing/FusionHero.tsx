@@ -37,41 +37,48 @@ export default function FusionHero({
     <div data-testid="fusion-hero" className="relative w-full">
       <div className="relative mx-auto max-w-[560px]">
         <svg viewBox="0 0 720 720" className="w-full h-auto" role="img" aria-label="Bazodiac Spannungsfeld — ein aktives Spannungspaar">
-          {/* faint stable ring */}
-          <circle cx={CX} cy={CY} r={R} fill="none" stroke="var(--color-gold-dark)" strokeOpacity={0.35} strokeWidth={1.5} />
-          {/* one active tension arc — bright, fades in via CSS opacity only */}
+          {/* faint stable ring. Colour via Tailwind fill / stroke utility classes (CSS
+              "fill: var()" — reliably supported), not a fill="var()" presentation attribute. */}
+          <circle cx={CX} cy={CY} r={R} className="fill-none stroke-gold-dark" strokeOpacity={0.35} strokeWidth={1.5} />
+          {/* one active tension arc — bright, fades in via CSS opacity only (PR#14) */}
           {arc && (
             <path
               d={arc}
-              fill="none"
-              stroke="var(--color-gold-muted)"
+              className="fill-none stroke-gold-muted"
               strokeWidth={4}
               strokeLinecap="round"
               style={{ opacity: mounted ? 0.9 : 0, transition: "opacity 900ms ease-out" }}
             />
           )}
-          {/* 5 ring nodes — active bright, rest dimmed */}
+          {/* 5 ring nodes — active bright, the ≤2 secondary axes medium, the rest dim */}
           {AXES.map((a) => {
             const p = polar(CX, CY, R, a.angle);
             const isActive = active?.id === a.id;
+            const isSecondary = preview.secondaryAxes.includes(a.id as never);
+            const radius = isActive ? NODE_R : isSecondary ? NODE_R * 0.7 : NODE_R * 0.5;
+            const cls = isActive
+              ? "fill-gold-muted stroke-gold-light"
+              : isSecondary
+                ? "fill-obsidian-card stroke-gold-muted"
+                : "fill-obsidian-card stroke-gold-dark";
+            const opacity = isActive ? 1 : mounted ? (isSecondary ? 0.62 : 0.32) : 0.22;
             return (
               <circle
                 key={a.id}
                 cx={p.x}
                 cy={p.y}
-                r={isActive ? NODE_R : NODE_R * 0.55}
-                fill={isActive ? "var(--color-gold-muted)" : "var(--color-obsidian-card)"}
-                stroke={isActive ? "var(--color-gold-light)" : "var(--color-gold-dark)"}
+                r={radius}
+                className={cls}
                 strokeWidth={isActive ? 2 : 1}
-                style={{ opacity: isActive ? 1 : mounted ? 0.4 : 0.25, transition: "opacity 700ms ease-out" }}
+                style={{ opacity, transition: "opacity 700ms ease-out" }}
               />
             );
           })}
           {/* active pole labels only */}
           {active && activePoint && oppositePoint && (
             <>
-              <text x={activePoint.x} y={activePoint.y - 26} textAnchor="middle" className="font-mono" fontSize={20} fill="var(--color-gold-light)">{active.poleA}</text>
-              <text x={oppositePoint.x} y={oppositePoint.y + 36} textAnchor="middle" className="font-mono" fontSize={20} fill="var(--color-fusion-blue)">{active.poleB}</text>
+              <text x={activePoint.x} y={activePoint.y - 26} textAnchor="middle" className="font-mono fill-gold-light" fontSize={20}>{active.poleA}</text>
+              <text x={oppositePoint.x} y={oppositePoint.y + 36} textAnchor="middle" className="font-mono fill-fusion-blue" fontSize={20}>{active.poleB}</text>
             </>
           )}
         </svg>

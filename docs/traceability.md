@@ -44,8 +44,10 @@ mystique ("TRANSCENDENT CLARITY"/"Luxury … Harmony Engine"/"KOSMISCHES SPEKTRU
 first viewport (Vision contradiction + R4 coverage gap). Re-aligned: shell copy de-mystified +
 `redesignWording.test.ts` extended to scan PageShell/InputForm (R4 now enforced, 4/4). See
 `docs/contradictions/bazodiac-redesign.contradictions.md`. Gate-C "scanner flakiness" was a false alarm
-(parallel-panel mutation race), not a defect. `previewFromTension` kept as the §5.3 computed-mode contract,
-surfaced as not-yet-wired. REQ-RD-O-001 production-verified PENDING the post-merge live-smoke.
+(parallel-panel mutation race), not a defect. `previewFromTension` + `leanColor`
+trimmed (code-review, unused on demo-only landing); SVG colors hardened to Tailwind fill-*/stroke-*
+classes; WCAG contrast unit-gate (7/7, stone-500→400 fix) + mobile-360 e2e added (/ultrathink + /code-review
+pre-merge). REQ-RD-O-001 production-verified PENDING the post-merge live-smoke.
 
 ---
 
