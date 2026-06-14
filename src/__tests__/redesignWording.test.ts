@@ -49,4 +49,13 @@ describe("redesign wording (RD-5) — anti-reification", () => {
     expect(all).toMatch(/Therapie/i);
     expect(all).toMatch(/beweist keine|keine feste Identität|Eigenschaft/i);
   });
+
+  it("the app shell (now default-reachable behind the landing) carries no surviving mystique copy (council R4)", () => {
+    const SHELL_MYSTIQUE = /transcendent|\bluxury\b|harmony engine|kosmisches spektrum|planetengrid|metaphysisch|\bseele\b|wahres ich|\bschicksal\b/i;
+    for (const rel of ["PageShell.tsx", "InputForm.tsx"]) {
+      const src = stripComments(readFileSync(join(__dirname, "..", "components", rel), "utf8"));
+      const hit = src.match(SHELL_MYSTIQUE);
+      expect(hit, `surviving mystique "${hit?.[0]}" in components/${rel}`).toBeNull();
+    }
+  });
 });

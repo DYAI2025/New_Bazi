@@ -228,11 +228,11 @@ export default function InputForm({ birthData, onCalculate, timeError = null }: 
                 className="w-full relative px-5 py-3.5 font-serif font-bold tracking-widest rounded-xl transition-all duration-300 transform active:scale-95 border flex items-center justify-center space-x-2 bg-gradient-to-r from-gold-muted to-gold-dark hover:from-gold-light hover:to-gold-muted text-stone-950 border-gold-light/20 glow-gold disabled:opacity-45 disabled:cursor-not-allowed disabled:pointer-events-none"
               >
                 {submitting ? (
-                  <span>PLANETENGRID WIRD SYNCHRONISIERT...</span>
+                  <span>PROFIL WIRD BERECHNET...</span>
                 ) : (
                   <>
                     <Sparkles className="h-5 w-5 p-0.5 text-stone-950" />
-                    <span>KOSMISCHES SPEKTRUM ERRECHNEN</span>
+                    <span>PROFIL BERECHNEN</span>
                   </>
                 )}
               </button>

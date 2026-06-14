@@ -38,7 +38,14 @@ links back to the source artifacts.
 | REQ-RD-NF-001 prefers-reduced-motion | RD-1/2 | index.css @media rule + e2e emulateMedia reduced → hero renders | real-boundary-smoke | ja | aligned |
 | REQ-RD-O-001 gates + PR + live-smoke | RD-6 | full lint/test/build/playwright + PR; **live-smoke PENDING post-merge** | real-boundary-smoke; production-verified PENDING | gates green; prod smoke pending | value-risk until live smoke |
 
-Reality note: the redesign landing is wired-in-prod-path (default `activeTab='landing'`, e2e renders it = real-boundary-smoke); it is **not** production-verified until the post-merge Railway live-smoke (RD-6). The 3 reference repos remain `ungeprüft` (unreadable) — built from the brief, no ported code. KNOWN follow-up (council R4, not blocking): surviving shell mystique strings ("TRANSCENDENT CLARITY", "Luxury … Harmony Engine") in PageShell/InputForm are out of the new-copy scanner's scope; flagged for a light cleanup.
+Reality note: the redesign landing is wired-in-prod-path (default `activeTab='landing'`, e2e renders it = real-boundary-smoke); it is **not** production-verified until the post-merge Railway live-smoke (RD-6). The 3 reference repos remain `ungeprüft` (unreadable) — built from the brief, no ported code.
+**CONTRA-RD-001 (resolved-by-realignment, 2026-06-14):** Gate D flagged HIGH that the surviving shell
+mystique ("TRANSCENDENT CLARITY"/"Luxury … Harmony Engine"/"KOSMISCHES SPEKTRUM") rendered in the default
+first viewport (Vision contradiction + R4 coverage gap). Re-aligned: shell copy de-mystified +
+`redesignWording.test.ts` extended to scan PageShell/InputForm (R4 now enforced, 4/4). See
+`docs/contradictions/bazodiac-redesign.contradictions.md`. Gate-C "scanner flakiness" was a false alarm
+(parallel-panel mutation race), not a defect. `previewFromTension` kept as the §5.3 computed-mode contract,
+surfaced as not-yet-wired. REQ-RD-O-001 production-verified PENDING the post-merge live-smoke.
 
 ---
 

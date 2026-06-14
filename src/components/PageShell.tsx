@@ -87,7 +87,7 @@ export default function PageShell({ children, activeTab, setActiveTab, hasBirthD
               </span>
             </div>
             <p className="font-sans text-[10px] uppercase font-semibold text-stone-400 tracking-wider">
-              Luxury Western & Chinese Astrology Harmony Engine
+              Westliche Astrologie × BaZi × WuXing
             </p>
           </div>
 
@@ -178,7 +178,7 @@ export default function PageShell({ children, activeTab, setActiveTab, hasBirthD
             <span>EDITION: V 4.0.2 OBSIDIAN</span>
           </div>
           <div>
-            <span>DESIGNED FOR TRANSCENDENT CLARITY</span>
+            <span>BERECHNET · NICHT BEHAUPTET</span>
           </div>
         </div>
       </footer>
