@@ -51,4 +51,14 @@ test.describe("Redesign landing — FusionHero first screen", () => {
     const bento = (await page.getByTestId("engine-bento").textContent()) ?? "";
     expect(bento).not.toMatch(/\d+\s?%|score|du bist/i);
   });
+
+  test("method/trust shows the four boundaries + fusion-path + premium (no fate claim)", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByTestId("method-trust")).toBeVisible();
+    await expect(page.getByTestId("trust-boundary")).toHaveCount(4);
+    await expect(page.getByTestId("fusion-path")).toBeVisible();
+    await expect(page.getByTestId("premium-bridge")).toBeVisible();
+    const landing = (await page.getByTestId("landing-page").textContent()) ?? "";
+    expect(landing).not.toMatch(/\bdu bist\b|garantiert|beweist deine|sagt deine zukunft voraus/i);
+  });
 });
