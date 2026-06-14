@@ -41,7 +41,7 @@ links back to the source artifacts.
 | REQ-A-002 no new engine call | T6 | app.test.ts: postChart called 2× only; route adds no external call | integration | ja | aligned |
 | REQ-S-001 anti-claim | T9 | synastryWording (4) + wordingHonesty + pairAspect/pairAxis regex + e2e forbidden-copy scan | unit + real-boundary | ja | aligned |
 | REQ-NF-001/002 calm/reduced-motion | T8 | no red states; CSS-only bars (no framer transforms); e2e no new console errors | review + e2e | ja | aligned |
-| REQ-O-001 gates + live-smoke | T11 | lint/test(598)/build/playwright green + PR; **live prod smoke PENDING (post-merge deploy)** | real-boundary-smoke; **production-verified PENDING** | gates green; prod smoke pending | value-risk until live smoke |
+| REQ-O-001 gates + live-smoke | T11/T12 | lint/test(598)/build/playwright(38) green + PR #35 merged (a33a3c8); prod bundle index-D6CMTeMT.js asset-verified (Primus-Aspectus + journey present, old labels absent) | real-boundary-smoke + **production-served (asset-verified)**; interactive prod render PENDING | live + asset-verified; interactive prod render pending (browser blocked) | aligned |
 
 Reality Ledger note: every P7 feature reaches the real boundary via the e2e render against
 the deterministic mock (`real-boundary-smoke`), not just unit fakes. **No REQ is
@@ -58,7 +58,9 @@ Contradiction ledger: **CONTRA-P7-001** (`docs/contradictions/bazi-sprint-p7-par
 — Gate E (Watcher) BLOCK on value-line drift (per-couple verdict badges + "Übereinstimmung"
 sub-label + narrow rendered-DOM scan + prescriptive advice) → **resolved-by-realignment**
 (implementation-only, Vision unchanged); REQ-S-001/F-005/F-006 true-line-status =
-`resolved-by-realignment`. REQ-O-001 true-line-status = `value-risk` until the post-merge live smoke.
+`resolved-by-realignment`. REQ-O-001 = production-served (asset-verified) after PR #35 merge
+(prod bundle index-D6CMTeMT.js carries the P7 markers); interactive prod synastry render PENDING
+(browser automation blocked) — surfaced, not claimed as full production-verified.
 
 ---
 
