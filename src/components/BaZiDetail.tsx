@@ -137,7 +137,7 @@ export default function BaZiDetail({ viewModel }: BaZiDetailProps) {
                     <h5 className="font-serif text-md font-bold text-slate-100 block">
                       {dayMaster.pinyin} — {dayMaster.element} ({dayMaster.polarity})
                     </h5>
-                    <p className="text-xs text-stone-400 mt-0.5">Der Tagesmeister — dein Tagesstamm und der Kern der BaZi-Analyse.</p>
+                    <p className="text-xs text-stone-400 mt-0.5">Der Tagesmeister — der Tagesstamm und der Kern der BaZi-Analyse.</p>
                   </div>
                 </div>
                 <div className="text-right shrink-0">
