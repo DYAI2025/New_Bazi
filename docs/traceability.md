@@ -36,16 +36,21 @@ links back to the source artifacts.
 | REQ-RD-A-002 reuse geometry, no new engine | RD-1/2 | polar.test pins to TensionNavigator; ELEMENT_AXIS_MAP imported; static/demo, no engine call | integration | ja | aligned |
 | REQ-RD-S-001 anti-reification | RD-5 | redesignWording (non-boundary + chrome) + e2e rendered-DOM scan | real-boundary-smoke | ja | aligned |
 | REQ-RD-NF-001 prefers-reduced-motion | RD-1/2 | index.css @media rule + e2e emulateMedia reduced → hero renders | real-boundary-smoke | ja | aligned |
-| REQ-RD-O-001 gates + PR + live-smoke | RD-6 | full lint/test/build/playwright + PR; **live-smoke PENDING post-merge** | real-boundary-smoke; production-verified PENDING | gates green; prod smoke pending | value-risk until live smoke |
+| REQ-RD-O-001 gates + PR + live-smoke | RD-6/RD-7 | full lint/test/build/playwright + PR #36 merged; **post-merge live-smoke DONE** (prod bundle md5 afc9e7ae… identical to e2e build; 7 markers present + 3 mystique strings gone; hero ring paints 5/6 nodes, outer fill-none by design; CTA→InputForm spine verified via standalone Playwright on prod: inputVisibleAfterClick=true, heroAfter=0) | **production-verified** | prod smoke green | resolved; follow-up #58: PageShell header overflows mobile-360 (pre-existing shared chrome) |
 
-Reality note: the redesign landing is wired-in-prod-path (default `activeTab='landing'`, e2e renders it = real-boundary-smoke); it is **not** production-verified until the post-merge Railway live-smoke (RD-6). The 3 reference repos remain `ungeprüft` (unreadable) — built from the brief, no ported code.
+Reality note: the redesign landing is wired-in-prod-path (default `activeTab='landing'`) and is now **production-verified** (RD-7 post-merge Railway live-smoke 2026-06-14: prod-served bundle md5-identical to the e2e-tested build; FusionHero + CTA spine confirmed against the live URL). The 3 reference repos remain `ungeprüft` (unreadable) — built from the brief, no ported code.
 **CONTRA-RD-001 (resolved-by-realignment, 2026-06-14):** Gate D flagged HIGH that the surviving shell
 mystique ("TRANSCENDENT CLARITY"/"Luxury … Harmony Engine"/"KOSMISCHES SPEKTRUM") rendered in the default
 first viewport (Vision contradiction + R4 coverage gap). Re-aligned: shell copy de-mystified +
 `redesignWording.test.ts` extended to scan PageShell/InputForm (R4 now enforced, 4/4). See
 `docs/contradictions/bazodiac-redesign.contradictions.md`. Gate-C "scanner flakiness" was a false alarm
-(parallel-panel mutation race), not a defect. `previewFromTension` kept as the §5.3 computed-mode contract,
-surfaced as not-yet-wired. REQ-RD-O-001 production-verified PENDING the post-merge live-smoke.
+(parallel-panel mutation race), not a defect. `previewFromTension` + `leanColor` remain implemented +
+unit-tested as the §5.3 `computed`-mode / polar contracts but are **not yet wired** into the rendered
+landing (a code-review trim was reverted to preserve the contracts for a future personalized landing).
+REQ-RD-O-001 is now **production-verified** (RD-7 live-smoke).
+**Live-smoke finding (RD-7):** the static `index.html` head still carried the old "Luxury Astrology" title +
+`lang="en"` (a mystique surface the de-mystification missed) → fixed to a calc-not-claim title + `lang="de"`
++ anti-reification meta description. Pre-existing PageShell header overflow at mobile-360 logged as follow-up #58.
 
 ---
 

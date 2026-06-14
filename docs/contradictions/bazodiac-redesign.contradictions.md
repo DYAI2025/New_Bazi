@@ -40,4 +40,8 @@
   `polar.ts` re-houses TensionNavigator's geometry **byte-identical** + `polar.test.ts` pins it; the
   shipped `TensionNavigator.tsx` (out of the redesign scope) keeps its own copy. Deliberate (avoid
   editing a shipped P1–P7 component); drift is guarded by the pin test + the tension-navigator e2e.
-- **REQ-RD-O-001 production-verified PENDING** the post-merge Railway live-smoke.
+- **REQ-RD-O-001 production-verified DONE** (RD-7 post-merge Railway live-smoke, 2026-06-14): prod-served
+  bundle md5-identical to the e2e build; FusionHero renders + CTA→InputForm spine confirmed via standalone
+  Playwright against the live URL. Live-smoke also caught the static `index.html` head still carrying the
+  old "Luxury Astrology" title + `lang="en"` (a mystique surface the React-copy scanners never read) → fixed
+  (de-mystified title/`lang="de"`/meta) and now permanently guarded by a `redesignWording.test.ts` head scan.

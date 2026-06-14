@@ -7,6 +7,7 @@
     "src/components/landing/**",
     "src/utils/visual/**",
     "src/App.tsx",
+    "index.html",
     "src/components/PageShell.tsx",
     "src/components/InputForm.tsx",
     "src/components/wordingHonesty.test.ts",

@@ -88,6 +88,7 @@ Fail-closed (Phase 0.6). Bullet list = machine-parsed scope (mirrored in `docs/s
 - src/components/landing/
 - src/utils/visual/
 - src/App.tsx
+- index.html
 - src/components/PageShell.tsx
 - src/components/InputForm.tsx
 - src/components/wordingHonesty.test.ts
