@@ -57,7 +57,7 @@ test("renders the four partner-journey layers with data anchors", async ({ page 
   // Pair axes: 5 cards, one Reibung (Metall / Struktur ↔ Fluss).
   await expect(page.getByTestId("synastry-axes")).toBeVisible();
   await expect(page.getByTestId("pair-axis-card")).toHaveCount(5);
-  await expect(page.getByText("Reibung sichtbar").first()).toBeVisible();
+  await expect(page.getByText("gegensätzliche Neigung").first()).toBeVisible();
 
   // Inter-aspects: at least 3 rows (identical longitudes → conjunctions+oppositions).
   await expect(page.getByTestId("synastry-aspects")).toBeVisible();
@@ -83,5 +83,8 @@ test("no forbidden relationship-verdict copy in the rendered synastry", async ({
   await runSynastry(page);
 
   const text = (await page.getByTestId("synastry-container").textContent()) ?? "";
-  expect(text).not.toMatch(/Seelenverwand|Schicksal|toxisch|für ?einander bestimmt|garantiert|perfekt kompatibel/i);
+  // Widened C2 set scanned on the REAL rendered chrome (council C3 / Gate E re-alignment).
+  expect(text).not.toMatch(
+    /Seelenverwand|Schicksal|toxisch|für ?einander bestimmt|garantiert|perfekt kompatibel|\bharmonisch|passt (perfekt )?zusammen|\bkompatibel|du bist|ihr seid|Diagnose|Therapie|Heilung/i,
+  );
 });

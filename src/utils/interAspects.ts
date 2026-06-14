@@ -102,6 +102,7 @@ export function bodyPositionsFromViewModel(vm: ProfileViewModel): BodyPosition[]
       if (!planet || !CLASSICAL_BODIES.includes(planet.name)) continue;
       const signIndex = SIGN_INDEX_DE[planet.sign];
       if (signIndex === undefined) continue; // unknown / out-of-map sign
+      if (!Number.isFinite(planet.degree)) continue; // no fabricated NaN longitude (D-001)
       positions.push({
         name: planet.name,
         longitude: signIndex * 30 + planet.degree,

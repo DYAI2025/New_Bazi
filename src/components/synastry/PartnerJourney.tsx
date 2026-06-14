@@ -83,12 +83,14 @@ export default function PartnerJourney({ result }: { result: SynastryResponse })
                 <div
                   key={axis.id}
                   data-testid="pair-axis-card"
-                  className={`rounded-xl border p-3 space-y-2 ${reibung ? "border-gold-muted/40 bg-gold-muted/5" : "border-emerald-400/20 bg-emerald-400/5"}`}
+                  className="rounded-xl border border-gold-muted/20 bg-obsidian-deep/40 p-3 space-y-2"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-serif text-sm font-bold text-slate-100">{axis.poleA} ↔ {axis.poleB}</span>
-                    <span className={`font-mono text-[8px] uppercase tracking-widest px-2 py-0.5 rounded-full ${reibung ? "bg-gold-muted/20 text-gold-light" : "bg-emerald-400/15 text-emerald-200"}`}>
-                      {reibung ? "Reibung sichtbar" : "Harmonie spürbar"}
+                    {/* Descriptive of the DATA (leanA vs leanB), neutral colour — not a
+                        good/bad couple verdict (Watcher Gate E / Critic C1·C4 re-alignment). */}
+                    <span className="font-mono text-[8px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-gold-muted/15 text-stone-300">
+                      {reibung ? "gegensätzliche Neigung" : "gleiche Neigung"}
                     </span>
                   </div>
                   <p className="text-[12px] text-stone-300 leading-relaxed font-light">{text}</p>
@@ -116,9 +118,7 @@ export default function PartnerJourney({ result }: { result: SynastryResponse })
             {interAspects.slice(0, 8).map((a, i) => (
               <li key={`${a.planetA}-${a.planetB}-${a.type}-${i}`} data-testid="inter-aspect-row" className="rounded-lg border border-gold-muted/10 bg-obsidian-deep/40 p-3 space-y-1">
                 <div className="flex items-center justify-between gap-2 text-[12px]">
-                  <span className="font-serif font-bold text-slate-100">
-                    {a.planetA} <span className="text-gold-muted">(A)</span> ↔ {a.planetB} <span className="text-sky-300">(B)</span>
-                  </span>
+                  <span className="font-serif font-bold text-slate-100">{a.planetA} ↔ {a.planetB}</span>
                   <span className="font-mono text-[9px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-gold-muted/15 text-gold-light">{a.type}</span>
                 </div>
                 <p className="text-[11px] text-stone-300 font-light leading-relaxed">{pairAspectInterpretation(a.planetA, a.planetB, a.type)}</p>

@@ -233,7 +233,7 @@ export default function Synastry({ viewModel, birthData }: SynastryProps) {
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <span className="font-serif text-2xl font-bold text-slate-100">{synastryResult.score}%</span>
-                      <span className="font-mono text-[8px] text-stone-400 uppercase tracking-widest">Übereinstimmung</span>
+                      <span className="font-mono text-[8px] text-stone-400 uppercase tracking-widest">grober Vergleich</span>
                     </div>
                   </div>
 
@@ -259,7 +259,7 @@ export default function Synastry({ viewModel, birthData }: SynastryProps) {
                     <p className="text-stone-300 leading-relaxed font-light text-[13px]">{synastryResult.harmonyAnalysis}</p>
                   </div>
                   <div className="space-y-1 pt-3 border-t border-gold-muted/5">
-                    <span className="font-mono text-[9px] uppercase font-bold text-gold-light block">Ratschlag</span>
+                    <span className="font-mono text-[9px] uppercase font-bold text-gold-light block">Reflexion zur Lesart</span>
                     <p className="text-stone-400 leading-relaxed font-light text-[13px]">{synastryResult.advice}</p>
                   </div>
                 </div>
