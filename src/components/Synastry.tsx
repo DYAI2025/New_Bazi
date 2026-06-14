@@ -6,6 +6,7 @@ import { Users, Heart, RefreshCw, ArrowRight, AlertTriangle } from "lucide-react
 import { motion } from "motion/react";
 import PlaceAutocomplete from "./PlaceAutocomplete";
 import TensionNavigator from "./TensionNavigator";
+import PartnerJourney from "./synastry/PartnerJourney";
 
 interface SynastryProps {
   viewModel: ProfileViewModel;
@@ -70,7 +71,7 @@ export default function Synastry({ viewModel, birthData }: SynastryProps) {
   };
 
   return (
-    <div id="synastry-container" className="space-y-8">
+    <div id="synastry-container" data-testid="synastry-container" className="space-y-8">
       <div className="glass-card p-6 rounded-2xl">
         <div className="flex items-center space-x-3 pb-4 border-b border-gold-muted/10 mb-4 font-serif">
           <Users className="h-6 w-6 text-gold-muted shrink-0" />
@@ -237,12 +238,16 @@ export default function Synastry({ viewModel, birthData }: SynastryProps) {
                   </div>
 
                   <div className="flex-grow space-y-1 font-sans">
-                    <span className="font-mono text-[9px] uppercase tracking-widest text-[#D4AF37] font-bold">Harmonie-Wert</span>
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-[#D4AF37] font-bold">Kohärenz-Index</span>
                     <h5 className="font-serif text-md font-bold text-slate-100">
                       {synastryResult.userRef.name} <ArrowRight className="inline h-4 w-4 mx-1 text-[#D4AF37]" /> {synastryResult.partnerRef.name}
                     </h5>
                     <p className="text-xs text-stone-400 leading-relaxed mt-1">
-                      Zodiak-Match: <span className="text-slate-200 font-mono font-medium">{synastryResult.westernScore}%</span> • BaZi-Match: <span className="text-slate-200 font-mono font-medium">{synastryResult.baziScore}%</span>
+                      Zodiak-Vergleich: <span className="text-slate-200 font-mono font-medium">{synastryResult.westernScore}%</span> • BaZi-Vergleich: <span className="text-slate-200 font-mono font-medium">{synastryResult.baziScore}%</span>
+                    </p>
+                    <p className="mt-2 text-[11px] text-stone-500 leading-relaxed" data-testid="synastry-score-note">
+                      Dieser Wert ist ein grober Vergleich aus verfügbaren Profilmerkmalen — kein Messwert, keine
+                      Bewertung und keine Aussage darüber, ob eine Beziehung gelingen kann.
                     </p>
                     <span className="inline-block mt-1 font-mono text-[9px] text-stone-500" data-testid="synastry-source">Quelle: {synastryResult.source}</span>
                   </div>
@@ -264,16 +269,30 @@ export default function Synastry({ viewModel, birthData }: SynastryProps) {
         </div>
       </div>
 
-      {/* Paar-Spannungsnavigator: Differenz der beiden Fusionsfelder (A→Gold, B→Blau).
-          Rendert bei fehlenden/identischen Verteilungen einen ehrlichen Leerzustand. */}
+      {/* P7 Partner Journey: Begegnungsfeld-Header → Paar-Spannungsnavigator
+          (A→Gold, B→Blau) → vier datenverankerte Ebenen (Polachsen, Inter-Aspekte,
+          Säulenvergleich, Element-Spiegel). Jede Ebene zeigt ehrliche Leerzustände. */}
       {synastryResult && !calculating && (
-        <TensionNavigator
-          pairMode
-          elementalA={synastryResult.elementalA}
-          elementalB={synastryResult.elementalB}
-          nameA={synastryResult.userRef.name}
-          nameB={synastryResult.partnerRef.name}
-        />
+        <div className="space-y-6">
+          <div data-testid="synastry-journey-header" className="glass-card p-6 rounded-2xl">
+            <div className="flex items-center gap-3">
+              <Heart className="h-5 w-5 text-gold-muted shrink-0" />
+              <h3 className="font-serif text-xl font-bold text-gold-light">Euer Begegnungsfeld</h3>
+            </div>
+            <p className="mt-2 text-sm text-stone-400 leading-relaxed max-w-3xl">
+              Die folgenden Ebenen zeigen Ressourcen, Reibungen und Fragen aus den beiden berechneten Profilen —
+              jede Aussage nennt ihren Datenanker und bleibt Reflexion, kein Urteil über die Beziehung.
+            </p>
+          </div>
+          <TensionNavigator
+            pairMode
+            elementalA={synastryResult.elementalA}
+            elementalB={synastryResult.elementalB}
+            nameA={synastryResult.userRef.name}
+            nameB={synastryResult.partnerRef.name}
+          />
+          <PartnerJourney result={synastryResult} />
+        </div>
       )}
     </div>
   );
