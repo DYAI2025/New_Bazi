@@ -2,7 +2,7 @@
 
 **Status:** confirmed
 <!-- Status: confirmed -->
-**Confirmed by user:** yes — active feature `bazi-sprint-p7-partner-journey` confirmed via "GO — build now (CORE)" (2026-06-14, Vision-GO-Gate)
+**Confirmed by user:** yes — active feature `bazodiac-redesign` confirmed via "GO — build now (CORE)" (2026-06-14, Vision-GO-Gate); branch `re-design`
 
 This file is the cross-feature traceability spine required by the PRIL context gate
 (`plumbline-context-check`). The authoritative, fully-columned matrix for each feature
@@ -11,7 +11,38 @@ links back to the source artifacts.
 
 ---
 
-## Active feature: `bazi-sprint-p7-partner-journey`
+## Active feature: `bazodiac-redesign`
+
+- Canvas: [docs/canvas/bazodiac-redesign.canvas.md](canvas/bazodiac-redesign.canvas.md) — `Status: user-confirmed` (2026-06-14; council unanimous additive reframe)
+- PRD: [docs/prd/bazodiac-redesign.prd.md](prd/bazodiac-redesign.prd.md) · Vision: [docs/vision/bazodiac-redesign.vision.md](vision/bazodiac-redesign.vision.md) — both user-confirmed
+- Scope: `docs/scope/bazodiac-redesign.scope.json` · Reality: `docs/reality/bazodiac-redesign.evidence.jsonl`
+
+**Canvas anchors (all six mandatory fields — shared by every RD REQ):**
+- canvas-link: `docs/canvas/bazodiac-redesign.canvas.md`
+- canvas-problem: cold-start drops a visitor into a bare form; product nature (reflective tension field, not horoscope/score) is not legible in 10s (Canvas §1)
+- canvas-target-user: first-time/skeptical + returning reflective bazodiac visitor, German (Canvas §2)
+- canvas-value-claim: a calm, premium, data-honest Observatorium that makes one tension legible+testable and flows into the live app (Canvas §4)
+- canvas-success-signal: 10s legibility; calm ring + 1 tension + 1 question (no %); CTA into live flow; anti-reification scanner green; gates+smoke green (Canvas §5)
+- canvas-risk-status: **aligned** for all REQ (council R1 additive/no-router, R2 reuse geometry, R3 demo/missing not fake, R4 anti-reification scanner, R5 reduced-motion, R6 defined tokens, R7 repos ungeprüft — all bound as implementation constraints)
+
+| REQ | Iter | Test (real) | evidence-class | wired-in-prod? | true-line-status |
+|-----|------|-------------|----------------|----------------|------------------|
+| REQ-RD-F-001 FusionHero | RD-2 | polar/tensionFieldVisual unit + e2e (hero, 1 tension+question, demo, no %) | real-boundary-smoke | ja (App landing default) | aligned |
+| REQ-RD-F-002 micro-experience | RD-3 | microExperience unit + e2e (start→question→react→note, demo) | real-boundary-smoke | ja | aligned |
+| REQ-RD-F-003 visible-engine bento | RD-4 | engineBento unit + e2e (6 cards, no metric) | real-boundary-smoke | ja | aligned |
+| REQ-RD-F-004 method/trust/boundaries | RD-5 | redesignWording unit + e2e (4 boundaries) | real-boundary-smoke | ja | aligned |
+| REQ-RD-F-005 fusion-path + premium | RD-5 | e2e (fusion-path + premium-bridge); premium=explanation/history/export not truth | real-boundary-smoke | ja | aligned |
+| REQ-RD-A-001 additive, no spine break | RD-2 | all 7 form-first e2e traverse landing + pass; no router; InputForm untouched | real-boundary-smoke | ja | aligned |
+| REQ-RD-A-002 reuse geometry, no new engine | RD-1/2 | polar.test pins to TensionNavigator; ELEMENT_AXIS_MAP imported; static/demo, no engine call | integration | ja | aligned |
+| REQ-RD-S-001 anti-reification | RD-5 | redesignWording (non-boundary + chrome) + e2e rendered-DOM scan | real-boundary-smoke | ja | aligned |
+| REQ-RD-NF-001 prefers-reduced-motion | RD-1/2 | index.css @media rule + e2e emulateMedia reduced → hero renders | real-boundary-smoke | ja | aligned |
+| REQ-RD-O-001 gates + PR + live-smoke | RD-6 | full lint/test/build/playwright + PR; **live-smoke PENDING post-merge** | real-boundary-smoke; production-verified PENDING | gates green; prod smoke pending | value-risk until live smoke |
+
+Reality note: the redesign landing is wired-in-prod-path (default `activeTab='landing'`, e2e renders it = real-boundary-smoke); it is **not** production-verified until the post-merge Railway live-smoke (RD-6). The 3 reference repos remain `ungeprüft` (unreadable) — built from the brief, no ported code. KNOWN follow-up (council R4, not blocking): surviving shell mystique strings ("TRANSCENDENT CLARITY", "Luxury … Harmony Engine") in PageShell/InputForm are out of the new-copy scanner's scope; flagged for a light cleanup.
+
+---
+
+## Previous feature: `bazi-sprint-p7-partner-journey`
 
 - Canvas: [docs/canvas/bazi-sprint-p7-partner-journey.canvas.md](canvas/bazi-sprint-p7-partner-journey.canvas.md) — `Status: user-confirmed` (2026-06-14; council Phase 0.16 hardening folded in)
 - PRD: [docs/prd/bazi-sprint-p7-partner-journey.prd.md](prd/bazi-sprint-p7-partner-journey.prd.md) — `Status: user-confirmed` (links the plan as authoritative spec)
