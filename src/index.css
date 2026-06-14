@@ -39,6 +39,33 @@
   --color-obsidian-deep: var(--bg-deep);
   --color-obsidian-surface: var(--bg-surface);
   --color-obsidian-card: var(--bg-card);
+
+  /* Redesign semantic tokens (RD-1). Meaning is fixed: gold = calculation/form/method,
+     fusion-blue = movement/question, user-cyan = the user's response/lens. Gold/obsidian
+     extend the existing palette; blue/cyan are new but defined (not decorative). */
+  --color-obsidian-950: #050505;
+  --color-obsidian-900: #0a0a0d;
+  --color-gold-leaf-from: #A57C1B;
+  --color-gold-leaf-mid: #D4AF37;
+  --color-gold-leaf-to: #F5E6C4;
+  --color-gold-500: #D4AF37;
+  --color-fusion-blue: #27c8ee;
+  --color-user-cyan: #5ef0e0;
+  --color-glass-bg: var(--theme-glass-bg);
+  --color-glass-border: var(--theme-border);
+  --shadow-gold-soft: 0 0 28px rgba(212, 175, 55, 0.18);
+  --shadow-blue-soft: 0 0 28px rgba(39, 200, 238, 0.16);
+}
+
+/* Accessibility (RD-1, council R5): no prefers-reduced-motion rule existed before the
+   redesign. Honour it globally — ambient/landing animation must reduce to static. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @layer utilities {
