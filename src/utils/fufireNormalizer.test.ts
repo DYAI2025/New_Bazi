@@ -127,3 +127,67 @@ describe("normalizeFuFireProfile — unknown birth time degradation (REQ-P4-004)
   });
 
 });
+
+// BIRTH-TIME-01: timeKnown:false MUST suppress time-dependent fields even when the
+// engine response omits precision.provisional_fields (version skew, a fallback-local
+// path, or an endpoint that ignores birth_time_known). The honesty guarantee must be a
+// LOCAL invariant, not trust in the engine self-reporting. Each assertion below fails
+// against the pre-fix code (which read provisional_fields only).
+describe("normalizeFuFireProfile — timeKnown:false is a local honesty backstop (BIRTH-TIME-01)", () => {
+  const UNKNOWN_INPUT = {
+    name: "Test Person",
+    birthDate: "1990-06-15",
+    birthTime: "12:00",
+    birthPlaceLabel: "Berlin",
+    gender: "Divers",
+    timeKnown: false
+  };
+
+  // Same engine payload as the provisional fixtures, but with precision stripped — i.e.
+  // the engine sent a 12:00-computed ascendant/houses/hour pillar WITHOUT flagging them.
+  const stripPrecision = (o: any) => {
+    const clone = JSON.parse(JSON.stringify(o));
+    if (clone && typeof clone === "object") delete clone.precision;
+    return clone;
+  };
+  const NO_PROVISIONAL_RAW = {
+    bazi: stripPrecision(unknownBazi),
+    western: stripPrecision(unknownWestern),
+    fusion: stripPrecision(unknownFusion),
+    wuxing: {}
+  };
+
+  it("guards the test premise: precision stripped, but engine still sent a 12:00 ascendant + hour pillar", () => {
+    expect((NO_PROVISIONAL_RAW.western as any).precision).toBeUndefined();
+    expect((NO_PROVISIONAL_RAW.bazi as any).precision).toBeUndefined();
+    expect(unknownWestern.angles?.Ascendant).toBeGreaterThan(0);
+    expect(unknownBazi.pillars?.hour).toBeTruthy();
+  });
+
+  it("ascendant === null even without engine provisional_fields", () => {
+    const vm = normalizeFuFireProfile(NO_PROVISIONAL_RAW, UNKNOWN_INPUT, "fufire-orchestrated");
+    expect(vm.western.ascendant).toBeNull();
+  });
+
+  it("housesAvailable === false and houses empty even without engine provisional_fields", () => {
+    const vm = normalizeFuFireProfile(NO_PROVISIONAL_RAW, UNKNOWN_INPUT, "fufire-orchestrated");
+    expect(vm.western.housesAvailable).toBe(false);
+    expect(vm.western.houses).toHaveLength(0);
+  });
+
+  it("hourAvailable === false even without engine provisional_fields", () => {
+    const vm = normalizeFuFireProfile(NO_PROVISIONAL_RAW, UNKNOWN_INPUT, "fufire-orchestrated");
+    expect(vm.bazi.hourAvailable).toBe(false);
+  });
+
+  it("fusion.signalLevelSuffix carries the '(ohne Stundensäule)' caveat even without engine provisional_fields", () => {
+    const vm = normalizeFuFireProfile(NO_PROVISIONAL_RAW, UNKNOWN_INPUT, "fufire-orchestrated");
+    expect(vm.fusion.signalLevelSuffix).not.toBeNull();
+  });
+
+  it("a KNOWN birth time still trusts the engine (no over-suppression)", () => {
+    const vm = normalizeFuFireProfile(FULL, INPUT, "fufire-chart");
+    expect(vm.western.ascendant).not.toBeNull();
+    expect(vm.bazi.hourAvailable).toBe(true);
+  });
+});

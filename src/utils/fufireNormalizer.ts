@@ -229,8 +229,13 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
   const timeKnown: boolean = input.timeKnown !== false;
   const westernProvisionalFields: string[] = Array.isArray(raw.western?.precision?.provisional_fields) ? raw.western.precision.provisional_fields : [];
   const fusionProvisionalFields: string[] = Array.isArray(raw.fusion?.precision?.provisional_fields) ? raw.fusion.precision.provisional_fields : [];
-  const ascendantProvisional = westernProvisionalFields.includes("ascendant");
-  const housesProvisional = westernProvisionalFields.includes("houses");
+  // Honesty invariant (BIRTH-TIME-01): no user-given birth time → time-dependent
+  // fields are ALWAYS provisional. The engine's provisional_fields is an ADDITIONAL
+  // trigger, never the sole one — a response without precision.provisional_fields
+  // (engine version skew / an endpoint ignoring birth_time_known) must not leak a
+  // 12:00-computed ascendant or houses as fact.
+  const ascendantProvisional = !timeKnown || westernProvisionalFields.includes("ascendant");
+  const housesProvisional = !timeKnown || westernProvisionalFields.includes("houses");
 
   // B. WESTERN ASTROLOGY
   const rawWest = raw.western && typeof raw.western === "object" ? raw.western : {};
@@ -437,7 +442,8 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
   const rawBazi = raw.bazi && typeof raw.bazi === "object" ? raw.bazi : {};
   const rawPillars: any = rawBazi.pillars && typeof rawBazi.pillars === "object" ? rawBazi.pillars : {};
   const baziProvisionalFields: string[] = Array.isArray(rawBazi.precision?.provisional_fields) ? rawBazi.precision.provisional_fields : [];
-  const hourProvisional = baziProvisionalFields.includes("hour");
+  // BIRTH-TIME-01: same local backstop — unknown birth time always suppresses the hour pillar.
+  const hourProvisional = !timeKnown || baziProvisionalFields.includes("hour");
 
   // REAL shapes use English pillar keys (BaziPillarsResponse/BaziSection:
   // year/month/day/hour); legacy mocks use German keys (Jahr/Monat/...).
@@ -699,7 +705,7 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
     // New required fields
     label: rawFusion.label || coherenceRating,
     explanation: "Der Kohärenzindex ist kein Gut-Schlecht-Wert, sondern ein Resonanzmaß zwischen westlichen Signalen, BaZi-Struktur und Wu-Xing-Verteilung.",
-    signalLevelSuffix: (fusionProvisionalFields.includes("hour") || fusionProvisionalFields.includes("signature")) ? "(ohne Stundensäule)" : null,
+    signalLevelSuffix: (!timeKnown || fusionProvisionalFields.includes("hour") || fusionProvisionalFields.includes("signature")) ? "(ohne Stundensäule)" : null,
     westernContributors: rawFusion.westernContributors || [
       `Sonne in ${sunSign}`,
       `Mond in ${moonSign}`,
