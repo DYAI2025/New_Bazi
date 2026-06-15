@@ -1,4 +1,5 @@
 import express, { Express, Request, Response, NextFunction } from "express";
+import rateLimit from "express-rate-limit";
 import { getServerSupabase } from "./supabase";
 import { requireUserAuth } from "./requireUserAuth";
 import { GoogleGenAI } from "@google/genai";
@@ -37,6 +38,33 @@ import { compareBaziPillars } from "../utils/baziCompare";
 
 function localFallbackEnabled(): boolean {
   return process.env.ENABLE_LOCAL_ASTROLOGY_FALLBACK === "true";
+}
+
+// --- Rate limiting (SEC-RATELIMIT-01) -------------------------------------------
+// Skipped under test (NODE_ENV=test / DISABLE_RATE_LIMIT=true) so the supertest
+// suite is never throttled; RATE_LIMIT_FORCE re-enables it for the dedicated
+// rate-limit test. Only POST requests are counted, so the cheap GET probes
+// (/api/health is Railway's healthcheck) are never throttled.
+function rateLimitSkipped(): boolean {
+  if (process.env.RATE_LIMIT_FORCE === "true") return false;
+  return process.env.NODE_ENV === "test" || process.env.DISABLE_RATE_LIMIT === "true";
+}
+
+function makeRateLimiter(limit: number, skipExtra?: (req: Request) => boolean) {
+  return rateLimit({
+    windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000),
+    limit,
+    standardHeaders: true,
+    legacyHeaders: false,
+    validate: { trustProxy: false },
+    skip: (req: Request) => rateLimitSkipped() || req.method !== "POST" || (skipExtra ? skipExtra(req) : false),
+    handler: (_req: Request, res: Response) => {
+      res.status(429).json({
+        error: "rate_limited",
+        message: "Zu viele Anfragen in kurzer Zeit. Bitte versuche es gleich noch einmal."
+      });
+    }
+  });
 }
 
 function logInvalidBirthInput(route: string, errors: unknown): void {
@@ -259,7 +287,21 @@ function detailHandler(method: ChartMethod, key: "western" | "bazi" | "wuxing" |
 
 export function createApp(): Express {
   const app = express();
+  // Behind Railway's single edge proxy: trust exactly one hop so req.ip is the real
+  // client (from X-Forwarded-For), not the proxy — and not client-spoofable past that
+  // one hop. Never `true` (fully spoofable, would defeat the limiter).
+  app.set("trust proxy", 1);
   app.use(express.json());
+
+  // SEC-RATELIMIT-01: cap anonymous abuse of the billable upstream routes (paid
+  // Gemini tokens, FuFirE quota). A generous global net over all POSTs (autocomplete
+  // is exempt — it fires per debounced keystroke and must not 429 a typing user),
+  // plus a strict cap on /api/azodiac + /api/gemini. All thresholds env-tunable.
+  app.use("/api", makeRateLimiter(
+    Number(process.env.RATE_LIMIT_GLOBAL_MAX || 300),
+    (req) => req.path === "/places/autocomplete"
+  ));
+  app.use(["/api/azodiac", "/api/gemini"], makeRateLimiter(Number(process.env.RATE_LIMIT_COMPUTE_MAX || 20)));
 
   // --- Config / Health ---
 
