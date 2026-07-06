@@ -12,7 +12,7 @@
 
 **Explicit** (Master §1.4 + §5, live verifiziert):
 New_Bazi zeigt an mehreren Stellen erfundene oder täuschende Daten:
-- `coherenceIndex` fällt bei fehlendem Wert auf `75` (hart kodiert) statt auf `null` — UI zeigt einen erfundenen Prozentsatz als wäre er berechnet.
+- `coherenceIndex` fällt bei fehlendem Wert auf `75` (hartkodiert) statt auf `null` — UI zeigt einen erfundenen Prozentsatz als wäre er berechnet.
 - Alle Nutzer sehen identische Tagesmeister-Texte (Einheitstext „Ausgewogenheit, Feinfühligkeit") unabhängig vom Element.
 - DST-Konflikt-Fehler (FuFirE 422 `type=dst_error`) wird als 502 „FuFirE hat die übermittelten Geburtsdaten abgelehnt" ausgegeben — nicht handlungsleitend.
 - `viewModel.warnings` werden nicht gerendert — Berechnungshinweise sind für den Nutzer unsichtbar.

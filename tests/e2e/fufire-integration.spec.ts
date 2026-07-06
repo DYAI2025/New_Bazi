@@ -1,4 +1,5 @@
 import { test, expect, Page } from "@playwright/test";
+import { dismissLanding } from "./_landing";
 
 const SHOT_DIR = "docs/qa/screenshots/fufire-backend-integration";
 
@@ -27,6 +28,7 @@ async function computeProfile(page: Page) {
 
 test("starts empty on the input tab without any demo profile", async ({ page }) => {
   await page.goto("/");
+  await dismissLanding(page);
   await expect(page.locator("#nav-tab-input")).toBeVisible();
   // No pre-filled demo identity.
   await expect(page.locator("#input-name")).toHaveValue("");
@@ -38,6 +40,7 @@ test("starts empty on the input tab without any demo profile", async ({ page }) 
 
 test("blocks chart submit until a place is resolved server-side", async ({ page }) => {
   await page.goto("/");
+  await dismissLanding(page);
   await fillNameDateTime(page);
   // No place yet → submit button blocked, overview tab still gated.
   await expect(page.locator("#submit-calculate-btn")).toBeDisabled();
@@ -50,6 +53,7 @@ test("blocks chart submit until a place is resolved server-side", async ({ page 
 
 test("renders the FuFirE-sourced overview after computing", async ({ page }) => {
   await page.goto("/");
+  await dismissLanding(page);
   await computeProfile(page);
   await expect(page.getByText("Test Persona")).toBeVisible();
   await expect(page.getByText("Waage").first()).toBeVisible();
@@ -58,6 +62,7 @@ test("renders the FuFirE-sourced overview after computing", async ({ page }) => 
 
 test("fusion tab renders the REAL calibrated FusionResponse path", async ({ page }) => {
   await page.goto("/");
+  await dismissLanding(page);
   await computeProfile(page);
   await page.click("#nav-tab-fusion");
   // The tab now renders the Spannungsnavigator; the technical view (gauge,
@@ -84,6 +89,7 @@ test("fusion tab renders the REAL calibrated FusionResponse path", async ({ page
 
 test("daily tab auto-loads the full FuFirE Tagespuls (three cards + Impuls)", async ({ page }) => {
   await page.goto("/");
+  await dismissLanding(page);
   await computeProfile(page);
   await page.click("#nav-tab-daily");
 
@@ -124,6 +130,7 @@ test("daily tab auto-loads the full FuFirE Tagespuls (three cards + Impuls)", as
 
 test("daily tab Tagesnavigation requests the previous day (Rückblick)", async ({ page }) => {
   await page.goto("/");
+  await dismissLanding(page);
   await computeProfile(page);
   await page.click("#nav-tab-daily");
   await expect(page.getByTestId("daily-card-west")).toBeVisible({ timeout: 15000 });
@@ -140,6 +147,7 @@ test("daily tab Tagesnavigation requests the previous day (Rückblick)", async (
 
 test("western tab shows house data", async ({ page }) => {
   await page.goto("/");
+  await dismissLanding(page);
   await computeProfile(page);
   await page.click("#nav-tab-western");
   await expect(page.getByText(/Haus|Häuser|Identität/).first()).toBeVisible();
@@ -148,6 +156,7 @@ test("western tab shows house data", async ({ page }) => {
 
 test("methodology shows the capability matrix with status + source", async ({ page }) => {
   await page.goto("/");
+  await dismissLanding(page);
   await computeProfile(page);
   await page.click("#nav-tab-methode");
   await expect(page.getByTestId("overall-source")).toContainText("FuFirE");
@@ -159,6 +168,7 @@ test("methodology shows the capability matrix with status + source", async ({ pa
 
 test("shows a safe error (no secret leak) when FuFirE key is missing", async ({ page }) => {
   await page.goto("/");
+  await dismissLanding(page);
   // Simulate the upstream config gap as the real server would report it.
   await page.route("**/api/azodiac/profile", (route) =>
     route.fulfill({
@@ -183,6 +193,7 @@ test("shows a safe error (no secret leak) when FuFirE key is missing", async ({ 
 
 test("light and dark themes both render the overview", async ({ page }) => {
   await page.goto("/");
+  await dismissLanding(page);
   await computeProfile(page);
   await page.click("#theme-toggle");
   await expect(page.locator("#app-root.bg-stone-100, #app-root").first()).toBeVisible();

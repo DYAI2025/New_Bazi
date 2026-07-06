@@ -540,13 +540,13 @@ export function calculateSynastry(c1: AstrologyFusionChart, c2: AstrologyFusionC
   let advice = "";
 
   if (totalScore >= 75) {
-    harmonyAnalysis = "Außergewöhnliche seelische Resonanz. Eure Elemente nähren und stärken sich gegenseitig. Sowohl euer westlicher Geist (Zodiak) als auch eure östliche Lebensenergie (BaZi) greifen wie Zahnräder ineinander.";
+    harmonyAnalysis = "Außergewöhnliche elementare Übereinstimmung. Eure Elemente nähren und stärken sich gegenseitig. Sowohl euer westlicher Teil (Zodiak) als auch eure östliche BaZi-Struktur greifen wie Zahnräder ineinander.";
     advice = "Nutzt diese tiefe Harmonie, um gemeinsame kreative Visionen zu manifestieren. Achtet darauf, einander Freiräume zu geben, da die gegenseitige Anziehung sehr intensiv sein kann.";
   } else if (totalScore >= 55) {
     harmonyAnalysis = "Eine ausgewogene, gesunde Dynamik mit komplementären Kräften. Es gibt anregende Unterschiede, die für eine lebendige Anziehung sorgen, ohne das Fundament der Beziehung zu gefährden.";
     advice = "Kommuniziert offen über eure Naturkräfte. Die Reibungspunkte dienen hier als kraftvolle Katalysatoren für persönliches Wachstum – fordert euch heraus, aber stützt euch stets gegenseitig.";
   } else {
-    harmonyAnalysis = "Eine hochgradig spannungsreiche Seelenkonstellation. Eure Elementenergien befinden sich im Kontrollzyklus (z.B. Feuer gegen Metall). Dies führt zu intensiven Lektionen und hoher Anziehungskraft durch Polarität.";
+    harmonyAnalysis = "Eine hochgradig spannungsreiche Element-Konstellation. Eure Elementkräfte befinden sich im Kontrollzyklus (z.B. Feuer gegen Metall). Dies führt zu intensiven Lektionen und hoher Anziehungskraft durch Polarität.";
     advice = "Achtet auf bewusste Pausen und lernt, die Andersartigkeit des Partners nicht als Angriff zu werten. Wu-Xing-Ausgleichsmethoden (z.B. das Element Erde vermittelt zwischen Feuer und Metall) können euch im Alltag enorm entlasten.";
   }
 

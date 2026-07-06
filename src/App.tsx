@@ -4,6 +4,7 @@ import { BazodiacClient, getUserFacingErrorTitle, getUserFacingRequestMessage } 
 import { ProfileViewModel } from "./viewmodels/profileViewModel";
 
 import PageShell from "./components/PageShell";
+import AccountMenu from "./components/AccountMenu";
 import InputForm from "./components/InputForm";
 import Overview from "./components/Overview";
 import WesternAstrology from "./components/WesternAstrology";
@@ -13,12 +14,14 @@ import TensionNavigator from "./components/TensionNavigator";
 import DailyPulse from "./components/DailyPulse";
 import Synastry from "./components/Synastry";
 import Methodology from "./components/Methodology";
+import LandingPage from "./components/landing/LandingPage";
 import { Sparkles, RefreshCw, Compass } from "lucide-react";
 
 export default function App() {
-  // No demo / default profile. The app starts empty on the input tab.
+  // Redesign (RD-2): cold start lands on the additive 'landing' FusionHero screen; its CTA
+  // sets activeTab='input'. No router; the InputForm→'overview' entry/auth spine is untouched.
   const [birthData, setBirthData] = React.useState<BirthData | null>(null);
-  const [activeTab, setActiveTab] = React.useState<string>("input");
+  const [activeTab, setActiveTab] = React.useState<string>("landing");
   const [viewModel, setViewModel] = React.useState<ProfileViewModel | null>(null);
   const [loading, setLoading] = React.useState<boolean>(false);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
@@ -59,6 +62,10 @@ export default function App() {
   };
 
   const renderTab = () => {
+    if (activeTab === "landing") {
+      return <LandingPage onStart={() => setActiveTab("input")} />;
+    }
+
     if (activeTab === "input") {
       return <InputForm birthData={birthData} onCalculate={handleCalculate} timeError={errorCode === "invalid_birth_time_dst" ? errorMsg : null} />;
     }
@@ -139,8 +146,24 @@ export default function App() {
     }
   };
 
+  const handleProfileLoad = (data: BirthData) => {
+    setBirthData(data);
+    setActiveTab("overview");
+  };
+
   return (
-    <PageShell activeTab={activeTab} setActiveTab={setActiveTab} hasBirthData={!!viewModel}>
+    <PageShell
+      activeTab={activeTab}
+      setActiveTab={setActiveTab}
+      hasBirthData={!!viewModel}
+      headerSlot={
+        <AccountMenu
+          birthData={birthData}
+          hasResult={!!viewModel}
+          onProfileLoad={handleProfileLoad}
+        />
+      }
+    >
       {renderTab()}
     </PageShell>
   );

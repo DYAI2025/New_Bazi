@@ -25,11 +25,10 @@ describe("OriginLayer Kohärenz-Gauge (B-002)", () => {
       INPUT, "fufire-orchestrated"
     );
     expect(vm.fusion.coherenceIndex).toBeNull();
+    expect(vm.fusion.signalLevel).toBeNull();
     const c = renderComponent(<TensionNavigator viewModel={vm} />);
-    clickTestId(c, "tension-origin-toggle");
-    const missing = c.querySelector('[data-testid="fusion-coherence-missing"]');
-    expect(missing).toBeTruthy();
-    expect(missing!.textContent).toContain("nicht verfügbar");
+    expect(c.querySelector('[data-testid="tension-empty"]')).toBeTruthy();
+    expect(c.querySelector('[data-testid="tension-origin-toggle"]')).toBeNull();
     expect(c.querySelector('[data-testid="fusion-coherence-value"]')).toBeNull();
     expect(c.textContent).not.toContain("null%");
     expect(c.textContent).not.toContain("NaN");

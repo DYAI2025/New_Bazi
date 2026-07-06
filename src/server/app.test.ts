@@ -87,6 +87,44 @@ afterEach(() => {
   process.env = { ...ORIGINAL_ENV };
 });
 
+describe("POST /api/timezone", () => {
+  it("returns 400 missing_coordinates when lat/lon absent", async () => {
+    const res = await request(app).post("/api/timezone").send({});
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("missing_coordinates");
+    expect(getTimezone).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 invalid_coordinates for non-finite / out-of-range coords (not 502)", async () => {
+    for (const body of [
+      { lat: "Infinity", lon: "-Infinity" },
+      { lat: "abc", lon: 13.4 },
+      { lat: 91, lon: 13.4 },
+      { lat: 52.5, lon: 181 },
+    ]) {
+      const res = await request(app).post("/api/timezone").send(body);
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe("invalid_coordinates");
+    }
+    expect(getTimezone).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 invalid_timestamp for a non-finite timestamp", async () => {
+    const res = await request(app).post("/api/timezone").send({ lat: 52.5, lon: 13.4, timestamp: "Infinity" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("invalid_timestamp");
+    expect(getTimezone).not.toHaveBeenCalled();
+  });
+
+  it("forwards valid coordinates to getTimezone", async () => {
+    (getTimezone as any).mockResolvedValue({ tz: "Europe/Berlin", utcOffsetMinutes: 60 });
+    const res = await request(app).post("/api/timezone").send({ lat: 52.5, lon: 13.4 });
+    expect(res.status).toBe(200);
+    expect(res.body.tz).toBe("Europe/Berlin");
+    expect(getTimezone).toHaveBeenCalledWith(52.5, 13.4, undefined);
+  });
+});
+
 describe("POST /api/azodiac/profile", () => {
   it("returns 400 with field errors for invalid input", async () => {
     const res = await request(app).post("/api/azodiac/profile").send({ name: "", birthDate: "", birthTime: "" });
@@ -357,6 +395,48 @@ describe("POST /api/azodiac/synastry", () => {
     // Additive Felder existieren immer; ohne elemental_comparison ehrlich leer.
     expect(res.body.elementalA).toEqual([]);
     expect(res.body.elementalB).toEqual([]);
+  });
+
+  it("adds the P7 additive fields (interAspects/pillarComparison/comparisonA/B/pairAxes)", async () => {
+    (FuFirEClient.postChart as any).mockResolvedValue(FULL_CHART);
+    const res = await request(app).post("/api/azodiac/synastry").send({
+      userBirthData: VALID_BODY,
+      partnerBirthData: { ...VALID_BODY, name: "Karl Jaspers" }
+    });
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.interAspects)).toBe(true);
+    expect(Array.isArray(res.body.pillarComparison)).toBe(true);
+    // FULL_CHART carries no fusion.elemental_comparison -> comparison + axes honestly empty.
+    expect(res.body.comparisonA).toEqual([]);
+    expect(res.body.comparisonB).toEqual([]);
+    expect(res.body.pairAxes).toEqual([]);
+  });
+
+  it("derives pairAxes + comparisonA/B from the two elemental_comparison payloads (P7)", async () => {
+    const withFusion = (western: number, bazi: number) => ({
+      ...FULL_CHART,
+      fusion: {
+        harmony_index: { harmony_index: 0.9 },
+        elemental_comparison: { Metall: { western, bazi, difference: western - bazi } }
+      }
+    });
+    (FuFirEClient.postChart as any)
+      .mockResolvedValueOnce(withFusion(0.6, 0.2))   // A: diff +0.4 -> Pol A (Struktur)
+      .mockResolvedValueOnce(withFusion(0.1, 0.3));  // B: diff -0.2 -> Pol B (Fluss)
+    const res = await request(app).post("/api/azodiac/synastry").send({
+      userBirthData: VALID_BODY,
+      partnerBirthData: { ...VALID_BODY, name: "Karl Jaspers" }
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.comparisonA).toHaveLength(1);
+    expect(res.body.comparisonA[0]).toMatchObject({ element: "Metall", western: 0.6, bazi: 0.2 });
+    expect(res.body.comparisonA[0].difference).toBeCloseTo(0.4, 10);
+    expect(res.body.comparisonB[0].element).toBe("Metall");
+    expect(res.body.comparisonB[0].difference).toBeLessThan(0);
+    expect(res.body.pairAxes).toHaveLength(1);
+    expect(res.body.pairAxes[0]).toMatchObject({
+      id: "structure_flow", element: "Metall", mode: "reibung", leanA: "Struktur", leanB: "Fluss"
+    });
   });
 
   it("serves both per-element distributions (elementalA/B) from the two fusion payloads", async () => {

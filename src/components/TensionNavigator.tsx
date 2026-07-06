@@ -617,6 +617,7 @@ function OriginLayer({ fusion }: { fusion: FusionData }) {
     coherenceIndex,
     coherenceCalibrated,
     signalLevel,
+    signalLevelSuffix,
     coherenceRating,
     coherenceExplanation,
     systemBridge,
@@ -696,6 +697,14 @@ function OriginLayer({ fusion }: { fusion: FusionData }) {
                   Ausprägung des Signals: {signalLabel}
                 </span>
               )}
+              {signalLevelSuffix && (
+                <span
+                  data-testid="fusion-signal-level-suffix"
+                  className="inline-block font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 rounded border text-stone-400 border-stone-600/40 bg-stone-700/20"
+                >
+                  {signalLevelSuffix}
+                </span>
+              )}
               <p className="text-xs text-stone-400 leading-relaxed font-light">{coherenceExplanation}</p>
               <span
                 data-testid="fusion-source"
@@ -735,7 +744,7 @@ function OriginLayer({ fusion }: { fusion: FusionData }) {
             {elementalComparison.length > 0 && (
               <div className="space-y-4 pt-4 border-t border-gold-muted/5">
                 <span className="font-mono text-[10px] uppercase font-bold text-gold-muted tracking-widest block">
-                  Element-Resonanz: West vs. BaZi
+                  Element-Abgleich: West vs. BaZi
                 </span>
                 <div className="space-y-3" data-testid="fusion-elemental-comparison">
                   {elementalComparison.map((cmp) => (

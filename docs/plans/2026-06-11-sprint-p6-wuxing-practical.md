@@ -48,6 +48,18 @@ Audit-Script erneut → alle Ziel-Ratios erfüllt; Vorher/Nachher-Screenshots be
 
 **Commits:** `fix(design): Dark/Light-Kontraste auf WCAG-Ziel (messbasiert)` / `feat(design): Pergament-Partikel im Light-Mode`
 
+### Task B5: Landing-Entzauberung + Minimalismus (User 2026-06-14) — ✅ UMGESETZT (PR `feat/sprint-p6-fe-landing-entzauberung`)
+Esoterische/nebulöse Begriffe aus sichtbarer Copy raus; Startseite minimalistischer + auf Bazodiac/Fusion zentriert. Geändert (TDD, Anti-Eso-Test zuerst RED):
+- `InputForm.tsx`: Hero „Metaphysisches Portal" → „Bazodiac" + ein Fusion-Satz (West-Astrologie × BaZi → gemeinsames Bild); FuFirE/Server-Hinweis untergeordnet behalten.
+- `Overview.tsx`: „Kollationierte Seelensignatur"→„Signatur geladen"; „Seelenpartner"→„Partner"; „Unterbewusstsein, Seele & Intuition"→„Maske, Auftreten & erster Eindruck"; „Vier Säulen des Schicksals"→„Vier Säulen / BaZi".
+- `BaZiDetail.tsx`: „Schicksalssäulen"→„Säulen" (2×); „Repräsentiert Ihre Seele … wahres Ich"→„Tagesmeister — dein Tagesstamm, Kern der BaZi-Analyse".
+- `Synastry.tsx`: „Beziehungsresonanz"→„Beziehungsvergleich"; „RESONANZ VERGLEICHEN"→„PARTNER VERGLEICHEN"; „Resonanz"→„Übereinstimmung"; „Harmonie-Resonanz"→„Harmonie-Wert".
+- `TensionNavigator.tsx`: „Element-Resonanz"→„Element-Abgleich". `PageShell.tsx`: Footer „DIE METAPHYSISCHE MANUFAKTUR" raus → „© 2026 BAZODIAC". `utils/astrology.ts`: „seelische Resonanz"/„Seelenkonstellation"→„elementare Übereinstimmung"/„Element-Konstellation".
+- **Lock:** `wordingHonesty.test.ts` um Eso-Blockliste `/seele|metaphysisch|kollationiert|wahres ich|schicksal|resonanz/i` je Komponente erweitert (Scanner ohne `.test.tsx`; `createPortal`/Schwingung/spirituell bewusst NICHT in der Liste — User-Entscheid).
+- User-Entscheid Grenzfälle: „Schwingung*" + „spirituell" BLEIBEN; „Resonanz" + „Schicksalssäulen (四柱)" ersetzt.
+- Gates: tsc clean · vitest 514 · build · playwright 35/35.
+- **OFFEN (Folge):** tiefere Layout-Minimalisierung der Landing (weniger Karten/Dekoration) falls gewünscht; Eso in Registry-Texten (P5) separat, falls erwünscht.
+
 ## Abschluss
 Gates + PR `feat: WuXing Practical Layer + Design-QA (Kontraste, Gold, Pergament)` + MISSING (vollständige WCAG-AA-Abdeckung aller Seiten = Folge; Feng-Shui-Vertiefung als eigenes Content-Paket) + Live-Smoke beide Themes.
 

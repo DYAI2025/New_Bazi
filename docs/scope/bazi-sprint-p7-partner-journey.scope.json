@@ -1,0 +1,31 @@
+{
+  "feature": "bazi-sprint-p7-partner-journey",
+  "allowed_change_scope": [
+    "src/utils/interAspects.ts",
+    "src/utils/interAspects.test.ts",
+    "src/utils/baziCompare.ts",
+    "src/utils/baziCompare.test.ts",
+    "src/utils/tensionPair.ts",
+    "src/utils/tensionPair.test.ts",
+    "src/utils/aspectInterpretation.ts",
+    "src/utils/aspectInterpretation.test.ts",
+    "src/utils/synastry.ts",
+    "src/utils/synastry.test.ts",
+    "src/utils/fufireNormalizer.ts",
+    "src/utils/fufireNormalizer.realshapes.test.ts",
+    "src/content/pairAxisTexts.ts",
+    "src/content/pairAxisTexts.test.ts",
+    "src/viewmodels/profileViewModel.ts",
+    "src/server/app.ts",
+    "src/server/app.test.ts",
+    "src/api/bazodiacClient.ts",
+    "src/components/Synastry.tsx",
+    "src/components/synastry/**",
+    "src/components/wordingHonesty.test.ts",
+    "src/__tests__/synastryWording.test.ts",
+    "tests/e2e/mock-fufire.mjs",
+    "tests/e2e/synastry-completion.spec.ts",
+    "package.json",
+    "docs/**"
+  ]
+}

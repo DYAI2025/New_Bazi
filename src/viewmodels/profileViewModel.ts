@@ -38,6 +38,14 @@ export interface ElementCardData {
  */
 export type SignalLevel = "leise" | "spuerbar" | "dominant";
 
+/** One West-vs-BaZi element row from the engine's elemental_comparison. */
+export interface ElementalComparisonEntry {
+  element: string;
+  western: number;
+  bazi: number;
+  difference: number;
+}
+
 export interface FusionData {
   /** null = weder Kalibrierung noch Legacy-Wert vorhanden — UI zeigt Missing-State. */
   coherenceIndex: number | null;
@@ -53,12 +61,7 @@ export interface FusionData {
   coherenceExplanation: string;
   systemBridge: string;
   /** Per-element West-vs-BaZi weights straight from elemental_comparison; empty if absent. */
-  elementalComparison: {
-    element: string;
-    western: number;
-    bazi: number;
-    difference: number;
-  }[];
+  elementalComparison: ElementalComparisonEntry[];
   /**
    * Derived ONLY from server data (largest |difference| entries of
    * elemental_comparison -> "größte Spannungsfelder") or passed through from
@@ -70,6 +73,7 @@ export interface FusionData {
   }[];
   label: string;
   explanation: string;
+  signalLevelSuffix: string | null;
   westernContributors: string[];
   baziContributors: string[];
   wuxingContributors: string[];
@@ -85,6 +89,7 @@ export interface FusionData {
 }
 
 export interface ProfileViewModel {
+  timeKnown: boolean;
   identity: {
     name: string;
     birthDate: string;
@@ -95,7 +100,15 @@ export interface ProfileViewModel {
   western: {
     sunSign: string;
     moonSign: string;
-    ascendant: string;
+    ascendant: string | null;
+    /**
+     * Absolute ecliptic longitude (0–360) of the ascendant, ONLY from a real
+     * source (angles.Ascendant or first house cusp). null when unknown,
+     * provisional (unknown birth time), or only a sign name is available — never
+     * reconstructed locally from the ascendant sign. P7 inter-aspects use this.
+     */
+    ascendantLongitude: number | null;
+    housesAvailable: boolean;
     planets: {
       name: string;
       symbol: string;
@@ -118,6 +131,7 @@ export interface ProfileViewModel {
   };
   bazi: {
     available: boolean;
+    hourAvailable: boolean;
     pillars: {
       title: string;
       pillarKey: string;

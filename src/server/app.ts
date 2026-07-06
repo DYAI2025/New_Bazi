@@ -1,4 +1,7 @@
-import express, { Express, Request, Response } from "express";
+import express, { Express, Request, Response, NextFunction } from "express";
+import rateLimit from "express-rate-limit";
+import { getServerSupabase } from "./supabase";
+import { requireUserAuth } from "./requireUserAuth";
 import { GoogleGenAI } from "@google/genai";
 
 import { FuFirEClient } from "../utils/fufireClient";
@@ -25,7 +28,10 @@ import {
 } from "../utils/profileService";
 import { normalizeFuFireProfile } from "../utils/fufireNormalizer";
 import { compareProfiles } from "../utils/synastry";
-import { fuseElementalWeights } from "../utils/tensionPair";
+import { fuseElementalWeights, derivePairAxes } from "../utils/tensionPair";
+import { computeInterAspects, bodyPositionsFromViewModel } from "../utils/interAspects";
+import { compareBaziPillars } from "../utils/baziCompare";
+import { createRealtimeSession } from "./realtime";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -33,6 +39,33 @@ import { fuseElementalWeights } from "../utils/tensionPair";
 
 function localFallbackEnabled(): boolean {
   return process.env.ENABLE_LOCAL_ASTROLOGY_FALLBACK === "true";
+}
+
+// --- Rate limiting (SEC-RATELIMIT-01) -------------------------------------------
+// Skipped under test (NODE_ENV=test / DISABLE_RATE_LIMIT=true) so the supertest
+// suite is never throttled; RATE_LIMIT_FORCE re-enables it for the dedicated
+// rate-limit test. Only POST requests are counted, so the cheap GET probes
+// (/api/health is Railway's healthcheck) are never throttled.
+function rateLimitSkipped(): boolean {
+  if (process.env.RATE_LIMIT_FORCE === "true") return false;
+  return process.env.NODE_ENV === "test" || process.env.DISABLE_RATE_LIMIT === "true";
+}
+
+function makeRateLimiter(limit: number, skipExtra?: (req: Request) => boolean) {
+  return rateLimit({
+    windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000),
+    limit,
+    standardHeaders: true,
+    legacyHeaders: false,
+    validate: { trustProxy: false },
+    skip: (req: Request) => rateLimitSkipped() || req.method !== "POST" || (skipExtra ? skipExtra(req) : false),
+    handler: (_req: Request, res: Response) => {
+      res.status(429).json({
+        error: "rate_limited",
+        message: "Zu viele Anfragen in kurzer Zeit. Bitte versuche es gleich noch einmal."
+      });
+    }
+  });
 }
 
 function logInvalidBirthInput(route: string, errors: unknown): void {
@@ -54,6 +87,8 @@ function logInvalidBirthInput(route: string, errors: unknown): void {
 
   console.warn("invalid_birth_input", { route, fields });
 }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Send a typed error, never leaking secrets or stack traces to the browser. */
 function sendError(res: Response, err: any, fallbackStatus = 500): void {
@@ -253,7 +288,21 @@ function detailHandler(method: ChartMethod, key: "western" | "bazi" | "wuxing" |
 
 export function createApp(): Express {
   const app = express();
+  // Behind Railway's single edge proxy: trust exactly one hop so req.ip is the real
+  // client (from X-Forwarded-For), not the proxy — and not client-spoofable past that
+  // one hop. Never `true` (fully spoofable, would defeat the limiter).
+  app.set("trust proxy", 1);
   app.use(express.json());
+
+  // SEC-RATELIMIT-01: cap anonymous abuse of the billable upstream routes (paid
+  // Gemini tokens, FuFirE quota). A generous global net over all POSTs (autocomplete
+  // is exempt — it fires per debounced keystroke and must not 429 a typing user),
+  // plus a strict cap on /api/azodiac + /api/gemini. All thresholds env-tunable.
+  app.use("/api", makeRateLimiter(
+    Number(process.env.RATE_LIMIT_GLOBAL_MAX || 300),
+    (req) => req.path === "/places/autocomplete"
+  ));
+  app.use(["/api/azodiac", "/api/gemini"], makeRateLimiter(Number(process.env.RATE_LIMIT_COMPUTE_MAX || 20)));
 
   // --- Config / Health ---
 
@@ -340,8 +389,22 @@ export function createApp(): Express {
       res.status(400).json({ error: "missing_coordinates" });
       return;
     }
+    const latN = Number(lat);
+    const lonN = Number(lon);
+    if (!Number.isFinite(latN) || !Number.isFinite(lonN) || latN < -90 || latN > 90 || lonN < -180 || lonN > 180) {
+      res.status(400).json({ error: "invalid_coordinates" });
+      return;
+    }
+    let tsN: number | undefined;
+    if (timestamp !== undefined && timestamp !== null && timestamp !== "") {
+      tsN = Number(timestamp);
+      if (!Number.isFinite(tsN)) {
+        res.status(400).json({ error: "invalid_timestamp" });
+        return;
+      }
+    }
     try {
-      res.json(await getTimezone(Number(lat), Number(lon), timestamp ? Number(timestamp) : undefined));
+      res.json(await getTimezone(latN, lonN, tsN));
     } catch (err) {
       sendError(res, err);
     }
@@ -449,17 +512,25 @@ export function createApp(): Express {
     try {
       const [a, b] = await Promise.all([resolveProfile(userV.value), resolveProfile(partnerV.value)]);
       const comparison = compareProfiles(a.viewModel, b.viewModel);
+      // P7 (additiv, LOKAL): alle Paar-Felder werden aus den zwei bereits
+      // aufgelösten ProfileViewModels abgeleitet — kein zusätzlicher FuFirE-Call.
+      // Fehlt ein Datum, bleibt das Feld ehrlich leer ([]) statt erfundener Defaults.
+      const comparisonA = a.viewModel.fusion.elementalComparison ?? [];
+      const comparisonB = b.viewModel.fusion.elementalComparison ?? [];
       res.json({
         ...comparison,
         source: "fufire-profiles-local-comparison",
         userRef: { name: a.viewModel.identity.name, sunSign: a.viewModel.western.sunSign, dayMaster: a.viewModel.bazi.dayMaster.element },
         partnerRef: { name: b.viewModel.identity.name, sunSign: b.viewModel.western.sunSign, dayMaster: b.viewModel.bazi.dayMaster.element },
-        // Additiv (Spannungsnavigator-Paar-Modus): per-Element-Verteilung beider
-        // Personen aus deren bereits aufgelösten Fusion-Daten — die Route holt
-        // ohnehin beide vollen FuFirE-Profile, kein zusätzlicher Engine-Call.
-        // Leer ([]), wenn ein Profil kein elemental_comparison liefert.
-        elementalA: fuseElementalWeights(a.viewModel.fusion.elementalComparison),
-        elementalB: fuseElementalWeights(b.viewModel.fusion.elementalComparison)
+        // Spannungsnavigator-Paar-Modus: per-Element-Verteilung beider Personen.
+        elementalA: fuseElementalWeights(comparisonA),
+        elementalB: fuseElementalWeights(comparisonB),
+        // P7 Partner-Journey-Ebenen:
+        interAspects: computeInterAspects(bodyPositionsFromViewModel(a.viewModel), bodyPositionsFromViewModel(b.viewModel)),
+        pillarComparison: compareBaziPillars(a.viewModel.bazi.pillars, b.viewModel.bazi.pillars),
+        comparisonA,
+        comparisonB,
+        pairAxes: derivePairAxes(comparisonA, comparisonB)
       });
     } catch (err) {
       sendError(res, err);
@@ -506,6 +577,115 @@ export function createApp(): Express {
       console.error("Gemini provider error (server-side only):", error?.message);
       sendError(res, { code: "gemini_error", httpStatus: 502, message: "Gemini-Deutung ist derzeit nicht verfügbar." });
     }
+  });
+
+  // --- Bazodiac-Agents Realtime audio session (server-side OpenAI key only) ---
+
+  app.post("/api/realtime/session", async (req, res) => {
+    try {
+      await createRealtimeSession(req, res);
+    } catch (error: any) {
+      console.error("Realtime session handler failed:", error?.message);
+      sendError(res, {
+        code: "openai_realtime_session_failed",
+        httpStatus: 502,
+        message: "OpenAI Realtime-Session konnte nicht gestartet werden."
+      });
+    }
+  });
+
+  // --- Profil-Routen (hinter requireUserAuth; Service-Role + expliziter Owner-Filter) ---
+
+  app.get("/api/me/profiles", requireUserAuth, async (req, res) => {
+    const supabase = getServerSupabase()!;
+    const { data, error } = await supabase
+      .from("nb_profiles")
+      .select("id, label, birth_data, is_default, updated_at")
+      .eq("user_id", req.userId!)
+      .order("updated_at", { ascending: false });
+    if (error) { sendError(res, { code: "db_error", httpStatus: 502, message: "Datenbankfehler." }); return; }
+    res.json(data ?? []);
+  });
+
+  app.post("/api/me/profiles", requireUserAuth, async (req, res) => {
+    const { label = "Mein Profil", birth_data, makeDefault = false } = req.body ?? {};
+    const validation = validateBirthInput(birth_data ?? {});
+    if (!validation.valid) {
+      res.status(400).json({ error: "invalid_birth_input", fields: validation.errors });
+      return;
+    }
+    const supabase = getServerSupabase()!;
+    const userId = req.userId!;
+    if (makeDefault) {
+      const { error: clearErr } = await supabase
+        .from("nb_profiles")
+        .update({ is_default: false })
+        .eq("user_id", userId);
+      if (clearErr) { sendError(res, { code: "db_error", httpStatus: 502, message: "Datenbankfehler." }); return; }
+    }
+    const { data, error } = await supabase
+      .from("nb_profiles")
+      .insert({ user_id: userId, label, birth_data, is_default: !!makeDefault })
+      .select()
+      .single();
+    if (error) { sendError(res, { code: "db_error", httpStatus: 502, message: "Datenbankfehler." }); return; }
+    res.status(201).json(data);
+  });
+
+  app.delete("/api/me/profiles/:id", requireUserAuth, async (req, res) => {
+    if (!UUID_RE.test(req.params.id)) { res.status(400).json({ error: "invalid_id" }); return; }
+    const supabase = getServerSupabase()!;
+    const { error } = await supabase
+      .from("nb_profiles")
+      .delete()
+      .eq("id", req.params.id)
+      .eq("user_id", req.userId!);
+    if (error) { sendError(res, { code: "db_error", httpStatus: 502, message: "Datenbankfehler." }); return; }
+    res.status(204).send();
+  });
+
+  app.get("/api/me/partners", requireUserAuth, async (req, res) => {
+    const supabase = getServerSupabase()!;
+    const { data, error } = await supabase
+      .from("nb_partner_profiles")
+      .select("id, label, birth_data, created_at")
+      .eq("user_id", req.userId!)
+      .order("created_at", { ascending: false });
+    if (error) { sendError(res, { code: "db_error", httpStatus: 502, message: "Datenbankfehler." }); return; }
+    res.json(data ?? []);
+  });
+
+  app.post("/api/me/partners", requireUserAuth, async (req, res) => {
+    const { label, birth_data } = req.body ?? {};
+    if (!label) {
+      res.status(400).json({ error: "invalid_input", message: "label ist erforderlich." });
+      return;
+    }
+    const validation = validateBirthInput(birth_data ?? {});
+    if (!validation.valid) {
+      res.status(400).json({ error: "invalid_birth_input", fields: validation.errors });
+      return;
+    }
+    const supabase = getServerSupabase()!;
+    const { data, error } = await supabase
+      .from("nb_partner_profiles")
+      .insert({ user_id: req.userId!, label, birth_data })
+      .select()
+      .single();
+    if (error) { sendError(res, { code: "db_error", httpStatus: 502, message: "Datenbankfehler." }); return; }
+    res.status(201).json(data);
+  });
+
+  app.delete("/api/me/partners/:id", requireUserAuth, async (req, res) => {
+    if (!UUID_RE.test(req.params.id)) { res.status(400).json({ error: "invalid_id" }); return; }
+    const supabase = getServerSupabase()!;
+    const { error } = await supabase
+      .from("nb_partner_profiles")
+      .delete()
+      .eq("id", req.params.id)
+      .eq("user_id", req.userId!);
+    if (error) { sendError(res, { code: "db_error", httpStatus: 502, message: "Datenbankfehler." }); return; }
+    res.status(204).send();
   });
 
   return app;
