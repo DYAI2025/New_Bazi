@@ -8,6 +8,7 @@
  * fufireNormalizer unit tests (257 GREEN); this spec validates the UI contract.
  */
 import { test, expect, Page } from "@playwright/test";
+import { dismissLanding } from "./_landing";
 
 async function fillNameDate(page: Page) {
   await page.fill("#input-name", "Unknown Zeit");
@@ -24,12 +25,14 @@ async function selectBerlin(page: Page) {
 
 test("checkbox 'Geburtszeit unbekannt' is present in the form", async ({ page }) => {
   await page.goto("/");
+  await dismissLanding(page);
   await expect(page.locator("#input-time-unknown")).toBeVisible();
   await expect(page.locator('label[for="input-time-unknown"]')).toContainText("Geburtszeit unbekannt");
 });
 
 test("checking the checkbox disables the time field and clears its value", async ({ page }) => {
   await page.goto("/");
+  await dismissLanding(page);
   await page.fill("#input-time", "14:30");
   const timeInput = page.locator("#input-time");
   await expect(timeInput).not.toBeDisabled();
@@ -43,6 +46,7 @@ test("checking the checkbox disables the time field and clears its value", async
 
 test("hint text appears when checkbox is checked", async ({ page }) => {
   await page.goto("/");
+  await dismissLanding(page);
   await expect(page.locator("text=Tagesmitte (12:00)")).not.toBeVisible();
   await page.check("#input-time-unknown");
   await expect(page.locator("text=Tagesmitte (12:00)")).toBeVisible();
@@ -50,6 +54,7 @@ test("hint text appears when checkbox is checked", async ({ page }) => {
 
 test("submit button unlocks without a time when checkbox is checked", async ({ page }) => {
   await page.goto("/");
+  await dismissLanding(page);
   await fillNameDate(page);
   await selectBerlin(page);
 
@@ -63,6 +68,7 @@ test("submit button unlocks without a time when checkbox is checked", async ({ p
 
 test("unchecking restores time field and re-requires a time for submit", async ({ page }) => {
   await page.goto("/");
+  await dismissLanding(page);
   await fillNameDate(page);
   await selectBerlin(page);
 
@@ -77,6 +83,7 @@ test("unchecking restores time field and re-requires a time for submit", async (
 
 test("full unknown-time flow: submit → overview shows 'Zeit unbekannt' tag for Aszendent", async ({ page }) => {
   await page.goto("/");
+  await dismissLanding(page);
   await fillNameDate(page);
   await selectBerlin(page);
   await page.check("#input-time-unknown");

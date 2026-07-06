@@ -1,4 +1,5 @@
 import { test, expect, Page } from "@playwright/test";
+import { dismissLanding } from "./_landing";
 
 const SHOT_DIR = "docs/qa/screenshots/spannungsnavigator";
 
@@ -37,6 +38,7 @@ async function openNavigator(page: Page) {
 
 test("navigator card shows pole pair + question + honesty footer — and NO percent sign", async ({ page }) => {
   await page.goto("/");
+  await dismissLanding(page);
   await computeProfile(page);
   await openNavigator(page);
 
@@ -65,6 +67,7 @@ test("navigator card shows pole pair + question + honesty footer — and NO perc
 
 test("'Passt nicht' switches to the next-strongest pole pair", async ({ page }) => {
   await page.goto("/");
+  await dismissLanding(page);
   await computeProfile(page);
   await openNavigator(page);
 
@@ -87,6 +90,7 @@ test("'Passt nicht' switches to the next-strongest pole pair", async ({ page }) 
 
 test("'Widerstand' shows the Gegenpol footnote (Gegenlesart)", async ({ page }) => {
   await page.goto("/");
+  await dismissLanding(page);
   await computeProfile(page);
   await openNavigator(page);
 
@@ -102,11 +106,13 @@ test("'Widerstand' shows the Gegenpol footnote (Gegenlesart)", async ({ page }) 
 
 test("question is deterministic: reload on the same day shows the same question", async ({ page }) => {
   await page.goto("/");
+  await dismissLanding(page);
   await computeProfile(page);
   await openNavigator(page);
   const firstQuestion = await page.getByTestId("tension-question").textContent();
 
   await page.reload();
+  await dismissLanding(page);
   await computeProfile(page);
   await openNavigator(page);
 
@@ -115,6 +121,7 @@ test("question is deterministic: reload on the same day shows the same question"
 
 test("pair mode: synastry renders the pair card with the pair question", async ({ page }) => {
   await page.goto("/");
+  await dismissLanding(page);
   await computeProfile(page);
   await page.click("#nav-tab-synastry");
 

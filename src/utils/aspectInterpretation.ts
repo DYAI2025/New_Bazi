@@ -83,3 +83,49 @@ export function aspectInterpretation(planet1: string, planet2: string, type: str
   const template = ASPECT_TEMPLATES_DE[type] || GENERIC_TEMPLATE;
   return template(planet1, planet2, k1, k2);
 }
+
+/**
+ * Pair (synastry) aspect interpretation — REQ-D-002/S-001.
+ *
+ * Unlike `aspectInterpretation`, both bodies belong to DIFFERENT people, so
+ * the sentence must name BOTH anchors explicitly and unambiguously:
+ * "Sonne (A)" for person A's body, "Mond (B)" for person B's body. The (A)/(B)
+ * labels keep it clear whose theme is whose in a two-chart reading.
+ *
+ * Themes reuse PLANET_KEYWORDS_DE; unknown bodies fall back to their own name.
+ *
+ * Tone is calibrated per aspect type WITHOUT making a relationship verdict:
+ *   - Trigon      -> a shared Ressource (something readily available)
+ *   - Sextil      -> an open Gelegenheit (invites active uptake)
+ *   - Konjunktion -> Bündelung/Aktivierung (themes activate together)
+ *   - Quadrat     -> Reibung framed as a Wachstumskante (a growth edge, never
+ *                    a defect, never "doesn't fit")
+ *   - Opposition  -> Polarität along a Spannungsachse (two poles seeking
+ *                    conscious balance)
+ * Unknown types fall back to a safe, generic interplay sentence.
+ *
+ * ANTI-REIFICATION: never emits fate/soul/diagnosis/relationship-verdict
+ * language; friction is always an edge to grow on, never a verdict about
+ * the bond ("passt zusammen", "harmonisch", "kompatibel" are all excluded).
+ */
+export function pairAspectInterpretation(planetA: string, planetB: string, type: string): string {
+  const themeA = PLANET_KEYWORDS_DE[planetA] || planetA;
+  const themeB = PLANET_KEYWORDS_DE[planetB] || planetB;
+  const a = `${planetA} (A)`;
+  const b = `${planetB} (B)`;
+
+  switch (type) {
+    case "Trigon":
+      return `${a} und ${b}: ${themeA} und ${themeB} fließen leicht zusammen und stehen als gemeinsame Ressource bereit, auf die beide Seiten mühelos zugreifen können.`;
+    case "Sextil":
+      return `${a} und ${b}: zwischen ${themeA} und ${themeB} öffnet sich eine Gelegenheit, die belohnt wird, wenn beide Seiten sie aktiv aufgreifen.`;
+    case "Konjunktion":
+      return `${a} und ${b}: ${themeA} und ${themeB} treten als Bündelung gemeinsam auf und aktivieren einander, sodass beide Themen im Kontakt zugleich anklingen.`;
+    case "Quadrat":
+      return `${a} und ${b}: zwischen ${themeA} und ${themeB} entsteht Reibung — eine Wachstumskante, an der beide Seiten lernen, ihre Impulse aufeinander abzustimmen.`;
+    case "Opposition":
+      return `${a} und ${b}: ${themeA} und ${themeB} bilden eine Polarität entlang einer Spannungsachse, deren Pole nach bewusstem Ausgleich zwischen beiden Seiten suchen.`;
+    default:
+      return `${a} und ${b}: ${themeA} und ${themeB} stehen in Wechselwirkung und färben einander im Kontakt zwischen beiden Seiten ein.`;
+  }
+}

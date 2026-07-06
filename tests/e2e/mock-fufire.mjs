@@ -80,6 +80,27 @@ const CHART = {
 // DIFFERENT elemental_comparison so the pair tension has a clear top axis:
 // Metall person-weights 0.282 (A) vs 0.600 (B) → |diff| 0.318 → Struktur↔Fluss,
 // Person-B-Überschuss (Blau).
+// P5-T3: unknown-time persona for the ExplanationLayer absence test.
+// The BFF /chart body has no birth_time_known field, so the mock keys off the
+// dedicated NO_TIME birth date (1985-03-10, used only by explanation-layer.spec.ts):
+// it returns western.precision.provisional_fields=["ascendant","houses","mc"]
+// (mirrors the CONFIRMED real unknown-time western shape — see
+// src/__fixtures__/fufire/unknown-time/README.md F-01) so the normalizer
+// short-circuits and honestly nulls the ascendant. ascendant is also nulled at
+// source so no 12:00-computed sign can leak.
+const NO_TIME_CHART = {
+  ...CHART,
+  western: {
+    ...CHART.western,
+    ascendant: null,
+    precision: { provisional_fields: ["ascendant", "houses", "mc"] }
+  }
+};
+
+// Generic partner persona (ANY non-primary, non-NO_TIME date): a CLONE of CHART
+// (incl. its BaZi pillars Jiǎ/Zǐ … — relied on by explanation-layer.spec.ts and
+// bazi-pillars.spec.ts which use 1990-06-15 as their MAIN profile) plus only a
+// variant fusion distribution so the pair tension navigator has a clear top axis.
 const PARTNER_CHART = {
   ...CHART,
   fusion: {
@@ -95,6 +116,28 @@ const PARTNER_CHART = {
       Erde: { western: 0.32, bazi: 0.4, difference: -0.08 },
       Metall: { western: 0.61, bazi: 0.59, difference: 0.02 },
       Wasser: { western: 0.5, bazi: 0.46, difference: 0.04 }
+    }
+  }
+};
+
+// P7 synastry-completion partner persona (date 1988-08-08 ONLY): PARTNER_CHART
+// fusion (so the pair tension/axes are unchanged) + VARIANT BaZi branches so the
+// pillar comparison vs the primary CHART is non-degenerate. Scoped to this single
+// date so it does NOT affect the generic partner persona other specs depend on.
+// Primary CHART branches: Jahr Pferd, Monat Hund, Tag Ratte, Stunde Pferd.
+//   Jahr   Hund  vs Pferd → San-He (Tiger/Pferd/Hund Dreieck)
+//   Monat  Hund  vs Hund  → gleich
+//   Tag    Pferd vs Ratte → Chong (Ratte–Pferd Gegenüber)
+//   Stunde Pferd vs Pferd → gleich
+const PARTNER_VARIANT = {
+  ...PARTNER_CHART,
+  bazi: {
+    ...CHART.bazi,
+    pillars: {
+      Jahr:   { stem: { name: "Bǐng", chinese: "丙", element: "Feuer", yinYang: "Yang" }, branch: { name: "Xū", chinese: "戌", element: "Erde", animal: "Hund", hiddenStems: [], yinYang: "Yang" } },
+      Monat:  { stem: { name: "Wù", chinese: "戊", element: "Erde", yinYang: "Yang" }, branch: { name: "Xū", chinese: "戌", element: "Erde", animal: "Hund", hiddenStems: [], yinYang: "Yang" } },
+      Tag:    { stem: { name: "Jiǎ", chinese: "甲", element: "Holz", yinYang: "Yang" }, branch: { name: "Wǔ", chinese: "午", element: "Feuer", animal: "Pferd", hiddenStems: [], yinYang: "Yang" } },
+      Stunde: { stem: { name: "Gēng", chinese: "庚", element: "Metall", yinYang: "Yang" }, branch: { name: "Wǔ", chinese: "午", element: "Feuer", animal: "Pferd", hiddenStems: [], yinYang: "Yang" } }
     }
   }
 };
@@ -197,17 +240,30 @@ const server = http.createServer(async (req, res) => {
   const rawBody = await readBody(req);
 
   if (req.method === "POST" && url === "/chart") {
-    // Partner persona (different birth date) → variant fusion distribution,
-    // so synastry pair tension is non-degenerate. Primary persona unchanged.
-    let isPartner = false;
+    // Persona routing by birth date (local_datetime):
+    //   1985-03-10 → NO_TIME persona: provisional ascendant → normalizer nulls it
+    //                (P5-T3 ExplanationLayer absence test).
+    //   1988-08-08 → P7 synastry-completion partner: variant BaZi (San-He/Chong).
+    //   any other non-1990-05-15 → generic partner persona: CHART clone + variant
+    //                fusion so synastry pair tension is non-degenerate (relied on by
+    //                explanation-layer/bazi-pillars specs that use 1990-06-15).
+    //   1990-05-15 (primary) → unchanged CHART.
+    let chartVariant = CHART;
     try {
       const parsed = JSON.parse(rawBody || "{}");
-      isPartner = typeof parsed.local_datetime === "string" && !parsed.local_datetime.startsWith("1990-05-15");
+      const dt = typeof parsed.local_datetime === "string" ? parsed.local_datetime : "";
+      if (dt.startsWith("1985-03-10")) {
+        chartVariant = NO_TIME_CHART;
+      } else if (dt.startsWith("1988-08-08")) {
+        chartVariant = PARTNER_VARIANT;
+      } else if (dt && !dt.startsWith("1990-05-15")) {
+        chartVariant = PARTNER_CHART;
+      }
     } catch {
       // keep primary chart
     }
     res.writeHead(200);
-    res.end(JSON.stringify(isPartner ? PARTNER_CHART : CHART));
+    res.end(JSON.stringify(chartVariant));
     return;
   }
   if (req.method === "POST" && url === "/v1/calculate/western") { res.writeHead(200); res.end(JSON.stringify({ western: CHART.western })); return; }

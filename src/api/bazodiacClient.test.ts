@@ -86,4 +86,14 @@ describe("BazodiacClient profile requests", () => {
     expect(getUserFacingRequestMessage(err)).toContain("Bitte prüfe Datum, Uhrzeit, Geburtsort und Zeitzone");
     expect(getUserFacingRequestMessage(err)).toContain("Fehlercode: invalid_birth_input");
   });
+
+  it("wraps a malformed-but-200 response body in a BazodiacRequestError", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("{\"data\": {\"pro", { status: 200 })));
+
+    await expect(BazodiacClient.fetchProfile(LEGACY_INPUT)).rejects.toMatchObject({
+      code: "response_parse_error",
+      status: 200,
+      isNetworkError: false
+    });
+  });
 });

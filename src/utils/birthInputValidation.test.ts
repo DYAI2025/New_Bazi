@@ -24,6 +24,24 @@ describe("validateBirthInput", () => {
     expect(result.value?.tz).toBe("Europe/Berlin");
   });
 
+  it("rejects non-numeric coordinate types instead of coercing them", () => {
+    // Number(true) === 1, Number([5]) === 5 — must NOT pass as a valid coordinate.
+    for (const bad of [true, false, [52.37], {}] as unknown[]) {
+      const rLat = validateBirthInput({ ...VALID, lat: bad });
+      expect(rLat.valid).toBe(false);
+      expect(fieldsOf(rLat.errors)).toContain("lat");
+      const rLon = validateBirthInput({ ...VALID, lon: bad });
+      expect(rLon.valid).toBe(false);
+      expect(fieldsOf(rLon.errors)).toContain("lon");
+    }
+  });
+
+  it("still accepts numeric-string coordinates", () => {
+    const r = validateBirthInput({ ...VALID, lat: "52.37", lon: "9.73" });
+    expect(r.valid).toBe(true);
+    expect(r.value?.lat).toBe(52.37);
+  });
+
   it("rejects too short and too long names", () => {
     expect(validateBirthInput({ ...VALID, name: "A" }).valid).toBe(false);
     expect(validateBirthInput({ ...VALID, name: "x".repeat(81) }).valid).toBe(false);

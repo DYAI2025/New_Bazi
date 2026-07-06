@@ -18,6 +18,23 @@ function provFor(vm: any, field: string) {
   return vm.provenance.find((p: any) => p.uiField.includes(field));
 }
 
+describe("normalizeFuFireProfile — legacy planet degree normalization", () => {
+  it("normalizes negative legacy longitudes into a [0,30) sign degree", () => {
+    const raw = {
+      ...FULL,
+      western: { sunSign: "Waage", moonSign: "Stier", ascendant: "Krebs", aspects: [], houses: [],
+        planets: [{ name: "Sonne", longitude: -10 }] }
+    };
+    const vm = normalizeFuFireProfile(raw, INPUT, "fallback-local");
+    const sun = vm.western.planets.find((p: any) => p.name === "Sonne");
+    expect(sun).toBeDefined();
+    // -10° longitude == 350° == 20° within its sign; must NOT be the pre-fix -10.
+    expect(sun!.degree).toBeGreaterThanOrEqual(0);
+    expect(sun!.degree).toBeLessThan(30);
+    expect(sun!.degree).toBeCloseTo(20, 6);
+  });
+});
+
 describe("normalizeFuFireProfile honesty for missing sections (real FuFirE source)", () => {
   it("marks every section available on a complete chart", () => {
     const vm = normalizeFuFireProfile(FULL, INPUT, "fufire-chart");
@@ -37,6 +54,15 @@ describe("normalizeFuFireProfile honesty for missing sections (real FuFirE sourc
     expect(values.every((v) => v === 0)).toBe(true);
     expect(vm.wuxing.elementCards).toHaveLength(0);
     expect(provFor(vm, "Wu Xing").status).toBe("missing");
+  });
+
+  it("treats present-but-empty Wu-Xing payload as unavailable instead of five fake 0% bars", () => {
+    const vm = normalizeFuFireProfile({ ...FULL, wuxing: {} }, INPUT, "fufire-chart");
+    expect(vm.wuxing.available).toBe(false);
+    expect(Object.values(vm.wuxing.distribution).every((v) => v === 0)).toBe(true);
+    expect(vm.wuxing.elementCards).toHaveLength(0);
+    expect(vm.wuxing.vectorExplanation).toContain("ohne nutzbaren Elementvektor");
+    expect(vm.warnings).toContain("Wu-Xing-Daten wurden ohne nutzbaren Elementvektor geliefert.");
   });
 
   it("does NOT fabricate a coherence index when fusion is missing", () => {
@@ -126,4 +152,68 @@ describe("normalizeFuFireProfile — unknown birth time degradation (REQ-P4-004)
     expect(typeof vm.fusion.signalLevelSuffix).toBe("string");
   });
 
+});
+
+// BIRTH-TIME-01: timeKnown:false MUST suppress time-dependent fields even when the
+// engine response omits precision.provisional_fields (version skew, a fallback-local
+// path, or an endpoint that ignores birth_time_known). The honesty guarantee must be a
+// LOCAL invariant, not trust in the engine self-reporting. Each assertion below fails
+// against the pre-fix code (which read provisional_fields only).
+describe("normalizeFuFireProfile — timeKnown:false is a local honesty backstop (BIRTH-TIME-01)", () => {
+  const UNKNOWN_INPUT = {
+    name: "Test Person",
+    birthDate: "1990-06-15",
+    birthTime: "12:00",
+    birthPlaceLabel: "Berlin",
+    gender: "Divers",
+    timeKnown: false
+  };
+
+  // Same engine payload as the provisional fixtures, but with precision stripped — i.e.
+  // the engine sent a 12:00-computed ascendant/houses/hour pillar WITHOUT flagging them.
+  const stripPrecision = (o: any) => {
+    const clone = JSON.parse(JSON.stringify(o));
+    if (clone && typeof clone === "object") delete clone.precision;
+    return clone;
+  };
+  const NO_PROVISIONAL_RAW = {
+    bazi: stripPrecision(unknownBazi),
+    western: stripPrecision(unknownWestern),
+    fusion: stripPrecision(unknownFusion),
+    wuxing: {}
+  };
+
+  it("guards the test premise: precision stripped, but engine still sent a 12:00 ascendant + hour pillar", () => {
+    expect((NO_PROVISIONAL_RAW.western as any).precision).toBeUndefined();
+    expect((NO_PROVISIONAL_RAW.bazi as any).precision).toBeUndefined();
+    expect(unknownWestern.angles?.Ascendant).toBeGreaterThan(0);
+    expect(unknownBazi.pillars?.hour).toBeTruthy();
+  });
+
+  it("ascendant === null even without engine provisional_fields", () => {
+    const vm = normalizeFuFireProfile(NO_PROVISIONAL_RAW, UNKNOWN_INPUT, "fufire-orchestrated");
+    expect(vm.western.ascendant).toBeNull();
+  });
+
+  it("housesAvailable === false and houses empty even without engine provisional_fields", () => {
+    const vm = normalizeFuFireProfile(NO_PROVISIONAL_RAW, UNKNOWN_INPUT, "fufire-orchestrated");
+    expect(vm.western.housesAvailable).toBe(false);
+    expect(vm.western.houses).toHaveLength(0);
+  });
+
+  it("hourAvailable === false even without engine provisional_fields", () => {
+    const vm = normalizeFuFireProfile(NO_PROVISIONAL_RAW, UNKNOWN_INPUT, "fufire-orchestrated");
+    expect(vm.bazi.hourAvailable).toBe(false);
+  });
+
+  it("fusion.signalLevelSuffix carries the '(ohne Stundensäule)' caveat even without engine provisional_fields", () => {
+    const vm = normalizeFuFireProfile(NO_PROVISIONAL_RAW, UNKNOWN_INPUT, "fufire-orchestrated");
+    expect(vm.fusion.signalLevelSuffix).not.toBeNull();
+  });
+
+  it("a KNOWN birth time still trusts the engine (no over-suppression)", () => {
+    const vm = normalizeFuFireProfile(FULL, INPUT, "fufire-chart");
+    expect(vm.western.ascendant).not.toBeNull();
+    expect(vm.bazi.hourAvailable).toBe(true);
+  });
 });

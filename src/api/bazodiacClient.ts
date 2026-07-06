@@ -1,7 +1,9 @@
 import { BirthData } from "../types";
-import { ProfileViewModel } from "../viewmodels/profileViewModel";
+import { ProfileViewModel, ElementalComparisonEntry } from "../viewmodels/profileViewModel";
 import type { FieldError } from "../utils/birthInputValidation";
-import type { ElementalWeight } from "../utils/tensionPair";
+import type { ElementalWeight, PairAxis } from "../utils/tensionPair";
+import type { InterAspect } from "../utils/interAspects";
+import type { PillarComparison } from "../utils/baziCompare";
 
 export interface SynastryResponse {
   score: number;
@@ -15,6 +17,15 @@ export interface SynastryResponse {
   /** Per-Element-Verteilung beider Personen (Paar-Spannungsnavigator); leer wenn ein Fusionsfeld fehlt. */
   elementalA: ElementalWeight[];
   elementalB: ElementalWeight[];
+  /** P7 — Western Inter-Aspekte A×B; leer wenn keine berechenbaren Körper. */
+  interAspects: InterAspect[];
+  /** P7 — BaZi-Säulenvergleich (Stamm-Element + Zweig/Tier); leer bei unvollständigen Säulen. */
+  pillarComparison: PillarComparison[];
+  /** P7 — vorzeichenbehaftetes West-vs-BaZi-Elementfeld je Person (für Paar-Polachsen); leer wenn Fusionsfeld fehlt. */
+  comparisonA: ElementalComparisonEntry[];
+  comparisonB: ElementalComparisonEntry[];
+  /** P7 — fünf Paar-Polachsen aus comparisonA/B; leer wenn ein Feld fehlt. */
+  pairAxes: PairAxis[];
 }
 
 export interface DailyPulseSection {
@@ -220,7 +231,15 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
     const message = err.message || code || `HTTP error ${res.status}`;
     throw new BazodiacRequestError(message, { code, status: res.status, fields: err.fields });
   }
-  return res.json();
+  try {
+    return await res.json();
+  } catch {
+    throw new BazodiacRequestError("Antwort konnte nicht gelesen werden.", {
+      code: "response_parse_error",
+      status: res.status,
+      isNetworkError: false
+    });
+  }
 }
 
 export class BazodiacClient {

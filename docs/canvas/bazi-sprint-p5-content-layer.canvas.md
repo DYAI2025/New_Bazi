@@ -2,8 +2,53 @@
 
 **Feature-Slug:** `bazi-sprint-p5-content-layer`
 **Status:** user-confirmed
+<!-- Status: user-confirmed -->
+**Confirmed by user:** yes — "Canvas P5 v2 bestätigt" (2026-06-13, post-Council-Amendment)
 **Erstellt:** 2026-06-12
-**Bestätigungsphrase:** "Canvas P5 bestätigt"
+**Erst-Bestätigung:** "Canvas P5 bestätigt" (2026-06-12)
+**Re-Bestätigung (nach Council-Amendment v2):** "Canvas P5 v2 bestätigt" (2026-06-13)
+
+---
+
+## Council Amendments (Phase 0.16 — 2026-06-13)
+
+Phase-0.16-Challenge-Council (Challenger/Advisor/Critic) lief auf der bestätigten v1.
+Folgende Punkte hat der **User** adoptiert (Council schlägt vor, nur User reklassifiziert);
+die v1-Bestätigung verfällt, bis der User v2 re-bestätigt.
+
+- **A — Hidden-Stems — KORRIGIERT (2026-06-13, Spec-Audit Phase 0.7, BLOCKER-1):**
+  ⚠️ Die Council-v2-Prämisse („leer in Prod; Normalizer liest einen nicht-existenten Key;
+  Task 5 rendert leere Liste") war eine **Konfabulation** des Advisors und ist **FALSCH** —
+  vom Spec-Auditor widerlegt, vom Orchestrator gegen den Code direkt verifiziert.
+  **Wahrer Befund (belegt):** `fufireNormalizer.ts:458-460` löst den Zweig über
+  `EARTHLY_BRANCHES[branch_index]` / `lookupBranch(zweig|branch)` auf; `astrology.ts:30-41`
+  trägt für **alle 12 Zweige** befüllte `hiddenStems`; `:466/:492` spreaden den **aufgelösten
+  kanonischen** Zweig, `|| []` greift nur beim echt-unauflösbaren `defaultBranch` (`:442`).
+  Der Live-Fixture `bazi.json` trägt `branch_index`/`zweig` (echte Engine liefert Zweig-IDs);
+  ein **bestehender** Test `fufireNormalizer.realshapes.test.ts:103` assertet bereits
+  `day.hiddenStems.length > 0`, und `BaZiDetail.tsx:163` **rendert sie bereits**.
+  → **Hidden-Stems funktioniert heute in Prod. Kein Defer, keine MISSING-Pflicht, keine
+  Task-1-„verify-or-defer"-Gate für ein Feature, das schon läuft.**
+  **Korrigierte Disziplin (bleibt sinnvoll):** P5-T5 baut auf den vorhandenen Daten auf und
+  zitiert die bestehende Real-Daten-Assertion (`realshapes.test.ts:103`) als Beleg; die
+  ehrliche Empty-State-Regel gilt **nur** für den genuin unauflösbaren `defaultBranch`-Fall
+  (dann KEIN leerer Container). Lehre: eine Code-Behauptung des Councils musste das nächste,
+  unabhängige Gate überleben — hat sie nicht; genau so soll Defense-in-Depth wirken.
+- **B — Engagement-Signal (Challenger + Critic, unabhängig):** alle Erfolgssignale waren
+  test-grün; nichts misst, ob Karten geklickt werden. **Adoptiert:** ein leichtes
+  `card_click`/`layer_open`-Analytics-Event in Task 3 + ein Verhaltens-Smoke-Ziel
+  (≥1 Layer-Open im Beta-Smoke). Owner des Engagement-Signals = **Benjamin** (User-bestätigt 2026-06-13; Team-Lücke geschlossen).
+- **C — Scope:** Council empfahl Wedge (zodiac+houses zuerst). **User-Entscheidung: NICHT adoptiert
+  — volle 55 Texte in einem PR.** Der Split-PR bleibt nur Zeitdruck-Ventil (wie v1), nicht Default.
+
+**Ohne Rückfrage gehärtet (in-scope, kein Request-Change — fließt in PRD-Acceptance/NFR):**
+- **D — Anti-Reifikation semantisch:** der Review-Agent prüft alle 55 Texte gegen verbotene
+  *Bedeutung* (z. B. „prägt dich", „bestimmt dich"), nicht nur die Literal-Token der Regex.
+- **E — Astro-Noctum-Quell-Posture (User-Entscheidung 2026-06-13):** fehlende Quelltexte (auch
+  ≥2 Domänen) → KURATIEREN statt Stoppen; jede kuratierte Domäne in `content-sources.md` als
+  `kuratiert` geflaggt, jeder Text `source:"curated"`, Per-Text-Semantik-Sign-off (Amendment D)
+  + Benjamin-PR-Review. Schutz gegen Erfind-durch-Umlabeln = Flag + Semantik-Review + menschliche
+  PR-Abnahme (kein Pause-Stop, kein stilles Umlabeln).
 
 ---
 
@@ -31,6 +76,7 @@ Kein Workaround vorhanden. Nutzerinnen verlassen die App oder öffnen eine exter
 - Häuser-Sektion erhält Substanz: Thema, Spitzen-Zeichen und kombinierte Interpretation pro Haus.
 - BaZi-Säulen-Tab erhält Tiefe: Lebensbereich, Stamm-Erklärung mit Element und Polarität, Zweig-Erklärung mit Tier und Hidden Stems.
 - Anti-Reification durchgehend: kein Schicksal-, Diagnose-, Coaching- oder Heilungswording; Ton edel, ruhig, präzise.
+- **(Amendment B)** Ein leichtes `card_click`/`layer_open`-Analytics-Event macht messbar, ob der Erklär-Layer überhaupt genutzt wird — die Texte beweisen sonst nur ihre Existenz, nicht ihren Nutzen.
 
 ## 5. Erfolgssignal
 
@@ -42,6 +88,8 @@ Kein Workaround vorhanden. Nutzerinnen verlassen die App oder öffnen eine exter
 5. `npm run lint && npm test && npm run build && npx playwright test` — Zahlen vorher/nachher, keine Regressionen, P1-Regressionstests bleiben grün.
 6. Live-Smoke mit Screenshot zweier geöffneter Layer nach Deploy.
 7. `docs/contracts/content-sources.md` existiert (Task 1 Output: Tabelle Content-Typ → Quelldatei → Qualität).
+8. **(Amendment A — KORRIGIERT)** Hidden-Stems funktioniert bereits: P5-T5 baut darauf auf, und der **bestehende** Test `fufireNormalizer.realshapes.test.ts:103` (`day.hiddenStems.length > 0`, gegen Live-Fixture) bleibt grün; `BaZiDetail.tsx:163` rendert weiterhin. Ehrlicher Empty-State nur für den unauflösbaren `defaultBranch`-Fall (kein leerer Container). KEIN Defer, KEINE MISSING-Pflicht.
+9. **(Amendment B)** `card_click`/`layer_open`-Event feuert beim Öffnen eines Layers; Beta-Smoke zeigt ≥1 Layer-Open. Engagement-Signal hat einen benannten Owner.
 
 ## 6. Kern-Use-Case
 
@@ -68,7 +116,9 @@ Die Nutzerin wechselt nach dem Lesen des Layers in den BaZi-Tab und findet dort 
 - **GRÖSSTES RISIKO — Text-Qualität:** 55 Texte à ~90 Wörter sind der größte Einzelaufwand des Sprints. Der Review-Agent (Master §6) MUSS alle Registry-Texte vollständig lesen (Stilregeln + fachliche Plausibilität). Bei vorhandenen Astro-Noctum-Quelltexten gilt: 1:1 übernehmen schlägt Umformulieren. Kein Text wird „aus dem Kopf" des Executors übernommen, ohne ihn als `curated` zu markieren.
 - **Quell-Pfade unverifiedt:** Die Astro-Noctum-Kandidaten-Pfade in Task 1 sind Suchvorschläge — der Executor MUSS die Pfade vor jedem Portieren verifizieren (`grep -rln`). Falls Quelltexte nicht gefunden werden, ist Kuratierung Pflicht; fehlt ein ganzer Domänen-Typ, ist das als MISSING in `docs/contracts/content-sources.md` festzuhalten. **OPEN QUESTION:** Liegen Erdzweig- und Häuser-Texte in Astro-Noctum vollständig vor? (Task 1 klärt das — vor Task 2/3 obligatorisch.)
 - **P4-Abhängigkeit (Aszendent null):** P5 kann parallel zu P4 entwickelt werden. ExplanationLayer braucht nur einen Null-Check (`if (viewModel.western.ascendant === null)`). Kein Blocker, aber der e2e-Test für den null-Aszendent-Layer setzt P4-Fixture voraus.
-- **BaZi-ViewModel-Felder (Hidden Stems):** Task 5 setzt voraus, dass `bazi.pillars[]` Hidden-Stems-Daten trägt. **OPEN QUESTION:** Welche Felder liefert das ViewModel für Hidden Stems — verifiziert der Executor in `src/utils/` vor Beginn von Task 5. Dieses Risiko darf nicht als Assumption forwarded werden.
+- **BaZi-ViewModel-Felder (Hidden Stems) — KORRIGIERT (Spec-Audit BLOCKER-1, 2026-06-13):** Die frühere v2-Behauptung „in aktuellem Code = immer leer" war FALSCH (Advisor-Konfabulation, vom Auditor widerlegt + vom Orchestrator code-verifiziert). Tatsächlich: `fufireNormalizer.ts:458-460` löst den Zweig aus `EARTHLY_BRANCHES`/`lookupBranch` auf, `astrology.ts:30-41` hat `hiddenStems` für alle 12 Zweige, `:492` spreadet den aufgelösten Zweig (`|| []` nur bei `defaultBranch`). Bewiesen durch den bestehenden Test `realshapes.test.ts:103` + Render in `BaZiDetail.tsx:163`. → Kein Risiko, kein Defer. Restrisiko nur: ehrlicher Empty-State beim unauflösbaren `defaultBranch` (kein leerer Container).
+- **Anti-Reifikation nur Regex-tief (Amendment D):** 55 persönlichkeitsnahe Absätze sind die dichteste Fläche für weich-deterministische Formulierungen („prägt dich", „bestimmt dich"), die die Literal-Token-Regex NICHT fängt. Der Review-Agent prüft jeden Text semantisch gegen verbotene *Bedeutung*, nicht nur Wörter.
+- **Astro-Noctum-Deckung als Pivot-Trigger (Amendment E):** fehlen für ≥2 ganze Domänen Quelltexte, wird der Sprint still zu „Executor kuratiert 50 Texte aus dem Kopf" = Erfind-durch-Umlabeln. Task 1 eskaliert diesen Fall an den User („nicht wie spezifiziert fortfahren"), statt ihn zu verschlucken.
 - **Konsistenz chinesischer Tabellen:** Registry darf keine Astro-Logik duplizieren — IDs müssen mit `HEAVENLY_STEMS`/`EARTHLY_BRANCHES` in `src/utils/` übereinstimmen. Diakritik-Toleranz (Pinyin mit/ohne Diakritika) ist bereits in `src/utils/` vorhanden; Registry nutzt diese Mapping-Logik, schreibt sie nicht neu.
 - **Anti-Reification-Regression:** P1-Texte wurden bereits bereinigt. P5 darf keine neuen Stil-Regelverstöße einführen — `registry.test.ts`-Regex ist die Absicherung.
 - **Split-PR-Option:** Bei Zeitdruck können Domänen auf zwei PRs aufgeteilt werden (zodiac+houses zuerst, BaZi-Domänen zweiter PR). Dies ist ein explizites Ventil, kein Qualitätsverzicht.
@@ -77,7 +127,9 @@ Die Nutzerin wechselt nach dem Lesen des Layers in den BaZi-Tab und findet dort 
 
 **Explicit** (Sprint-Plan P5, Tasks 1–6):
 - Task 1: `docs/contracts/content-sources.md` mit Quell-Mapping-Tabelle (Content-Typ → Datei → Qualität vollständig/lückenhaft/fehlt) als Pflicht-Gate vor Task 2.
-- Task 1: Verifizierter Befund zu Hidden-Stems-Feldern im ViewModel (schriftlich im contracts-Dokument oder als Kommentar im PR).
+- Task 1: **(Amendment A — KORRIGIERT)** Hidden-Stems ist bereits funktional (belegt: `realshapes.test.ts:103` + `BaZiDetail.tsx:163` + kanonische `EARTHLY_BRANCHES.hiddenStems`). Evidenz = bestehender Test bleibt grün; KEIN MISSING/Defer nötig. Restpflicht: P5-T5 zitiert diesen Test + behandelt nur den unauflösbaren `defaultBranch`-Fall als Empty-State.
+- Task 1: **(Amendment E)** Astro-Noctum-Deckungsbefund je Domäne; bei ≥2 fehlenden Domänen User-Eskalation statt stiller Kuratierung.
+- Task 3: **(Amendment B)** Nachweis, dass `card_click`/`layer_open` feuert (Test/Smoke); Owner des Engagement-Signals benannt.
 - Task 2: TDD-Beweise (RED/GREEN) für `registry.test.ts` je Domänen-Datei; Wortanzahl-Check-Output.
 - Task 3: e2e-Spec-Output (Playwright): Layer öffnet/schließt, Aszendent-null-Fall.
 - Task 4: Häuser-Sektion mit substanziellen Deutungen live — Screenshot im PR oder Smoke-Nachweis.
@@ -101,6 +153,7 @@ Die Nutzerin wechselt nach dem Lesen des Layers in den BaZi-Tab und findet dort 
   - `src/content/registry/registry.test.ts` (neu)
   - `src/components/ExplanationLayer.tsx` (neu)
   - `src/components/Overview.tsx` (modifiziert — Karten klickbar)
+  - **(Amendment B)** leichtes Analytics-Event-Modul/-Hook für `card_click`/`layer_open` (z. B. `src/utils/analytics.ts` neu oder bestehender Mechanismus — Executor verifiziert, ob schon einer existiert; kein Tracking-Drittanbieter, keine PII)
   - `src/components/WesternAstrology.tsx` (Häuser-Sektion Vertiefung)
   - `src/components/BaZiDetail.tsx` (Säulen-Vertiefung)
   - `docs/contracts/content-sources.md` (neu, Task 1 Output)
