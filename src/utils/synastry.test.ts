@@ -132,7 +132,7 @@ describe("compareProfiles — combined score, harmony and advice", () => {
       "Lokaler Vergleich der FuFirE-Profile: BaZi-Tagesmeister Holz und Holz ergeben 85%, die westlichen Sonnenelemente Feuer/Feuer 82%."
     );
     expect(r.advice).toBe(
-      "Die Elementeflüsse stützen sich gegenseitig; pflegen Sie gemeinsame Routinen."
+      "Viele Elementeflüsse beider Profile laufen in ähnliche Richtung — das kann gemeinsame Routinen erleichtern."
     );
   });
 
@@ -146,7 +146,7 @@ describe("compareProfiles — combined score, harmony and advice", () => {
     expect(r.westernScore).toBe(56);
     expect(r.score).toBe(67);
     expect(r.advice).toBe(
-      "Unterschiedliche Rhythmen verlangen bewusste Kommunikation und Geduld."
+      "Die Rhythmen beider Profile unterscheiden sich teils — ein Feld, in dem bewusste Kommunikation Unterschiede sichtbar macht."
     );
   });
 
@@ -160,7 +160,7 @@ describe("compareProfiles — combined score, harmony and advice", () => {
     expect(r.westernScore).toBe(56);
     expect(r.score).toBe(54);
     expect(r.advice).toBe(
-      "Gegensätzliche Kontrollzyklen — Reibung ist lehrreich, erfordert aber klare Grenzen."
+      "Mehrere Element-Kontrollzyklen stehen gegensätzlich — Reibung, die sich als Wachstumskante lesen lässt."
     );
   });
 });

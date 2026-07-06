@@ -58,11 +58,13 @@ export function compareProfiles(a: ProfileViewModel, b: ProfileViewModel): Synas
 
   const score = Math.round((baziScore + westernScore) / 2);
   const harmonyAnalysis = `Lokaler Vergleich der FuFirE-Profile: BaZi-Tagesmeister ${ea} und ${eb} ergeben ${baziScore}%, die westlichen Sonnenelemente ${wa}/${wb} ${westernScore}%.`;
+  // Reflective, non-prescriptive: a comparison note, not a relationship verdict or
+  // instruction (kept coherent with the "kein Messwert"-Note rendered alongside it).
   const advice = score >= 75
-    ? "Die Elementeflüsse stützen sich gegenseitig; pflegen Sie gemeinsame Routinen."
+    ? "Viele Elementeflüsse beider Profile laufen in ähnliche Richtung — das kann gemeinsame Routinen erleichtern."
     : score >= 60
-      ? "Unterschiedliche Rhythmen verlangen bewusste Kommunikation und Geduld."
-      : "Gegensätzliche Kontrollzyklen — Reibung ist lehrreich, erfordert aber klare Grenzen.";
+      ? "Die Rhythmen beider Profile unterscheiden sich teils — ein Feld, in dem bewusste Kommunikation Unterschiede sichtbar macht."
+      : "Mehrere Element-Kontrollzyklen stehen gegensätzlich — Reibung, die sich als Wachstumskante lesen lässt.";
 
   return { score, westernScore, baziScore, harmonyAnalysis, advice };
 }

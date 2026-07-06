@@ -1,6 +1,9 @@
 import { BirthData } from "../types";
-import { ProfileViewModel } from "../viewmodels/profileViewModel";
+import { ProfileViewModel, ElementalComparisonEntry } from "../viewmodels/profileViewModel";
 import type { FieldError } from "../utils/birthInputValidation";
+import type { ElementalWeight, PairAxis } from "../utils/tensionPair";
+import type { InterAspect } from "../utils/interAspects";
+import type { PillarComparison } from "../utils/baziCompare";
 
 export interface SynastryResponse {
   score: number;
@@ -11,13 +14,50 @@ export interface SynastryResponse {
   source: string;
   userRef: { name: string; sunSign: string; dayMaster: string };
   partnerRef: { name: string; sunSign: string; dayMaster: string };
+  /** Per-Element-Verteilung beider Personen (Paar-Spannungsnavigator); leer wenn ein Fusionsfeld fehlt. */
+  elementalA: ElementalWeight[];
+  elementalB: ElementalWeight[];
+  /** P7 — Western Inter-Aspekte A×B; leer wenn keine berechenbaren Körper. */
+  interAspects: InterAspect[];
+  /** P7 — BaZi-Säulenvergleich (Stamm-Element + Zweig/Tier); leer bei unvollständigen Säulen. */
+  pillarComparison: PillarComparison[];
+  /** P7 — vorzeichenbehaftetes West-vs-BaZi-Elementfeld je Person (für Paar-Polachsen); leer wenn Fusionsfeld fehlt. */
+  comparisonA: ElementalComparisonEntry[];
+  comparisonB: ElementalComparisonEntry[];
+  /** P7 — fünf Paar-Polachsen aus comparisonA/B; leer wenn ein Feld fehlt. */
+  pairAxes: PairAxis[];
 }
 
+export interface DailyPulseSection {
+  summary: string | null;
+  themes: string[];
+  caution: string | null;
+  opportunity: string | null;
+}
+
+export interface DailyPulseEastern extends DailyPulseSection {
+  dayMaster: string | null;
+  dailyPillar: { stem: string; branch: string } | null;
+  relationToDayMaster: string | null;
+  jieqi: string | null;
+}
+
+/**
+ * Mirrors the BFF view model for /api/azodiac/daily, which itself mirrors the
+ * engine DailyResponse: three content sections (West/Ost/Fusion), the fusion
+ * action as its own Impuls, push groundwork and jieqi/weekday context notes.
+ * No invented metrics.
+ */
 export interface DailyPulseResponse {
   date: string;
-  qiResonance: number | null;
-  dominantPhase: string | null;
-  coachingKeyword: string | null;
+  western: DailyPulseSection | null;
+  eastern: DailyPulseEastern | null;
+  fusion: { summary: string | null; synthesis: string | null } | null;
+  action: string | null;
+  pushText: string | null;
+  pushworthy: boolean;
+  jieqiNote: string | null;
+  weekdayNote: string | null;
   description: string | null;
   source: "fufire" | "missing";
   available: boolean;
@@ -46,6 +86,7 @@ export interface BirthInputPayload {
   lon?: number;
   tz?: string;
   gender?: BirthData["gender"];
+  timeKnown?: boolean;
 }
 
 export class BazodiacRequestError extends Error {
@@ -103,7 +144,8 @@ export function toBirthInputPayload(data: BirthData): BirthInputPayload {
     lat: getNumber(raw.lat ?? raw.latitude ?? birthPlace?.lat ?? birthPlace?.latitude),
     lon: getNumber(raw.lon ?? raw.lng ?? raw.longitude ?? birthPlace?.lon ?? birthPlace?.lng ?? birthPlace?.longitude),
     tz: typeof tzCandidate === "string" ? tzCandidate.trim() : undefined,
-    gender: raw.gender
+    gender: raw.gender,
+    timeKnown: raw.timeKnown !== false ? undefined : false
   };
 }
 
@@ -137,6 +179,10 @@ function formatValidationFields(fields: unknown): string {
 
 export function getUserFacingRequestMessage(error: unknown): string {
   if (error instanceof BazodiacRequestError) {
+    if (error.code === "invalid_birth_time_dst") {
+      return error.message;
+    }
+
     if ((error.status === 400 || error.status === 422) && error.code === "invalid_birth_input") {
       return `Geburtsdaten konnten nicht verarbeitet werden. Bitte prüfe Datum, Uhrzeit, Geburtsort und Zeitzone. Fehlercode: ${error.code || "invalid_birth_input"}.${formatValidationFields(error.fields)}`;
     }
@@ -156,6 +202,7 @@ export function getUserFacingRequestMessage(error: unknown): string {
 
 export function getUserFacingErrorTitle(error: unknown): string {
   if (error instanceof BazodiacRequestError) {
+    if (error.code === "invalid_birth_time_dst") return "Geburtszeit existiert nicht (Zeitumstellung)";
     if (error.status === 400 || error.status === 422) return "Geburtsdaten ungültig";
     if (error.status && error.status >= 500) return "Serverfehler";
     if (error.isNetworkError) return "Kosmische Verbindung offline";
@@ -184,7 +231,15 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
     const message = err.message || code || `HTTP error ${res.status}`;
     throw new BazodiacRequestError(message, { code, status: res.status, fields: err.fields });
   }
-  return res.json();
+  try {
+    return await res.json();
+  } catch {
+    throw new BazodiacRequestError("Antwort konnte nicht gelesen werden.", {
+      code: "response_parse_error",
+      status: res.status,
+      isNetworkError: false
+    });
+  }
 }
 
 export class BazodiacClient {
@@ -199,8 +254,12 @@ export class BazodiacClient {
     });
   }
 
-  static fetchDailyPulse(birthData: BirthData): Promise<DailyPulseResponse> {
-    return postJson<DailyPulseResponse>("/api/azodiac/daily", toBirthInputPayload(birthData));
+  static fetchDailyPulse(birthData: BirthData, targetDate?: string): Promise<DailyPulseResponse> {
+    const payload = toBirthInputPayload(birthData);
+    return postJson<DailyPulseResponse>(
+      "/api/azodiac/daily",
+      targetDate ? { ...payload, targetDate } : payload
+    );
   }
 
   static async searchPlaces(input: string): Promise<PlacePrediction[]> {

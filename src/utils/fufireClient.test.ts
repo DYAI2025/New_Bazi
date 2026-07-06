@@ -186,4 +186,22 @@ describe("FuFirEClient error mapping", () => {
     expect(typeof err.httpStatus).toBe("number");
     expect(err.httpStatus).toBeGreaterThanOrEqual(500);
   });
+
+  it("maps 422 mit type=dst_error auf invalid_birth_time_dst (400, klare Anleitung)", async () => {
+    const dstBody = (await import("../__fixtures__/fufire/chart-422-dst.json")).default;
+    mockFetchOnce(422, dstBody);
+    const err = await FuFirEClient.postChart({} as any).catch((e) => e);
+    expect(err.code).toBe("invalid_birth_time_dst");
+    expect(err.httpStatus).toBe(400);
+    expect(err.message).toContain("existiert am Umstellungstag nicht");
+    expect(err.message).toContain("vor 02:00 oder nach 03:00");
+  });
+
+  it("422 OHNE dst_error bleibt invalid_fufire_payload (502)", async () => {
+    mockFetchOnce(422, { error: "validation_error", detail: { errors: [] } });
+    await expect(FuFirEClient.postChart({} as any)).rejects.toMatchObject({
+      code: "invalid_fufire_payload",
+      httpStatus: 502
+    });
+  });
 });

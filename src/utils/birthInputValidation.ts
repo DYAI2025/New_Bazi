@@ -13,6 +13,7 @@ export interface BirthInputCandidate {
   lon?: unknown;
   tz?: unknown;
   gender?: unknown;
+  timeKnown?: boolean;
 }
 
 export interface ValidatedBirthInput {
@@ -25,6 +26,7 @@ export interface ValidatedBirthInput {
   lon: number;
   tz: string;
   gender: string;
+  timeKnown: boolean;
 }
 
 export interface FieldError {
@@ -88,9 +90,15 @@ export function validateBirthInput(input: BirthInputCandidate): ValidationResult
   }
 
   // --- birthTime ---
-  const birthTime = typeof input.birthTime === "string" ? input.birthTime.trim() : "";
-  if (!TIME_RE.test(birthTime)) {
-    errors.push({ field: "birthTime", message: "Bitte eine gueltige Geburtszeit im Format HH:mm angeben." });
+  const timeKnown = input.timeKnown !== false;
+  let birthTime: string;
+  if (!timeKnown) {
+    birthTime = "12:00";
+  } else {
+    birthTime = typeof input.birthTime === "string" ? input.birthTime.trim() : "";
+    if (!TIME_RE.test(birthTime)) {
+      errors.push({ field: "birthTime", message: "Bitte eine gueltige Geburtszeit im Format HH:mm angeben." });
+    }
   }
 
   // --- placeId ---
@@ -100,7 +108,11 @@ export function validateBirthInput(input: BirthInputCandidate): ValidationResult
   }
 
   // --- lat ---
-  const lat = typeof input.lat === "number" ? input.lat : Number(input.lat);
+  // Accept number or numeric string only; booleans/arrays/objects must not coerce
+  // silently (Number(true) === 1, Number([5]) === 5) into a "valid" coordinate.
+  const lat = typeof input.lat === "number" ? input.lat
+    : typeof input.lat === "string" ? Number(input.lat)
+    : NaN;
   if (input.lat === undefined || input.lat === null || Number.isNaN(lat)) {
     errors.push({ field: "lat", message: "Breitengrad (lat) fehlt. Ort serverseitig aufloesen." });
   } else if (lat < -90 || lat > 90) {
@@ -108,7 +120,9 @@ export function validateBirthInput(input: BirthInputCandidate): ValidationResult
   }
 
   // --- lon ---
-  const lon = typeof input.lon === "number" ? input.lon : Number(input.lon);
+  const lon = typeof input.lon === "number" ? input.lon
+    : typeof input.lon === "string" ? Number(input.lon)
+    : NaN;
   if (input.lon === undefined || input.lon === null || Number.isNaN(lon)) {
     errors.push({ field: "lon", message: "Laengengrad (lon) fehlt. Ort serverseitig aufloesen." });
   } else if (lon < -180 || lon > 180) {
@@ -144,7 +158,8 @@ export function validateBirthInput(input: BirthInputCandidate): ValidationResult
       lat,
       lon,
       tz,
-      gender: typeof input.gender === "string" && input.gender.trim() ? input.gender.trim() : "Divers"
+      gender: typeof input.gender === "string" && input.gender.trim() ? input.gender.trim() : "Divers",
+      timeKnown,
     }
   };
 }

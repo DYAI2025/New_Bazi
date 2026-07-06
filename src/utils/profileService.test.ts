@@ -28,7 +28,8 @@ const INPUT: ValidatedBirthInput = {
   lat: 52.37,
   lon: 9.73,
   tz: "Europe/Berlin",
-  gender: "Weiblich"
+  gender: "Weiblich",
+  timeKnown: true
 };
 
 const FULL_CHART = {
