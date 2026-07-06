@@ -1,0 +1,18 @@
+{
+  "feature": "bazi-sprint-p5-content-layer",
+  "_comment": "PRIL scope guard (plumbline-scope-check). Allowed change scope for the P5 Content-Layer branch. Mirrors the Canvas §10 'Erlaubter Änderungs-Scope' plus the one-time PRIL enforcement install (config/claude/**) and the governance docs (docs/**). Every pattern carries a concrete path anchor (no repo-wide wildcard).",
+  "allowed_change_scope": [
+    "config/claude/**",
+    "docs/**",
+    "src/content/registry/**",
+    "src/components/ExplanationLayer.tsx",
+    "src/components/Overview.tsx",
+    "src/components/WesternAstrology.tsx",
+    "src/components/BaZiDetail.tsx",
+    "src/components/wordingHonesty.test.ts",
+    "src/utils/analytics.ts",
+    "src/utils/analytics.test.ts",
+    "src/index.css",
+    "tests/e2e/**"
+  ]
+}

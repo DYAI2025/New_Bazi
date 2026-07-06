@@ -24,6 +24,24 @@ describe("validateBirthInput", () => {
     expect(result.value?.tz).toBe("Europe/Berlin");
   });
 
+  it("rejects non-numeric coordinate types instead of coercing them", () => {
+    // Number(true) === 1, Number([5]) === 5 — must NOT pass as a valid coordinate.
+    for (const bad of [true, false, [52.37], {}] as unknown[]) {
+      const rLat = validateBirthInput({ ...VALID, lat: bad });
+      expect(rLat.valid).toBe(false);
+      expect(fieldsOf(rLat.errors)).toContain("lat");
+      const rLon = validateBirthInput({ ...VALID, lon: bad });
+      expect(rLon.valid).toBe(false);
+      expect(fieldsOf(rLon.errors)).toContain("lon");
+    }
+  });
+
+  it("still accepts numeric-string coordinates", () => {
+    const r = validateBirthInput({ ...VALID, lat: "52.37", lon: "9.73" });
+    expect(r.valid).toBe(true);
+    expect(r.value?.lat).toBe(52.37);
+  });
+
   it("rejects too short and too long names", () => {
     expect(validateBirthInput({ ...VALID, name: "A" }).valid).toBe(false);
     expect(validateBirthInput({ ...VALID, name: "x".repeat(81) }).valid).toBe(false);
@@ -87,5 +105,47 @@ describe("validateBirthInput", () => {
     const r = validateBirthInput({ name: "", birthDate: "", birthTime: "", placeId: "", lat: 999, lon: 999, tz: "" });
     expect(r.valid).toBe(false);
     expect(r.errors.length).toBeGreaterThanOrEqual(5);
+  });
+});
+
+// REQ-P4-002: timeKnown:false mode
+describe("validateBirthInput — timeKnown:false mode", () => {
+  it("accepts missing birthTime when timeKnown:false, defaults to 12:00", () => {
+    const r = validateBirthInput({ ...VALID, birthTime: undefined, timeKnown: false });
+    expect(r.valid).toBe(true);
+    expect(r.value?.birthTime).toBe("12:00");
+    expect(r.value?.timeKnown).toBe(false);
+  });
+
+  it("accepts empty birthTime string when timeKnown:false, defaults to 12:00", () => {
+    const r = validateBirthInput({ ...VALID, birthTime: "", timeKnown: false });
+    expect(r.valid).toBe(true);
+    expect(r.value?.birthTime).toBe("12:00");
+    expect(r.value?.timeKnown).toBe(false);
+  });
+
+  it("ignores provided birthTime when timeKnown:false — always uses 12:00 placeholder", () => {
+    const r = validateBirthInput({ ...VALID, birthTime: "14:30", timeKnown: false });
+    expect(r.valid).toBe(true);
+    expect(r.value?.birthTime).toBe("12:00");
+    expect(r.value?.timeKnown).toBe(false);
+  });
+
+  it("rejects missing birthTime when timeKnown:true (existing behavior unchanged)", () => {
+    const r = validateBirthInput({ ...VALID, birthTime: undefined, timeKnown: true });
+    expect(r.valid).toBe(false);
+    expect(fieldsOf(r.errors)).toContain("birthTime");
+  });
+
+  it("passes timeKnown:true through in valid result", () => {
+    const r = validateBirthInput({ ...VALID, timeKnown: true });
+    expect(r.valid).toBe(true);
+    expect(r.value?.timeKnown).toBe(true);
+  });
+
+  it("defaults timeKnown to true when not provided (backward compat)", () => {
+    const r = validateBirthInput(VALID);
+    expect(r.valid).toBe(true);
+    expect(r.value?.timeKnown).not.toBe(false);
   });
 });

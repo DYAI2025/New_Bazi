@@ -19,9 +19,10 @@ interface PageShellProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   hasBirthData: boolean;
+  headerSlot?: React.ReactNode;
 }
 
-export default function PageShell({ children, activeTab, setActiveTab, hasBirthData }: PageShellProps) {
+export default function PageShell({ children, activeTab, setActiveTab, hasBirthData, headerSlot }: PageShellProps) {
   const [themeMode, setThemeMode] = React.useState<"dark" | "light">("dark");
 
   React.useEffect(() => {
@@ -86,12 +87,13 @@ export default function PageShell({ children, activeTab, setActiveTab, hasBirthD
               </span>
             </div>
             <p className="font-sans text-[10px] uppercase font-semibold text-stone-400 tracking-wider">
-              Luxury Western & Chinese Astrology Harmony Engine
+              Westliche Astrologie × BaZi × WuXing
             </p>
           </div>
 
-          {/* Theme customizer toggle */}
+          {/* Header slot (AccountMenu) + Theme toggle */}
           <div className="flex items-center space-x-3">
+            {headerSlot}
             <button
               id="theme-toggle"
               onClick={toggleTheme}
@@ -169,14 +171,14 @@ export default function PageShell({ children, activeTab, setActiveTab, hasBirthD
       }`}>
         <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between space-y-2 md:space-y-0">
           <div>
-            <span>© 2026 BAZODIAC DESIGN SYSTEM • DIE METAPHYSISCHE MANUFAKTUR</span>
+            <span>© 2026 BAZODIAC</span>
           </div>
           <div className="flex items-center space-x-4">
             <span>HARMONIE-CHECK: PASS</span>
             <span>EDITION: V 4.0.2 OBSIDIAN</span>
           </div>
           <div>
-            <span>DESIGNED FOR TRANSCENDENT CLARITY</span>
+            <span>BERECHNET · NICHT BEHAUPTET</span>
           </div>
         </div>
       </footer>

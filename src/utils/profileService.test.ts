@@ -28,7 +28,8 @@ const INPUT: ValidatedBirthInput = {
   lat: 52.37,
   lon: 9.73,
   tz: "Europe/Berlin",
-  gender: "Weiblich"
+  gender: "Weiblich",
+  timeKnown: true
 };
 
 const FULL_CHART = {
@@ -54,7 +55,7 @@ describe("buildFuFirEPayload", () => {
 });
 
 describe("buildProfile", () => {
-  it("uses /v1/chart and reports source=fufire-chart when chart is complete", async () => {
+  it("uses /chart and reports source=fufire-chart when chart is complete", async () => {
     (FuFirEClient.postChart as any).mockResolvedValue(FULL_CHART);
 
     const result = await buildProfile(INPUT);
@@ -80,6 +81,45 @@ describe("buildProfile", () => {
     expect(FuFirEClient.postWestern).not.toHaveBeenCalled(); // western already present in chart
     expect(result.source).toBe("fufire-orchestrated");
     expect(result.viewModel.source).toBe("fufire-orchestrated");
+  });
+
+  it("orchestrates with the ENDPOINT-SPECIFIC request models, never the chart shape", async () => {
+    (FuFirEClient.postChart as any).mockResolvedValue({}); // everything missing
+    (FuFirEClient.postWestern as any).mockResolvedValue({});
+    (FuFirEClient.postBazi as any).mockResolvedValue({});
+    (FuFirEClient.postWuxing as any).mockResolvedValue({});
+    (FuFirEClient.postFusion as any).mockResolvedValue({});
+
+    await buildProfile(INPUT);
+
+    // /chart keeps the chart contract.
+    expect((FuFirEClient.postChart as any).mock.calls[0][0]).toMatchObject({
+      local_datetime: "1906-10-14T21:15:00",
+      tz_id: "Europe/Berlin"
+    });
+    // /v1/calculate/* get their own request models (date/tz/lon/lat).
+    expect((FuFirEClient.postWestern as any).mock.calls[0][0]).toEqual({
+      date: "1906-10-14T21:15:00",
+      tz: "Europe/Berlin",
+      lat: 52.37,
+      lon: 9.73,
+      ambiguousTime: "earlier",
+      nonexistentTime: "error",
+      birth_time_known: true,
+      zodiac_mode: "tropical"
+    });
+    expect((FuFirEClient.postBazi as any).mock.calls[0][0]).toMatchObject({
+      date: "1906-10-14T21:15:00",
+      standard: "CIVIL",
+      boundary: "midnight"
+    });
+    for (const method of [FuFirEClient.postWestern, FuFirEClient.postBazi, FuFirEClient.postWuxing, FuFirEClient.postFusion]) {
+      const sent = (method as any).mock.calls[0][0];
+      expect(sent).not.toHaveProperty("local_datetime");
+      expect(sent).not.toHaveProperty("tz_id");
+      expect(sent).not.toHaveProperty("geo_lat_deg");
+      expect(sent).not.toHaveProperty("geo_lon_deg");
+    }
   });
 
   it("propagates upstream FuFirEError instead of falling back silently", async () => {

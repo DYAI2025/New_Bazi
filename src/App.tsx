@@ -4,25 +4,29 @@ import { BazodiacClient, getUserFacingErrorTitle, getUserFacingRequestMessage } 
 import { ProfileViewModel } from "./viewmodels/profileViewModel";
 
 import PageShell from "./components/PageShell";
+import AccountMenu from "./components/AccountMenu";
 import InputForm from "./components/InputForm";
 import Overview from "./components/Overview";
 import WesternAstrology from "./components/WesternAstrology";
 import BaZiDetail from "./components/BaZiDetail";
 import WuXingDetail from "./components/WuXingDetail";
-import FusionDetail from "./components/FusionDetail";
+import TensionNavigator from "./components/TensionNavigator";
 import DailyPulse from "./components/DailyPulse";
 import Synastry from "./components/Synastry";
 import Methodology from "./components/Methodology";
+import LandingPage from "./components/landing/LandingPage";
 import { Sparkles, RefreshCw, Compass } from "lucide-react";
 
 export default function App() {
-  // No demo / default profile. The app starts empty on the input tab.
+  // Redesign (RD-2): cold start lands on the additive 'landing' FusionHero screen; its CTA
+  // sets activeTab='input'. No router; the InputForm→'overview' entry/auth spine is untouched.
   const [birthData, setBirthData] = React.useState<BirthData | null>(null);
-  const [activeTab, setActiveTab] = React.useState<string>("input");
+  const [activeTab, setActiveTab] = React.useState<string>("landing");
   const [viewModel, setViewModel] = React.useState<ProfileViewModel | null>(null);
   const [loading, setLoading] = React.useState<boolean>(false);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
   const [errorTitle, setErrorTitle] = React.useState<string>("Profil konnte nicht geladen werden");
+  const [errorCode, setErrorCode] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!birthData) return;
@@ -31,6 +35,7 @@ export default function App() {
       setLoading(true);
       setErrorMsg(null);
       setErrorTitle("Profil konnte nicht geladen werden");
+      setErrorCode(null);
       try {
         const compiled = await BazodiacClient.fetchProfile(birthData);
         if (active) setViewModel(compiled);
@@ -39,6 +44,7 @@ export default function App() {
         if (active) {
           setErrorTitle(getUserFacingErrorTitle(err));
           setErrorMsg(getUserFacingRequestMessage(err));
+          setErrorCode(err?.code ?? null);
         }
       } finally {
         if (active) setLoading(false);
@@ -56,8 +62,12 @@ export default function App() {
   };
 
   const renderTab = () => {
+    if (activeTab === "landing") {
+      return <LandingPage onStart={() => setActiveTab("input")} />;
+    }
+
     if (activeTab === "input") {
-      return <InputForm birthData={birthData} onCalculate={handleCalculate} />;
+      return <InputForm birthData={birthData} onCalculate={handleCalculate} timeError={errorCode === "invalid_birth_time_dst" ? errorMsg : null} />;
     }
 
     if (loading) {
@@ -128,7 +138,7 @@ export default function App() {
       case "western": return <WesternAstrology viewModel={viewModel} />;
       case "bazi": return <BaZiDetail viewModel={viewModel} />;
       case "wuxing": return <WuXingDetail viewModel={viewModel} />;
-      case "fusion": return <FusionDetail viewModel={viewModel} />;
+      case "fusion": return <TensionNavigator viewModel={viewModel} />;
       case "daily": return <DailyPulse viewModel={viewModel} birthData={birthData} />;
       case "synastry": return <Synastry viewModel={viewModel} birthData={birthData} />;
       case "methode": return <Methodology viewModel={viewModel} />;
@@ -136,8 +146,24 @@ export default function App() {
     }
   };
 
+  const handleProfileLoad = (data: BirthData) => {
+    setBirthData(data);
+    setActiveTab("overview");
+  };
+
   return (
-    <PageShell activeTab={activeTab} setActiveTab={setActiveTab} hasBirthData={!!viewModel}>
+    <PageShell
+      activeTab={activeTab}
+      setActiveTab={setActiveTab}
+      hasBirthData={!!viewModel}
+      headerSlot={
+        <AccountMenu
+          birthData={birthData}
+          hasResult={!!viewModel}
+          onProfileLoad={handleProfileLoad}
+        />
+      }
+    >
       {renderTab()}
     </PageShell>
   );
