@@ -1,0 +1,249 @@
+{
+  "_spike_meta": {
+    "endpoint": "/v1/calculate/bazi/dayun",
+    "birth_time_known": false
+  },
+  "dayun": {
+    "label": "Da Yun",
+    "display_label_de": "Dekaden-Säule",
+    "direction": "forward",
+    "direction_method": "explicit",
+    "start": {
+      "anchor_term": {
+        "name": "Xia Zhi",
+        "direction": "next",
+        "local_dt": "1990-06-21T17:32:47+02:00"
+      },
+      "delta": {
+        "days": 6,
+        "hours": 5,
+        "minutes": 32
+      },
+      "start_age": {
+        "years": 2,
+        "months": 0,
+        "days": 27,
+        "decimal_years": 2.0768518518518517
+      },
+      "method": "three_days_one_year"
+    },
+    "cycles": [
+      {
+        "sequence": 1,
+        "age_start": 2.08,
+        "age_end": 12.08,
+        "date_start": "1992-07-02",
+        "date_end": "2002-05-11",
+        "pillar": {
+          "stem": "Gui",
+          "branch": "Wei",
+          "stem_cn": "癸",
+          "branch_cn": "未",
+          "element": "water",
+          "polarity": "yin",
+          "index60": 19
+        },
+        "relation_to_day_master": {
+          "day_master": "Xin",
+          "ten_god": "Shi Shen",
+          "element_relation": "produced_by_day_master",
+          "label_de": "Schöpferische Ausgabe"
+        },
+        "is_current": false
+      },
+      {
+        "sequence": 2,
+        "age_start": 12.08,
+        "age_end": 22.08,
+        "date_start": "2002-05-11",
+        "date_end": "2012-03-19",
+        "pillar": {
+          "stem": "Jia",
+          "branch": "Shen",
+          "stem_cn": "甲",
+          "branch_cn": "申",
+          "element": "wood",
+          "polarity": "yang",
+          "index60": 20
+        },
+        "relation_to_day_master": {
+          "day_master": "Xin",
+          "ten_god": "Zheng Cai",
+          "element_relation": "controlled_by_day_master",
+          "label_de": "Direktes Vermögen"
+        },
+        "is_current": false
+      },
+      {
+        "sequence": 3,
+        "age_start": 22.08,
+        "age_end": 32.08,
+        "date_start": "2012-03-19",
+        "date_end": "2022-01-26",
+        "pillar": {
+          "stem": "Yi",
+          "branch": "You",
+          "stem_cn": "乙",
+          "branch_cn": "酉",
+          "element": "wood",
+          "polarity": "yin",
+          "index60": 21
+        },
+        "relation_to_day_master": {
+          "day_master": "Xin",
+          "ten_god": "Pian Cai",
+          "element_relation": "controlled_by_day_master",
+          "label_de": "Indirektes Vermögen"
+        },
+        "is_current": false
+      },
+      {
+        "sequence": 4,
+        "age_start": 32.08,
+        "age_end": 42.08,
+        "date_start": "2022-01-26",
+        "date_end": "2031-12-05",
+        "pillar": {
+          "stem": "Bing",
+          "branch": "Xu",
+          "stem_cn": "丙",
+          "branch_cn": "戌",
+          "element": "fire",
+          "polarity": "yang",
+          "index60": 22
+        },
+        "relation_to_day_master": {
+          "day_master": "Xin",
+          "ten_god": "Zheng Guan",
+          "element_relation": "controls_day_master",
+          "label_de": "Verantwortung"
+        },
+        "is_current": true
+      },
+      {
+        "sequence": 5,
+        "age_start": 42.08,
+        "age_end": 52.08,
+        "date_start": "2031-12-05",
+        "date_end": "2041-10-13",
+        "pillar": {
+          "stem": "Ding",
+          "branch": "Hai",
+          "stem_cn": "丁",
+          "branch_cn": "亥",
+          "element": "fire",
+          "polarity": "yin",
+          "index60": 23
+        },
+        "relation_to_day_master": {
+          "day_master": "Xin",
+          "ten_god": "Qi Sha",
+          "element_relation": "controls_day_master",
+          "label_de": "Druck / Struktur"
+        },
+        "is_current": false
+      },
+      {
+        "sequence": 6,
+        "age_start": 52.08,
+        "age_end": 62.08,
+        "date_start": "2041-10-13",
+        "date_end": "2051-08-22",
+        "pillar": {
+          "stem": "Wu",
+          "branch": "Zi",
+          "stem_cn": "戊",
+          "branch_cn": "子",
+          "element": "earth",
+          "polarity": "yang",
+          "index60": 24
+        },
+        "relation_to_day_master": {
+          "day_master": "Xin",
+          "ten_god": "Zheng Yin",
+          "element_relation": "produces_day_master",
+          "label_de": "Direkte Quelle"
+        },
+        "is_current": false
+      },
+      {
+        "sequence": 7,
+        "age_start": 62.08,
+        "age_end": 72.08,
+        "date_start": "2051-08-22",
+        "date_end": "2061-06-30",
+        "pillar": {
+          "stem": "Ji",
+          "branch": "Chou",
+          "stem_cn": "己",
+          "branch_cn": "丑",
+          "element": "earth",
+          "polarity": "yin",
+          "index60": 25
+        },
+        "relation_to_day_master": {
+          "day_master": "Xin",
+          "ten_god": "Pian Yin",
+          "element_relation": "produces_day_master",
+          "label_de": "Indirekte Quelle"
+        },
+        "is_current": false
+      },
+      {
+        "sequence": 8,
+        "age_start": 72.08,
+        "age_end": 82.08,
+        "date_start": "2061-06-30",
+        "date_end": "2071-05-09",
+        "pillar": {
+          "stem": "Geng",
+          "branch": "Yin",
+          "stem_cn": "庚",
+          "branch_cn": "寅",
+          "element": "metal",
+          "polarity": "yang",
+          "index60": 26
+        },
+        "relation_to_day_master": {
+          "day_master": "Xin",
+          "ten_god": "Jie Cai",
+          "element_relation": "same_element",
+          "label_de": "Rivale"
+        },
+        "is_current": false
+      }
+    ],
+    "current": {
+      "sequence": 4,
+      "age_start": 32.08,
+      "age_end": 42.08,
+      "pillar": {
+        "stem": "Bing",
+        "branch": "Xu",
+        "stem_cn": "丙",
+        "branch_cn": "戌",
+        "element": "fire",
+        "polarity": "yang",
+        "index60": 22
+      },
+      "semantic_summary": {
+        "road_metaphor": "Diese Dekade beschreibt die Strasse, auf der dein Xin-Kern gerade wirkt.",
+        "supports": [],
+        "frictions": [],
+        "practice": []
+      }
+    }
+  },
+  "provenance": {
+    "source": "FuFirE",
+    "ruleset_id": "dayun_v1",
+    "solar_terms_source": "existing_bazi_jieqi_engine",
+    "computed_at": "2026-06-12T19:06:24Z"
+  },
+  "precision": {
+    "birth_time_known": true,
+    "direction_basis": "explicit",
+    "provisional_fields": []
+  },
+  "warnings": []
+}

@@ -53,6 +53,26 @@ describe("normalizer vs REAL orchestrated prod raw (chart + western + fusion)", 
     expect(vm.western.ascendant).toBe("Waage");
   });
 
+  it("carries the ascendant ABSOLUTE longitude from angles.Ascendant (P7-T1)", () => {
+    const vm = normalizeFuFireProfile(prodOrchestratedRaw(), INPUT, "fufire-orchestrated");
+    // angles.Ascendant = 190.046° (Waage 10.0°) — the real absolute ecliptic longitude.
+    expect(vm.western.ascendantLongitude).toBeCloseTo(190.046, 2);
+  });
+
+  it("returns ascendantLongitude null when no angles and no cusps (legacy, P7-T1)", () => {
+    const raw: any = { western: { sunSign: "Widder", planets: [] } };
+    const vm = normalizeFuFireProfile(raw, INPUT, "fufire-orchestrated");
+    expect(vm.western.ascendantLongitude).toBeNull();
+  });
+
+  it("returns ascendantLongitude null when ascendant is provisional/unknown-time (P7-T1)", () => {
+    const raw: any = {
+      western: { angles: { Ascendant: 190.046 }, precision: { provisional_fields: ["ascendant"] }, planets: [] },
+    };
+    const vm = normalizeFuFireProfile(raw, INPUT, "fufire-orchestrated");
+    expect(vm.western.ascendantLongitude).toBeNull();
+  });
+
   it("maps the bodies OBJECT to German planet entries with sign/degree/house", () => {
     const vm = normalizeFuFireProfile(prodOrchestratedRaw(), INPUT, "fufire-orchestrated");
     const sun = vm.western.planets.find((p) => p.name === "Sonne");
@@ -123,12 +143,105 @@ describe("normalizer vs REAL orchestrated prod raw (chart + western + fusion)", 
     expect(vm.wuxing.elementCards).toHaveLength(5);
   });
 
-  it("maps the real FusionResponse (cosmic_state 0..1) to a 0..100 coherence index", () => {
+  it("displays the CALIBRATED coherence (calibration.h_calibrated), not the flattering raw dot-product", () => {
     const vm = normalizeFuFireProfile(prodOrchestratedRaw(), INPUT, "fufire-orchestrated");
-    expect(vm.fusion.coherenceIndex).toBeCloseTo(90.8, 1);
+    // calibration.h_calibrated = 0.6144 -> 61.4% (NOT h_raw 0.908 -> 90.8%)
+    expect(vm.fusion.coherenceIndex).toBeCloseTo(61.4, 1);
+    expect(vm.fusion.coherenceCalibrated).toBe(true);
     expect(vm.fusion.source).toBe("fufire");
-    // Engine's own interpretation is surfaced, not a locally invented label.
+    // The engine's calibrated interpretation_band is surfaced, not a locally
+    // invented label and not the raw-harmony flattery.
+    expect(vm.fusion.coherenceRating).toBe("Überdurchschnittliche Kongruenz");
+  });
+
+  it("derives the signal level from the calibration z-score (h_raw vs baseline/sigma)", () => {
+    const vm = normalizeFuFireProfile(prodOrchestratedRaw(), INPUT, "fufire-orchestrated");
+    // z = (0.908 - 0.7614) / 0.1445 = 1.015 -> 1 <= |z| < 2 -> "spuerbar"
+    expect(vm.fusion.signalLevel).toBe("spuerbar");
+  });
+
+  it("pins the >= bucket semantics of the signal level (z=0.99 / 1.0 / 2.0)", () => {
+    // Exact binary fractions so the z-score boundaries are hit precisely:
+    // baseline 0.25, sigma 0.25 -> z = (h_raw - 0.25) / 0.25.
+    const vmFor = (hRaw: number) =>
+      normalizeFuFireProfile(
+        { fusion: { calibration: { h_raw: hRaw, h_baseline: 0.25, h_sigma: 0.25, h_calibrated: 0.5 } } },
+        INPUT,
+        "fufire-orchestrated"
+      );
+    // z = 0.99 < 1 -> leise
+    expect(vmFor(0.4975).fusion.signalLevel).toBe("leise");
+    // z = 1.0 -> the >= boundary flips to spuerbar
+    expect(vmFor(0.5).fusion.signalLevel).toBe("spuerbar");
+    // z = 2.0 -> the >= boundary flips to dominant
+    expect(vmFor(0.75).fusion.signalLevel).toBe("dominant");
+  });
+
+  it("falls back to the RAW harmony only when calibration is absent — and flags it", () => {
+    const { calibration, ...uncalibrated } = fusionFixture as any;
+    const vm = normalizeFuFireProfile({ fusion: uncalibrated }, INPUT, "fufire-orchestrated");
+    expect(vm.fusion.coherenceIndex).toBeCloseTo(90.8, 1);
+    expect(vm.fusion.coherenceCalibrated).toBe(false);
+    // Raw harmony_index.interpretation is the best remaining label.
     expect(vm.fusion.coherenceRating).toContain("Starke Resonanz");
+    // No baseline/sigma and no h_calibrated -> no signal level claim.
+    expect(vm.fusion.signalLevel).toBeNull();
+  });
+
+  it("maps elemental_comparison (per-element West-vs-BaZi weights) into the view model", () => {
+    const vm = normalizeFuFireProfile(prodOrchestratedRaw(), INPUT, "fufire-orchestrated");
+    expect(vm.fusion.elementalComparison).toHaveLength(5);
+    const holz = vm.fusion.elementalComparison.find((c) => c.element === ElementType.WOOD)!;
+    expect(holz.western).toBeCloseTo(0.61, 2);
+    expect(holz.bazi).toBeCloseTo(0.388, 3);
+    expect(holz.difference).toBeCloseTo(0.222, 3);
+    const metall = vm.fusion.elementalComparison.find((c) => c.element === ElementType.METAL)!;
+    expect(metall.difference).toBeCloseTo(-0.299, 3);
+  });
+
+  it("NEVER invents top signals: they derive from the largest elemental differences", () => {
+    const vm = normalizeFuFireProfile(prodOrchestratedRaw(), INPUT, "fufire-orchestrated");
+    // The old hardcoded reading every user saw is gone.
+    const triggers = vm.fusion.topSignals.map((s) => s.trigger).join(" ");
+    expect(triggers).not.toContain("Sonne-Tagesmeister Interferenz");
+    // Top-2 |difference|: Metall (-0.299) and Holz (+0.222).
+    expect(vm.fusion.topSignals).toHaveLength(2);
+    expect(vm.fusion.topSignals[0].trigger).toContain("Metall");
+    expect(vm.fusion.topSignals[1].trigger).toContain("Holz");
+    expect(vm.fusion.topSignals[0].interpretation).toContain("BaZi-Struktur");
+  });
+
+  it("returns NO top signals when the response carries no elemental_comparison", () => {
+    const { elemental_comparison, ...rest } = fusionFixture as any;
+    const vm = normalizeFuFireProfile({ fusion: rest }, INPUT, "fufire-orchestrated");
+    expect(vm.fusion.elementalComparison).toEqual([]);
+    expect(vm.fusion.topSignals).toEqual([]);
+  });
+
+  it("surfaces the engine's REAL fusion_interpretation as integrationText", () => {
+    const vm = normalizeFuFireProfile(prodOrchestratedRaw(), INPUT, "fufire-orchestrated");
+    expect(vm.fusion.integrationText).toContain("Harmonie-Index: 90.80%");
+    expect(vm.fusion.integrationText).toContain("Westliche Dominanz: Holz");
+  });
+
+  it("returns integrationText null when the engine sent no fusion_interpretation — NO invented fallback", () => {
+    const { fusion_interpretation, ...rest } = fusionFixture as any;
+    const vm = normalizeFuFireProfile({ fusion: rest }, INPUT, "fufire-orchestrated");
+    // The "Fusions-Deutung der Engine" section must stay hidden instead of
+    // labeling local copy as engine output.
+    expect(vm.fusion.integrationText).toBeNull();
+  });
+
+  it("approximates the signal level from h_calibrated thirds when sigma is missing", () => {
+    const { calibration, ...rest } = fusionFixture as any;
+    const vm = normalizeFuFireProfile(
+      { fusion: { ...rest, calibration: { h_calibrated: 0.6144, interpretation_band: "Überdurchschnittliche Kongruenz" } } },
+      INPUT,
+      "fufire-orchestrated"
+    );
+    // 0.33 <= 0.6144 < 0.66 -> "spuerbar" (documented coarse bucketing)
+    expect(vm.fusion.signalLevel).toBe("spuerbar");
+    expect(vm.fusion.coherenceIndex).toBeCloseTo(61.4, 1);
   });
 });
 
@@ -164,9 +277,10 @@ describe("normalizer vs REAL detail-endpoint shapes (one section each)", () => {
     expect(vm.wuxing.distribution[ElementType.METAL]).toBeCloseTo(6.5, 0);
   });
 
-  it("FusionResponse alone (harmony_index object + cosmic_state)", () => {
+  it("FusionResponse alone (calibration block beats harmony_index/cosmic_state)", () => {
     const vm = normalizeFuFireProfile({ fusion: fusionFixture }, INPUT, "fufire-orchestrated");
-    expect(vm.fusion.coherenceIndex).toBeCloseTo(90.8, 1);
+    expect(vm.fusion.coherenceIndex).toBeCloseTo(61.4, 1);
+    expect(vm.fusion.coherenceCalibrated).toBe(true);
     expect(vm.fusion.source).toBe("fufire");
   });
 });
@@ -187,6 +301,105 @@ describe("normalizer degrades per-section instead of throwing", () => {
       "fufire-orchestrated"
     );
     expect(vm.western.planets).toEqual([]);
-    expect(vm.fusion.coherenceIndex).toBe(0);
+    expect(vm.fusion.coherenceIndex).toBeNull();
+  });
+
+  it("liefert coherenceIndex null, wenn weder Kalibrierung noch Legacy-Wert existieren (B-002)", () => {
+    const vm = normalizeFuFireProfile(
+      { fusion: { calibration: { h_raw: 0.5, h_baseline: 0.25, h_sigma: 0.25 } } },
+      INPUT, "fufire-orchestrated"
+    );
+    expect(vm.fusion.coherenceIndex).toBeNull();
+    expect(vm.fusion.coherenceCalibrated).toBe(false);
+    expect(vm.fusion.signalLevel).toBeNull();
+    expect(vm.fusion.coherenceRating).toBe("Keine Kohärenz-Daten verfügbar");
+  });
+
+  it("lokaler Fallback erfindet keine 75 mehr (B-002)", async () => {
+    const { getRawSimulatedProfileFromLocal } = await import("./fufireNormalizer");
+    const raw = getRawSimulatedProfileFromLocal({ birthDate: "1990-06-15", birthTime: "14:30", name: "X" } as any);
+    expect((raw.fusion as any)?.coherenceIndex).toBeUndefined();
+    const vm = normalizeFuFireProfile(raw, INPUT, "fallback-local");
+    expect(vm.fusion.coherenceIndex).toBeNull();
+    expect(vm.fusion.coherenceCalibrated).toBe(false);
+  });
+});
+
+describe("B-007 Pinning: Aszendent/Mond/Haus-Texte kreuzen sich nie", () => {
+  const vm = () => normalizeFuFireProfile({ western: westernFixture }, INPUT, "fufire-orchestrated");
+
+  it("Aszendent (→ Waage) und Mond (→ Fische) sind getrennt und korrekt", () => {
+    const v = vm();
+    expect(v.western.ascendant).toBe("Waage");
+    expect(v.western.moonSign).toBe("Fische");
+    expect(v.western.ascendant).not.toBe(v.western.moonSign);
+  });
+
+  it("der Mond steht per Server-Cusps in Haus 5 — NIE pauschal in Haus 1", () => {
+    const moon = vm().western.planets.find((p) => p.name === "Mond")!;
+    expect(moon.sign).toBe("Fische");
+    expect(moon.house).toBe(5);
+  });
+
+  it("Haus-1-Text referenziert den Aszendenten und listet KEINEN Mond (Fixture: Haus 1 leer)", () => {
+    const h1 = vm().western.houses.find((h) => h.number === 1)!;
+    expect(h1.description).toContain("Aszendent");
+    expect(h1.signResonance).toContain("Waage");
+    expect(h1.signResonance).not.toContain("Fische");
+    expect(h1.planets).toEqual([]);
+  });
+
+  it("Haus 5 listet den Mond mit Zeichen Fische — kein Kreuz-Label-Aszendent", () => {
+    const v = vm();
+    const h5 = v.western.houses.find((h) => h.number === 5)!;
+    const moonEntry = h5.planets.find((p) => p.name === "Mond")!;
+    expect(moonEntry).toBeDefined();
+    expect(moonEntry.sign).toBe("Fische");
+    expect(h5.description).toContain("Mond (Fische)");
+    expect(h5.description).not.toContain("Aszendent");
+    const asc = v.western.planets.find((p) => p.name === "Aszendent");
+    if (asc) expect(asc.sign).toBe(v.western.ascendant);
+  });
+});
+
+describe("A14 — DAY_MASTER_TEXTS element-spezifische Fallback-Texte", () => {
+  const INPUT = {
+    name: "Test", birthDate: "1990-01-01", birthTime: "12:00",
+    birthPlace: "Berlin", birthPlaceLabel: "Berlin", placeId: "p1", gender: "Divers" as const
+  };
+
+  it("METAL-Tagesmeister (Xin) liefert Metall-Modell-Text (kein 'Ausgewogenheit')", () => {
+    const fullRaw = {
+      western: westernFixture, bazi: baziFixture, wuxing: wuxingFixture, fusion: fusionFixture
+    };
+    const vm = normalizeFuFireProfile(fullRaw, INPUT, "fufire-chart");
+    expect(vm.bazi.dayMaster.element).toBe(ElementType.METAL);
+    expect(vm.bazi.dayMaster.strengths).toContain("Im BaZi-Modell");
+    expect(vm.bazi.dayMaster.strengths).not.toBe("Ausgewogenheit, Feinfühligkeit");
+    expect(vm.bazi.dayMaster.strengths).toContain("Klarheit");
+    expect(vm.bazi.dayMaster.shadow).toContain("Im BaZi-Modell");
+    expect(vm.bazi.dayMaster.coreInterpretation).toContain("im BaZi-Modell");
+  });
+
+  it.each([
+    ["Holz", ElementType.WOOD, "Wachstumsorientierung"],
+    ["Feuer", ElementType.FIRE, "Ausdrucksstärke"],
+    ["Erde", ElementType.EARTH, "Verlässlichkeit"],
+    ["Metall", ElementType.METAL, "Klarheit"],
+    ["Wasser", ElementType.WATER, "Anpassungsfähigkeit"],
+  ])("Element %s → strengths enthält '%s'", (_label, element, keyword) => {
+    const rawWithElement = { bazi: { dayMaster: element } };
+    const vm = normalizeFuFireProfile(rawWithElement, INPUT, "fufire-chart");
+    expect(vm.bazi.dayMaster.element).toBe(element);
+    expect(vm.bazi.dayMaster.strengths).toContain(keyword);
+    expect(vm.bazi.dayMaster.strengths).toContain("Im BaZi-Modell");
+    expect(vm.bazi.dayMaster.shadow).toContain("Im BaZi-Modell");
+    expect(vm.bazi.dayMaster.coreInterpretation).toContain("im BaZi-Modell");
+  });
+
+  it("Engine-Wert rawBazi.strengths hat Vorrang vor DAY_MASTER_TEXTS", () => {
+    const rawWithCustom = { bazi: { dayMaster: ElementType.FIRE, strengths: "Direkter Engine-Wert" } };
+    const vm = normalizeFuFireProfile(rawWithCustom, INPUT, "fufire-chart");
+    expect(vm.bazi.dayMaster.strengths).toBe("Direkter Engine-Wert");
   });
 });

@@ -1,0 +1,49 @@
+{
+  "_spike_meta": {
+    "endpoint": "/v1/experience/bootstrap",
+    "birth_time_known": false
+  },
+  "profile": {
+    "sun_sign": "Zwillinge",
+    "moon_sign": "Fische",
+    "ascendant_sign": "Jungfrau",
+    "day_master": "Xin",
+    "harmony_index": 0.508
+  },
+  "soulprint_sectors": [
+    0.070097,
+    0.097636,
+    0.245339,
+    0.040901,
+    0.088427,
+    0.152671,
+    0.024709,
+    0.027539,
+    0.043889,
+    0.024709,
+    0,
+    0.184083
+  ],
+  "signature_blueprint": {
+    "seed": "sig_v1_d504c35976ea7dd7",
+    "visual": {
+      "symmetry": 0.2818,
+      "curvature": 0.9677,
+      "angularity": 0.8244,
+      "density": 0.5821,
+      "contrast": 0.2453,
+      "orbit_count": 4
+    },
+    "elements": {
+      "Holz": 0.4668,
+      "Feuer": 0.5424,
+      "Erde": 0.3143,
+      "Metall": 0.282,
+      "Wasser": 0.5009
+    }
+  },
+  "meta": {
+    "engine_version": "1.0.0-rc1-20260220",
+    "generated_at": "2026-06-12T19:06:24Z"
+  }
+}

@@ -1,6 +1,7 @@
 import { ElementType, YinYang } from "../types";
 import { ProfileViewModel, HouseMeaning, ElementCardData, ProfileSource } from "../viewmodels/profileViewModel";
 import { calculateAstrologyFusion, HEAVENLY_STEMS, EARTHLY_BRANCHES, WESTERN_ZODIAC } from "./astrology";
+import { aspectInterpretation } from "./aspectInterpretation";
 
 // Standard meanings for 12 Houses to combine with planet details
 const HOUSE_TEMPLATES = [
@@ -53,6 +54,34 @@ const ELEMENT_COACHING: Record<ElementType, { title: string; keynote: string; fo
     foods: "Salzige Speisen, schwarze Bohnen, Heidelbeeren, Algen, Algenmiso.",
     colors: "Midnight Blue, Obsidian-Tiefschwarz, Indigoblau.",
     professions: "Forschung, Philosophie, Seefahrt, Psychologie, Kunstschaffen."
+  }
+};
+
+const DAY_MASTER_TEXTS: Record<ElementType, { coreInterpretation: string; strengths: string; shadow: string }> = {
+  [ElementType.WOOD]: {
+    coreInterpretation: "Der Holz-Tagesmeister steht im BaZi-Modell für aufstrebende, wachsende Energie — Richtungssinn und Gestaltungswillen prägen dieses Muster.",
+    strengths: "Im BaZi-Modell: Wachstumsorientierung, Entscheidungsfreude, Visionskraft. Das Holzelement steht für aufstrebende Energie und Gestaltungswillen.",
+    shadow: "Im BaZi-Modell: Ungeduld, Starrheit in Überzeugungen, Schwierigkeiten bei Rückzug und Erneuerung."
+  },
+  [ElementType.FIRE]: {
+    coreInterpretation: "Der Feuer-Tagesmeister steht im BaZi-Modell für strahlende, nach außen gerichtete Energie — Ausdruckskraft und Begeisterung prägen dieses Muster.",
+    strengths: "Im BaZi-Modell: Ausdrucksstärke, Begeisterungsfähigkeit, soziale Wärme. Das Feuerelement steht für Sichtbarkeit und emotionale Intensität.",
+    shadow: "Im BaZi-Modell: Impulsivität, emotionale Überhitzung, Erschöpfung nach Hochphasen."
+  },
+  [ElementType.EARTH]: {
+    coreInterpretation: "Der Erde-Tagesmeister steht im BaZi-Modell für stabilisierende, vermittelnde Energie — Beständigkeit und Gründlichkeit prägen dieses Muster.",
+    strengths: "Im BaZi-Modell: Verlässlichkeit, Durchhaltevermögen, vermittelnde Kraft. Das Erdelement steht für Stabilität und Zentrierung.",
+    shadow: "Im BaZi-Modell: Grübeln, Festhalten an Vertrautem, Tendenz zur Überanalyse."
+  },
+  [ElementType.METAL]: {
+    coreInterpretation: "Der Metall-Tagesmeister steht im BaZi-Modell für klärende, präzisierende Energie — Urteilsschärfe und Prinzipientreue prägen dieses Muster.",
+    strengths: "Im BaZi-Modell: Klarheit, Prinzipientreue, Fokus auf Qualität. Das Metallelement steht für Präzision und Urteilsvermögen.",
+    shadow: "Im BaZi-Modell: Rigidität, Kritikneigung, Schwierigkeiten mit Mehrdeutigkeit."
+  },
+  [ElementType.WATER]: {
+    coreInterpretation: "Der Wasser-Tagesmeister steht im BaZi-Modell für fließende, tiefgründige Energie — Intuition und Anpassungsvermögen prägen dieses Muster.",
+    strengths: "Im BaZi-Modell: Anpassungsfähigkeit, Tiefgründigkeit, Intuition. Das Wasserelement steht für Fluss und Reflexionsvermögen.",
+    shadow: "Im BaZi-Modell: Überwältigung durch Tiefe, Entscheidungsverzögerung, Tendenz zum Grübeln."
   }
 };
 
@@ -196,6 +225,18 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
     gender: input.gender || "Divers"
   };
 
+  // P4: provisional_fields per endpoint — response-driven degradation
+  const timeKnown: boolean = input.timeKnown !== false;
+  const westernProvisionalFields: string[] = Array.isArray(raw.western?.precision?.provisional_fields) ? raw.western.precision.provisional_fields : [];
+  const fusionProvisionalFields: string[] = Array.isArray(raw.fusion?.precision?.provisional_fields) ? raw.fusion.precision.provisional_fields : [];
+  // Honesty invariant (BIRTH-TIME-01): no user-given birth time → time-dependent
+  // fields are ALWAYS provisional. The engine's provisional_fields is an ADDITIONAL
+  // trigger, never the sole one — a response without precision.provisional_fields
+  // (engine version skew / an endpoint ignoring birth_time_known) must not leak a
+  // 12:00-computed ascendant or houses as fact.
+  const ascendantProvisional = !timeKnown || westernProvisionalFields.includes("ascendant");
+  const housesProvisional = !timeKnown || westernProvisionalFields.includes("houses");
+
   // B. WESTERN ASTROLOGY
   const rawWest = raw.western && typeof raw.western === "object" ? raw.western : {};
 
@@ -262,7 +303,7 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
         // Legacy/mock shape
         let degree = typeof p.degree === "number" ? p.degree : 0;
         if (typeof p.longitude === "number" && !p.degree) {
-          degree = p.longitude % 30;
+          degree = normalize360(p.longitude) % 30;
         }
         return {
           name: p.name || "Unbekannter Planet",
@@ -283,14 +324,32 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
     planets.find((p) => p.name === name)?.sign || null;
   const sunSign = rawWest.sunSign || rawWest.sun_sign || planetSign("Sonne") || "Unbekannt";
   const moonSign = rawWest.moonSign || rawWest.moon_sign || planetSign("Mond") || "Unbekannt";
-  const ascendant = rawWest.ascendant
-    || (typeof angles.Ascendant === "number" ? signNameDeFromLongitude(angles.Ascendant) : null)
-    || (houseCusps ? signNameDeFromLongitude(houseCusps[0]) : null)
-    || "Unbekannt";
+  // F-01: if ascendant is in provisional_fields, short-circuit the ENTIRE fallback chain.
+  // The engine may return angles.Ascendant with a 12:00-computed value — never use it.
+  const ascendant: string | null = ascendantProvisional
+    ? null
+    : (rawWest.ascendant
+        || (typeof angles.Ascendant === "number" ? signNameDeFromLongitude(angles.Ascendant) : null)
+        || (houseCusps ? signNameDeFromLongitude(houseCusps[0]) : null)
+        || "Unbekannt");
+
+  // P7-T1: absolute ascendant longitude — ONLY from a real source, never from
+  // the sign name. Provisional (unknown birth time) short-circuits to null,
+  // same F-01 rule as `ascendant` above (never use a 12:00-computed angle).
+  const ascendantLongitude: number | null = ascendantProvisional
+    ? null
+    : (typeof angles.Ascendant === "number" && Number.isFinite(angles.Ascendant)
+        ? normalize360(angles.Ascendant)
+        : houseCusps && Number.isFinite(houseCusps[0])
+          ? normalize360(houseCusps[0])
+          : null);
 
   // Map 12 Houses (with actual missing state fallback if there is zero house data)
+  // When houses are provisional (birth_time_known:false), return empty array — no 12:00-computed houses displayed.
   let houses: HouseMeaning[] = [];
-  if (houseCusps) {
+  if (housesProvisional) {
+    houses = [];
+  } else if (houseCusps) {
     // REAL cusp object: sign resonance straight from the server's cusp longitudes.
     houses = HOUSE_TEMPLATES.map((tmpl) => {
       const cusp = houseCusps[tmpl.number - 1];
@@ -362,20 +421,29 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
     .filter((asp: any) => asp && typeof asp === "object")
     .map((asp: any) => {
       const typeInfo = typeof asp.type === "string" ? ASPECT_TYPES_DE[asp.type.toLowerCase()] : undefined;
+      const planet1 = germanPlanetName(asp.planet1 || asp.sourceKey || "Unbekannt");
+      const planet2 = germanPlanetName(asp.planet2 || asp.targetKey || "Unbekannt");
+      const typeDe = typeInfo ? typeInfo.name : asp.type || "Aspekt";
       return {
-        planet1: germanPlanetName(asp.planet1 || asp.sourceKey || "Unbekannt"),
-        planet2: germanPlanetName(asp.planet2 || asp.targetKey || "Unbekannt"),
-        type: typeInfo ? typeInfo.name : asp.type || "Aspekt",
+        planet1,
+        planet2,
+        type: typeDe,
         symbol: asp.symbol || (typeInfo ? typeInfo.symbol : "☌"),
         orb: typeof asp.orb === "number" ? asp.orb : 0,
         harmony: asp.harmony || (typeInfo ? typeInfo.harmony : "neutral"),
-        interpretation: asp.interpretation || "Lokale abgeleitete Deutung"
+        // REAL aspects carry no interpretation field — compose a local,
+        // deterministic sentence (aspect-type template x planet keywords)
+        // instead of the former literal placeholder.
+        interpretation: asp.interpretation || aspectInterpretation(planet1, planet2, typeDe)
       };
     });
 
   // C. BAZI PILLARS
   const rawBazi = raw.bazi && typeof raw.bazi === "object" ? raw.bazi : {};
   const rawPillars: any = rawBazi.pillars && typeof rawBazi.pillars === "object" ? rawBazi.pillars : {};
+  const baziProvisionalFields: string[] = Array.isArray(rawBazi.precision?.provisional_fields) ? rawBazi.precision.provisional_fields : [];
+  // BIRTH-TIME-01: same local backstop — unknown birth time always suppresses the hour pillar.
+  const hourProvisional = !timeKnown || baziProvisionalFields.includes("hour");
 
   // REAL shapes use English pillar keys (BaziPillarsResponse/BaziSection:
   // year/month/day/hour); legacy mocks use German keys (Jahr/Monat/...).
@@ -420,7 +488,8 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
     { title: "Kopf/Urahnen", pillarKey: "Jahr", data: getPillarData("Jahr", rawBazi.year || { stem: defaultStem, branch: defaultBranch }) },
     { title: "Familie/Monat", pillarKey: "Monat", data: getPillarData("Monat", rawBazi.month || { stem: defaultStem, branch: defaultBranch }) },
     { title: "Partner/Tag", pillarKey: "Tag", data: getPillarData("Tag", rawBazi.day || { stem: defaultStem, branch: defaultBranch }) },
-    { title: "Träume/Stunde", pillarKey: "Stunde", data: getPillarData("Stunde", rawBazi.hour || { stem: defaultStem, branch: defaultBranch }) }
+    // F-02: if hour is in provisional_fields, pass null — do NOT fall through to rawPillars["hour"] (12:00-computed)
+    { title: "Träume/Stunde", pillarKey: "Stunde", data: hourProvisional ? null : getPillarData("Stunde", rawBazi.hour ?? null) }
   ].map((p) => {
     const real = resolveRealPillar(p.data);
     const stem = real ? real.stem : (p.data && typeof p.data === "object" && p.data.stem) || defaultStem;
@@ -457,14 +526,15 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
     pinyin: dmName,
     chinese: dmChinese,
     polarity: dmPolarity,
-    coreInterpretation: rawBazi.coreInterpretation || `Der ${dmElement}-Tagesmeister steuert Ihre innere Energieleitbahn. Seine Natur spiegelt Ihren tiefsten wahren Wesenskern wider.`,
-    strengths: rawBazi.strengths || "Ausgewogenheit, Feinfühligkeit",
-    shadow: rawBazi.shadow || "Schatten weisen auf harmonisierenden Ergänzungsbedarf hin."
+    coreInterpretation: rawBazi.coreInterpretation || DAY_MASTER_TEXTS[dmElement].coreInterpretation,
+    strengths: rawBazi.strengths || DAY_MASTER_TEXTS[dmElement].strengths,
+    shadow: rawBazi.shadow || DAY_MASTER_TEXTS[dmElement].shadow
   };
 
   // D. WU XING DISTRIBUTION
-  // Never fabricate a distribution for a real FuFirE source that did not provide one.
-  const wuxingAvail = isFallback || Boolean(raw.wuxing);
+  // Never fabricate a distribution for a real FuFirE source that did not provide
+  // a usable positive vector. A present-but-empty `{}` is an error/missing state,
+  // not five real 0% "Defizit" bars.
   const rawWuxing = raw.wuxing && typeof raw.wuxing === "object" ? raw.wuxing : {};
   // REAL shapes: WxResponse.wu_xing_vector (German keys, 0..1 weights) or the
   // chart's WuXingSection.from_planets (raw weights). Legacy: distribution
@@ -486,6 +556,10 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
   };
   const weightTotal = Object.values(rawWeights).reduce(
     (acc, v) => acc + (typeof v === "number" && Number.isFinite(v) && v > 0 ? v : 0), 0);
+  const wuxingAvail = Boolean(raw.wuxing) && weightTotal > 0;
+  if (raw.wuxing && weightTotal === 0) {
+    warnings.push("Wu-Xing-Daten wurden ohne nutzbaren Elementvektor geliefert.");
+  }
 
   // Percentage shares; absent section stays at zero (rendered as missing-state).
   const distribution: Record<ElementType, number> = Object.fromEntries(
@@ -522,52 +596,144 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
 
   const vectorExplanation = wuxingAvail
     ? (rawWuxing.vectorExplanation || `Ihre Elementenverteilung verweist auf dominante ${maxElement}-Frequenzen (${distribution[maxElement]}%), während ${minElement} (${distribution[minElement]}%) Ergänzungsimpulse verträgt.`)
-    : "Wu-Xing-Wandlungsphasen wurden von FuFirE nicht geliefert (missing).";
+    : raw.wuxing
+      ? "Wu-Xing-Wandlungsphasen wurden ohne nutzbaren Elementvektor geliefert (error)."
+      : "Wu-Xing-Wandlungsphasen wurden von FuFirE nicht geliefert (missing).";
 
   // E. FUSION MATRIX — never fabricate a coherence index for a missing section.
   const rawFusion = raw.fusion && typeof raw.fusion === "object" ? raw.fusion : {};
-  // REAL FusionResponse: cosmic_state (0..1) and harmony_index = OBJECT
-  // { harmony_index: 0..1, interpretation, ... }. Legacy: coherenceIndex 0..100.
+  // REAL FusionResponse: cosmic_state (0..1), harmony_index = OBJECT
+  // { harmony_index: 0..1, interpretation, ... } AND a calibration block
+  // { h_raw, h_calibrated, h_baseline, h_sigma, sigma_above, quality,
+  //   interpretation_band, n_west, n_bazi_contributions }.
+  // Legacy mocks: coherenceIndex 0..100.
   const harmonyObj = rawFusion.harmony_index && typeof rawFusion.harmony_index === "object"
     ? rawFusion.harmony_index : null;
+  const calibration = rawFusion.calibration && typeof rawFusion.calibration === "object"
+    ? rawFusion.calibration : null;
+  const hCalibrated = calibration && typeof calibration.h_calibrated === "number" && Number.isFinite(calibration.h_calibrated)
+    ? calibration.h_calibrated : null;
   const realCoherence01 = typeof rawFusion.cosmic_state === "number" ? rawFusion.cosmic_state
     : harmonyObj && typeof harmonyObj.harmony_index === "number" ? harmonyObj.harmony_index
     : typeof rawFusion.harmony_index === "number" ? rawFusion.harmony_index
     : null;
-  const coherenceIndex = typeof rawFusion.coherenceIndex === "number" ? rawFusion.coherenceIndex
+  // The CALIBRATED value (structure congruence vs. random baseline) is the
+  // honest headline number. The raw dot-product (0.908 -> "91%") flatters
+  // every chart and is only used when the engine sent no calibration block —
+  // and then it is explicitly flagged via coherenceCalibrated=false.
+  const coherenceCalibrated = hCalibrated !== null;
+  const coherenceIndex = hCalibrated !== null ? Math.round(hCalibrated * 100 * 10) / 10
+    : typeof rawFusion.coherenceIndex === "number" ? rawFusion.coherenceIndex
     : typeof rawFusion.coherence_index === "number" ? rawFusion.coherence_index
     : realCoherence01 !== null ? Math.round((realCoherence01 <= 1 ? realCoherence01 * 100 : realCoherence01) * 10) / 10
-    : 0;
+    : null;
 
-  // Custom label rating
+  // Signal level: how VISIBLE the West-Ost congruence pattern is, i.e. how
+  // far the raw harmony sits from the engine's random baseline, in baseline
+  // sigmas. z = (h_raw - h_baseline) / h_sigma; the |z| buckets pin >=
+  // semantics: |z| < 1 -> leise, 1 <= |z| < 2 -> spuerbar, |z| >= 2 ->
+  // dominant. This is NOT a tension quality — +1σ means MORE harmonic than
+  // random, not "more tense". True tension intensity will derive from the
+  // per-element differences in the upcoming Spannungsnavigator.
+  let signalLevel: "leise" | "spuerbar" | "dominant" | null = null;
+  const hRaw = calibration && typeof calibration.h_raw === "number" ? calibration.h_raw : realCoherence01;
+  const hBaseline = calibration && typeof calibration.h_baseline === "number" ? calibration.h_baseline : null;
+  const hSigma = calibration && typeof calibration.h_sigma === "number" && calibration.h_sigma > 0 ? calibration.h_sigma : null;
+  if (hRaw !== null && hBaseline !== null && hSigma !== null) {
+    const z = Math.abs((hRaw - hBaseline) / hSigma);
+    signalLevel = z < 1 ? "leise" : z < 2 ? "spuerbar" : "dominant";
+  } else if (hCalibrated !== null) {
+    // HONEST APPROXIMATION: the response carried h_calibrated but no usable
+    // baseline std (h_sigma), so no z-score is computable. We derive the
+    // level from h_calibrated thirds instead (<0.33 leise, <0.66 spuerbar,
+    // else dominant) — a coarse bucketing, not a statistical statement.
+    signalLevel = hCalibrated < 0.33 ? "leise" : hCalibrated < 0.66 ? "spuerbar" : "dominant";
+  }
+  if (coherenceIndex === null) {
+    signalLevel = null;
+  }
+
+  // Custom label rating — NIE aus einem fehlenden Wert ableiten (null < 60 wäre sonst true).
   let coherenceRating = "Harmonische Ausgewogenheit";
-  if (coherenceIndex > 80) coherenceRating = "Exzellente System-Resonanz";
+  if (coherenceIndex === null) coherenceRating = "Keine Kohärenz-Daten verfügbar";
+  else if (coherenceIndex > 80) coherenceRating = "Exzellente System-Resonanz";
   else if (coherenceIndex < 60) coherenceRating = "Spannungsgeladene Dynamik";
   // The engine's own interpretation beats any locally derived label.
   if (harmonyObj && typeof harmonyObj.interpretation === "string" && harmonyObj.interpretation) {
     coherenceRating = harmonyObj.interpretation;
   }
+  // The engine's calibrated interpretation_band beats the raw-harmony
+  // interpretation — it belongs to the value we actually display.
+  if (calibration && typeof calibration.interpretation_band === "string" && calibration.interpretation_band) {
+    coherenceRating = calibration.interpretation_band;
+  }
+
+  // REAL elemental_comparison: { Holz: { western, bazi, difference }, ... } —
+  // the per-element West-vs-BaZi weights the harmony is computed from.
+  const ELEMENT_ORDER = [ElementType.WOOD, ElementType.FIRE, ElementType.EARTH, ElementType.METAL, ElementType.WATER];
+  const rawComparison = rawFusion.elemental_comparison && typeof rawFusion.elemental_comparison === "object" && !Array.isArray(rawFusion.elemental_comparison)
+    ? rawFusion.elemental_comparison : null;
+  const elementalComparison = rawComparison
+    ? ELEMENT_ORDER.flatMap((el) => {
+        const entry = rawComparison[el];
+        if (!entry || typeof entry !== "object") return [];
+        const western = typeof entry.western === "number" && Number.isFinite(entry.western) ? entry.western : null;
+        const bazi = typeof entry.bazi === "number" && Number.isFinite(entry.bazi) ? entry.bazi : null;
+        if (western === null || bazi === null) return [];
+        const difference = typeof entry.difference === "number" && Number.isFinite(entry.difference)
+          ? entry.difference
+          : Math.round((western - bazi) * 1000) / 1000;
+        return [{ element: el as string, western, bazi, difference }];
+      })
+    : [];
+
+  // Top signals are DERIVED from server data only (the two largest West/Ost
+  // differences = "größte Spannungsfelder"), or passed through from a legacy
+  // payload. The previous hardcoded default reading every user saw the same
+  // invented "Sonne-Tagesmeister Interferenz" is gone for good.
+  const derivedTopSignals = [...elementalComparison]
+    .sort((a, b) => Math.abs(b.difference) - Math.abs(a.difference))
+    .slice(0, 2)
+    .map((c) => ({
+      trigger: `${c.element}: West ${c.western.toFixed(2)} vs. BaZi ${c.bazi.toFixed(2)}`,
+      interpretation: c.difference >= 0
+        ? `Größtes Spannungsfeld im Element ${c.element}: Die westliche Chart gewichtet ${c.element} um ${Math.abs(c.difference).toFixed(2)} stärker als die BaZi-Struktur.`
+        : `Größtes Spannungsfeld im Element ${c.element}: Die BaZi-Struktur gewichtet ${c.element} um ${Math.abs(c.difference).toFixed(2)} stärker als die westliche Chart.`
+    }));
 
   const fusion = {
     coherenceIndex,
+    coherenceCalibrated,
+    signalLevel,
     coherenceRating: rawFusion.coherenceRating || coherenceRating,
-    coherenceExplanation: "Der Kohärenzindex ist kein moralisches Qualitätsurteil (kein Gut-Schlecht-Wert), sondern drückt das mathematische Resonanzmaß zwischen den westlichen Ekliptik-Signalen, der ostasiatischen BaZi-Struktur und der Wu-Xing-Verteilung aus.",
+    coherenceExplanation: coherenceCalibrated
+      ? "Kalibrierte Strukturkongruenz: Der rohe Resonanzwert wird gegen eine Zufallsbaseline kalibriert — angezeigt wird, wie deutlich Ihre West-Ost-Struktur über zufälliger Übereinstimmung liegt. Kein moralisches Qualitätsurteil (kein Gut-Schlecht-Wert)."
+      : "Der Kohärenzindex ist kein moralisches Qualitätsurteil (kein Gut-Schlecht-Wert), sondern drückt das mathematische Resonanzmaß zwischen den westlichen Ekliptik-Signalen, der ostasiatischen BaZi-Struktur und der Wu-Xing-Verteilung aus.",
     systemBridge: rawFusion.systemBridge || `Ihre energetische Konfiguration spannt eine Brücke zwischen dem westlichen Tierkreiszeichen ${sunSign} und dem BaZi-Tagesmeister ${baziDayMaster.name} (${dmElement}).`,
-    topSignals: rawFusion.topSignals || [
-      { trigger: "Sonne-Tagesmeister Interferenz", interpretation: "Ihre westliche Kernpersönlichkeit harmoniert direkt mit der ostasiatischen Stamm-Schwingung." }
-    ],
+    elementalComparison,
+    topSignals: Array.isArray(rawFusion.topSignals) ? rawFusion.topSignals : derivedTopSignals,
     // New required fields
     label: rawFusion.label || coherenceRating,
     explanation: "Der Kohärenzindex ist kein Gut-Schlecht-Wert, sondern ein Resonanzmaß zwischen westlichen Signalen, BaZi-Struktur und Wu-Xing-Verteilung.",
-    westernContributors: rawFusion.westernContributors || [ `Sonne in ${sunSign}`, `Mond in ${moonSign}`, `Aszendent in ${ascendant}` ],
+    signalLevelSuffix: (!timeKnown || fusionProvisionalFields.includes("hour") || fusionProvisionalFields.includes("signature")) ? "(ohne Stundensäule)" : null,
+    westernContributors: rawFusion.westernContributors || [
+      `Sonne in ${sunSign}`,
+      `Mond in ${moonSign}`,
+      ...(ascendant !== null ? [`Aszendent in ${ascendant}`] : [])
+    ],
     baziContributors: rawFusion.baziContributors || pillarsList.map(p => `${p.pillarKey}: ${p.stemPinyin}/${p.branchAnimal}`),
     wuxingContributors: rawFusion.wuxingContributors || (wuxingAvail ? sortedWuXing.slice(0, 2).map(([el, pct]) => `${el} (${pct}%)`) : []),
     supports: rawFusion.supports || [ `${maxElement} stärkt Willenskraft`, "Häuser-Trigon-Harmonien" ],
     frictions: rawFusion.frictions || [ `Mangel an ${minElement} drosselt Fluss`, "Quadrat-Aspekte erfordern Reflexion" ],
-    integrationText: rawFusion.integrationText
-      || (typeof rawFusion.fusion_interpretation === "string" && rawFusion.fusion_interpretation
+    // The "Fusions-Deutung der Engine" section shows ONLY real engine text
+    // (fusion_interpretation) or a legacy passthrough. Absent text -> null ->
+    // the section stays hidden. NO invented fallback sentence — that would be
+    // local copy masquerading as engine output.
+    integrationText: typeof rawFusion.integrationText === "string" && rawFusion.integrationText
+      ? rawFusion.integrationText
+      : typeof rawFusion.fusion_interpretation === "string" && rawFusion.fusion_interpretation
         ? rawFusion.fusion_interpretation
-        : "Durch das Erkennen dieser kosmischen Strömungen verschmelzen beide Philosophien im Alltag."),
+        : null,
     source: sectionSource(Boolean(raw.fusion))
   };
 
@@ -615,17 +781,21 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
   ];
 
   return {
+    timeKnown,
     identity,
     western: {
       sunSign,
       moonSign,
       ascendant,
+      ascendantLongitude,
+      housesAvailable: !housesProvisional,
       planets,
       aspects,
       houses
     },
     bazi: {
       available: isFallback || Boolean(raw.bazi),
+      hourAvailable: !hourProvisional,
       pillars: pillarsList,
       dayMaster: baziDayMaster,
       dayun: {
@@ -682,9 +852,6 @@ export function getRawSimulatedProfileFromLocal(birthData: any) {
     wuxing: {
       wu_xing_vector: chart.bazi.wuXing
     },
-    fusion: {
-      coherenceIndex: 75
-    }
+    fusion: {}
   };
 }
-

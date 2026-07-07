@@ -1,10 +1,48 @@
 import React from "react";
 import { ProfileViewModel } from "../viewmodels/profileViewModel";
-import { Columns, Award, Key, ShieldCheck, AlertCircle } from "lucide-react";
+import { Columns, Award, Key, ShieldCheck, AlertCircle, Layers } from "lucide-react";
 import { ElementType } from "../types";
+import { TimeDependencyNote } from "./TimeDependencyNote";
+import { getEntry } from "../content/registry";
+import { EARTHLY_BRANCHES } from "../utils/astrology";
 
 interface BaZiDetailProps {
   viewModel: ProfileViewModel;
+}
+
+/** Pinyin token (e.g. "Jiǎ", "Zǐ") → ASCII id-suffix (e.g. "jia", "zi"). Mirrors Overview.tsx:31. */
+function pinyinToken(pinyin: string | null | undefined): string {
+  if (!pinyin) return "";
+  return pinyin.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+}
+
+/** pillarKey (Jahr/Monat/Tag/Stunde) → registry pillar id suffix (year/month/day/hour). */
+const PILLAR_AREA_ID: Record<string, string> = {
+  Jahr: "pillar.year",
+  Monat: "pillar.month",
+  Tag: "pillar.day",
+  Stunde: "pillar.hour",
+};
+
+/**
+ * Resolve a branch's verborgene Stämme. The ViewModel propagates hidden stems
+ * from index-based REAL engine responses; for legacy/nested payloads the array
+ * arrives empty. In that case fall back to the canonical EARTHLY_BRANCHES table
+ * (the SAME authoritative table the normalizer uses) keyed by the resolved
+ * branch pinyin — never invented. An unresolvable branch ("Unbekannt") matches
+ * nothing → returns [] so the UI shows an honest empty-state.
+ */
+function resolveHiddenStems(pillar: { branchPinyin: string; hiddenStems: string[] }): string[] {
+  if (pillar.hiddenStems && pillar.hiddenStems.length > 0) return pillar.hiddenStems;
+  const token = pinyinToken(pillar.branchPinyin);
+  if (!token) return [];
+  const canonical = EARTHLY_BRANCHES.find((b) => pinyinToken(b.name) === token);
+  return canonical ? canonical.hiddenStems : [];
+}
+
+/** A pillar is genuinely unresolvable when its branch defaulted to "Unbekannt". */
+function isPillarResolved(pillar: { stemPinyin: string; branchPinyin: string }): boolean {
+  return pillar.branchPinyin !== "Unbekannt" && pillar.stemPinyin !== "Unbekannt";
 }
 
 export default function BaZiDetail({ viewModel }: BaZiDetailProps) {
@@ -46,6 +84,7 @@ export default function BaZiDetail({ viewModel }: BaZiDetailProps) {
 
   const dayMaster = viewModel.bazi.dayMaster;
   const dayun = viewModel.bazi.dayun;
+  const baziProvenance = viewModel.provenance.find((p) => p.uiField.includes("BaZi"));
 
   if (!viewModel.bazi.available) {
     return (
@@ -54,7 +93,7 @@ export default function BaZiDetail({ viewModel }: BaZiDetailProps) {
           <Columns className="h-10 w-10 text-gold-muted" />
           <h3 className="font-serif text-2xl font-bold text-gold-light">BaZi-Säulen nicht verfügbar</h3>
           <p className="text-sm text-stone-400 max-w-md">
-            FuFirE hat keine BaZi-Schicksalssäulen geliefert. Es werden keine Platzhalter-Stämme oder -Zweige als
+            FuFirE hat keine BaZi-Säulen geliefert. Es werden keine Platzhalter-Stämme oder -Zweige als
             Wahrheit dargestellt.
           </p>
         </div>
@@ -70,7 +109,7 @@ export default function BaZiDetail({ viewModel }: BaZiDetailProps) {
         <div className="flex items-center space-x-3 pb-4 border-b border-gold-muted/10 mb-4">
           <Columns className="h-6 w-6 text-gold-muted animate-pulse" />
           <h3 className="font-serif text-2xl font-bold text-gold-light">
-            BaZi Suanming (Die 4 Schicksalssäulen)
+            BaZi Suanming (Die 4 Säulen)
           </h3>
         </div>
         <p className="text-sm text-stone-400 leading-relaxed max-w-3xl">
@@ -99,18 +138,19 @@ export default function BaZiDetail({ viewModel }: BaZiDetailProps) {
                     <h5 className="font-serif text-md font-bold text-slate-100 block">
                       {dayMaster.pinyin} — {dayMaster.element} ({dayMaster.polarity})
                     </h5>
-                    <p className="text-xs text-stone-400 mt-0.5">Repräsentiert Ihre Seele, Ihren materiellen Filter und Ihr wahres Ich.</p>
+                    <p className="text-xs text-stone-400 mt-0.5">Der Tagesmeister — der Tagesstamm und der Kern der BaZi-Analyse.</p>
                   </div>
                 </div>
                 <div className="text-right shrink-0">
                   <span className="font-mono text-[10px] uppercase font-bold text-gold-muted bg-gold-muted/5 border border-gold-muted/15 px-3 py-1 rounded inline-block">
-                    Einflussstärke: 1.5x Wichtung
+                    Quelle: {baziProvenance?.source ?? viewModel.source}
                   </span>
                 </div>
               </div>
 
               {/* Daymaster Text Analysis */}
               <div className="space-y-3 font-sans text-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-stone-600 font-bold block mb-1" data-testid="daymaster-source-label">Kuratierte Element-Deutung (im Modell)</span>
                 <p className="text-stone-300 leading-relaxed font-light text-md italic">
                   &quot;{dayMaster.coreInterpretation}&quot;
                 </p>
@@ -137,6 +177,124 @@ export default function BaZiDetail({ viewModel }: BaZiDetailProps) {
             </div>
           </div>
 
+          {/* Per-pillar depth: Lebensbereich + Stamm + Zweig + verborgene Stämme (FR-010) */}
+          <div className="glass-card p-6 rounded-2xl" data-testid="bazi-pillars-detail">
+            <h4 className="font-serif text-xl font-bold text-gold-light mb-4 flex items-center space-x-2">
+              <Layers className="h-5 w-5 text-gold-muted shrink-0" />
+              <span>Die vier Säulen im Detail</span>
+            </h4>
+            <p className="text-xs text-stone-400 leading-relaxed mb-5">
+              Jede der vier Säulen ordnet einen Lebensbereich ein und verbindet einen Himmlischen Stamm mit einem Irdischen Zweig. Die folgenden Einordnungen stammen aus der kuratierten Inhaltsregistry und sind mit den realen Säulenwerten dieses Profils gefüllt.
+            </p>
+
+            <div className="space-y-5">
+              {viewModel.bazi.pillars.map((pillar) => {
+                const areaEntry = getEntry(PILLAR_AREA_ID[pillar.pillarKey] ?? "");
+                const stemEntry = getEntry(`stem.${pinyinToken(pillar.stemPinyin)}`);
+                const branchEntry = getEntry(`branch.${pinyinToken(pillar.branchPinyin)}`);
+                const hidden = resolveHiddenStems(pillar);
+                const resolved = isPillarResolved(pillar);
+                const stemStyle = getElementStyle(pillar.stemElement);
+                const branchStyle = getElementStyle(pillar.branchElement);
+
+                return (
+                  <div
+                    key={pillar.pillarKey}
+                    data-testid={`pillar-detail-${pillar.pillarKey}`}
+                    className="p-4 rounded-xl bg-obsidian-deep/40 border border-gold-muted/10 space-y-4"
+                  >
+                    {/* Header: pillar + Lebensbereich frame */}
+                    <div className="flex items-start justify-between gap-3 pb-3 border-b border-gold-muted/5">
+                      <div>
+                        <span className="font-mono text-[9px] uppercase tracking-widest text-gold-muted block">
+                          {pillar.pillarKey}-Säule
+                        </span>
+                        <h5 className="font-serif text-md font-bold text-gold-light">
+                          {areaEntry ? areaEntry.title : `${pillar.pillarKey}-Säule`}
+                        </h5>
+                      </div>
+                      <span className="font-mono text-[10px] text-stone-400 px-2 py-1 rounded bg-gold-muted/5 border border-gold-muted/15 shrink-0">
+                        {pillar.stemChinese}{pillar.branchChinese}
+                      </span>
+                    </div>
+
+                    {resolved ? (
+                      <>
+                        {/* Lebensbereich short */}
+                        {areaEntry && (
+                          <div className="space-y-1">
+                            <span className="font-mono text-[9px] uppercase tracking-wider text-stone-500 font-bold block">Lebensbereich</span>
+                            <p className="text-xs text-stone-300 font-light leading-relaxed">{areaEntry.short}</p>
+                          </div>
+                        )}
+
+                        {/* Stamm */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className={`h-9 w-9 rounded-lg flex items-center justify-center font-serif text-lg font-bold ${stemStyle.bg} ${stemStyle.border} ${stemStyle.text}`}>
+                              {pillar.stemChinese}
+                            </span>
+                            <div>
+                              <span className="font-mono text-[9px] uppercase tracking-wider text-stone-500 font-bold block">Himmlischer Stamm</span>
+                              <span className="text-xs text-stone-200 font-medium">
+                                {pillar.stemPinyin} — {pillar.stemElement} ({pillar.stemPolarity})
+                              </span>
+                            </div>
+                          </div>
+                          {stemEntry && (
+                            <p className="text-xs text-stone-400 font-light leading-relaxed">{stemEntry.short}</p>
+                          )}
+                        </div>
+
+                        {/* Zweig + animal */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className={`h-9 w-9 rounded-lg flex items-center justify-center font-serif text-lg font-bold ${branchStyle.bg} ${branchStyle.border} ${branchStyle.text}`}>
+                              {pillar.branchChinese}
+                            </span>
+                            <div>
+                              <span className="font-mono text-[9px] uppercase tracking-wider text-stone-500 font-bold block">Irdischer Zweig</span>
+                              <span className="text-xs text-stone-200 font-medium">
+                                {pillar.branchPinyin} — {pillar.branchAnimal} ({pillar.branchElement})
+                              </span>
+                            </div>
+                          </div>
+                          {branchEntry && (
+                            <p className="text-xs text-stone-400 font-light leading-relaxed">{branchEntry.short}</p>
+                          )}
+                        </div>
+
+                        {/* verborgene Stämme (canonical) */}
+                        <div className="space-y-1.5">
+                          <span className="font-mono text-[9px] uppercase tracking-wider text-stone-500 font-bold block">Verborgene Stämme</span>
+                          <div className="flex flex-wrap gap-2">
+                            {hidden.length > 0 ? (
+                              hidden.map((stem) => (
+                                <span
+                                  key={stem}
+                                  data-testid={`pillar-${pillar.pillarKey}-hidden`}
+                                  className="px-2.5 py-1 rounded bg-gold-muted/5 border border-gold-muted/15 text-gold-light text-[10px] font-mono"
+                                >
+                                  {stem}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-stone-600 text-[10px] font-mono">keine verborgenen Stämme verfügbar</span>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-xs text-stone-500 font-light leading-relaxed">
+                        Für diese Säule liegen keine bestimmten Stamm- und Zweigwerte vor. Es werden keine Platzhalter als Einordnung dargestellt.
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Hidden Stems analysis */}
           <div className="glass-card p-6 rounded-2xl">
             <h4 className="font-serif text-xl font-bold text-gold-light mb-4 flex items-center space-x-2">
@@ -148,18 +306,31 @@ export default function BaZiDetail({ viewModel }: BaZiDetailProps) {
             </p>
 
             <div className="space-y-3 font-mono text-xs">
-              {viewModel.bazi.pillars.map((pillar) => (
-                <div key={pillar.pillarKey} className="flex items-center justify-between p-3 rounded-lg bg-obsidian-deep/50 border border-gold-muted/5 gap-4">
-                  <span className="text-stone-400 font-medium">{pillar.pillarKey}-Zweig — {pillar.branchAnimal} ({pillar.branchPinyin})</span>
-                  <div className="flex flex-wrap gap-2 justify-end">
-                    {pillar.hiddenStems.map((stem) => (
-                      <span key={stem} className="px-2.5 py-1 rounded bg-gold-muted/5 border border-gold-muted/15 text-gold-light text-[10px]">
-                        {stem}
-                      </span>
-                    ))}
-                  </div>
+              {!viewModel.bazi.hourAvailable && (
+                <div className="flex items-center justify-between p-3 rounded-lg bg-obsidian-deep/50 border border-gold-muted/5 gap-4 opacity-60">
+                  <span className="text-stone-500 font-medium">Stunde-Zweig</span>
+                  <TimeDependencyNote missingFields={["Stundensäule"]} variant="inline" />
                 </div>
-              ))}
+              )}
+              {viewModel.bazi.pillars.map((pillar) => {
+                const hidden = resolveHiddenStems(pillar);
+                return (
+                  <div key={pillar.pillarKey} className="flex items-center justify-between p-3 rounded-lg bg-obsidian-deep/50 border border-gold-muted/5 gap-4">
+                    <span className="text-stone-400 font-medium">{pillar.pillarKey}-Zweig — {pillar.branchAnimal} ({pillar.branchPinyin})</span>
+                    <div className="flex flex-wrap gap-2 justify-end">
+                      {hidden.length > 0 ? (
+                        hidden.map((stem) => (
+                          <span key={stem} className="px-2.5 py-1 rounded bg-gold-muted/5 border border-gold-muted/15 text-gold-light text-[10px]">
+                            {stem}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-stone-600 text-[10px]">keine verborgenen Stämme verfügbar</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

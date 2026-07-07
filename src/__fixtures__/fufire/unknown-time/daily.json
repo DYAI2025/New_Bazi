@@ -1,0 +1,79 @@
+{
+  "_spike_meta": {
+    "endpoint": "/v1/experience/daily",
+    "birth_time_known": false
+  },
+  "date": "2026-06-15",
+  "western": {
+    "summary": "Fuer dich als Gemini stehen heute Kommunikation, Identitaet im Fokus. Die Planetenkonstellation aktiviert deine Sektoren 3 und 1.",
+    "themes": [
+      "Kommunikation",
+      "Identitaet"
+    ],
+    "caution": "Achte in Sektor 1 auf Ueberanstrengung -- hier liegt heute Spannung.",
+    "opportunity": "Sektor 3 bietet dir heute besonderes Potenzial. Nutze die Energie aktiv.",
+    "evidence": {
+      "transit_sectors": [
+        2,
+        0
+      ],
+      "natal_focus": [
+        "sun",
+        "ascendant"
+      ],
+      "day_master": null,
+      "daily_pillar": null,
+      "relation_to_day_master": null,
+      "jieqi": null,
+      "weekday": "Montag"
+    },
+    "jieqi_note": null,
+    "weekday_note": "Montag (Mond): Innenschau und Intuition dominieren."
+  },
+  "eastern": {
+    "summary": "Heute begegnest du deinem eigenen Element. Dein Day Master Xin findet Resonanz in der Metall-Schwingung. Solarterm: Mangzhong.",
+    "themes": [
+      "Gleichklang",
+      "Staerkung",
+      "Vertrauen"
+    ],
+    "caution": "Gleichklang klingt harmonisch, kann aber zu Selbstueberschaetzung fuehren.",
+    "opportunity": "Dein Element ist verstaerkt -- idealer Tag fuer Projekte, die deiner Natur entsprechen.",
+    "evidence": {
+      "transit_sectors": null,
+      "natal_focus": null,
+      "day_master": "Xin",
+      "daily_pillar": {
+        "stem": "Geng",
+        "branch": "Shen"
+      },
+      "relation_to_day_master": "companion",
+      "jieqi": "Mangzhong",
+      "weekday": "Montag"
+    },
+    "jieqi_note": "Feuer-Energie steigt: Sichtbarkeit und Aktivitaet nehmen zu.",
+    "weekday_note": "Montag (Mond): Innenschau und Intuition dominieren."
+  },
+  "fusion": {
+    "summary": "Dein Fusionstag verbindet Kommunikation + Gleichklang aus beiden Systemen. Westlich staerkt dein Transitfeld, oestlich arbeitet dein Day Master Xin in companion-Dynamik.",
+    "synthesis": "Beide Systeme zeigen heute einen gemeinsamen Impuls: Kommunikation + Gleichklang. Gleichzeitig entsteht Spannung im Bereich Vertrauen, Gleichklang. Die Synthese liegt darin, beides bewusst zu halten — den Kommunikation + Gleichklang-Impuls aktiv zu nutzen und den Spannungsbereich nicht zu verdraengen.",
+    "action": "Nutze heute gezielt den Bereich Kommunikation + Gleichklang. Plane eine bewusste Handlung, die beide Energien verbindet.",
+    "pushworthy": false,
+    "push_text": null,
+    "jieqi_note": "Solarterm Mangzhong faerbt beide Systeme.",
+    "weekday_note": "Montag-Energie verbindet die Impulse."
+  },
+  "chart_type_quality": "assumed_day",
+  "quality_flags": {
+    "house_system_fallback": false,
+    "house_system_requested": "placidus",
+    "house_system_used": "placidus",
+    "ephemeris_mode": "SWIEPH",
+    "chart_type_quality": "assumed_day"
+  },
+  "meta": {
+    "engine_version": "1.0.0-rc1-20260220",
+    "generated_at": "2026-06-12T19:06:24Z"
+  },
+  "impact": null
+}
