@@ -5,7 +5,7 @@
  * German sentence per aspect.
  */
 import { describe, it, expect } from "vitest";
-import { aspectInterpretation, PLANET_KEYWORDS_DE } from "./aspectInterpretation";
+import { aspectInterpretation, PLANET_KEYWORDS_DE, pairAspectInterpretation } from "./aspectInterpretation";
 import { normalizeFuFireProfile } from "./fufireNormalizer";
 
 import westernFixture from "../__fixtures__/fufire/western.json";
@@ -97,6 +97,76 @@ describe("aspectInterpretation generator", () => {
     expect(s).toContain("Vesta");
     expect(s).toContain("Juno");
     expect(s).not.toBe("Lokale abgeleitete Deutung");
+  });
+});
+
+describe("pairAspectInterpretation (REQ-D-002/S-001)", () => {
+  const SUPPORTED_TYPES = ["Trigon", "Sextil", "Konjunktion", "Quadrat", "Opposition"];
+
+  // The forbidden-pattern guard for anti-reification. Mirrors the hard
+  // ANTI-REIFICATION constraint: no fate/soul/diagnosis/relationship-verdict
+  // language, no "harmonisch"/"passt zusammen"/"kompatibel" as a verdict.
+  const FORBIDDEN = /Schicksal|Seele|Diagnose|Therapie|Heilung|Trennung|toxisch|du bist|ihr seid|garantiert|perfekt kompatibel|passt (perfekt )?zusammen|kompatibel|harmonisch/i;
+
+  it("names BOTH anchors explicitly with (A)/(B) labels", () => {
+    const s = pairAspectInterpretation("Sonne", "Mond", "Trigon");
+    expect(s).toContain("Sonne (A)");
+    expect(s).toContain("Mond (B)");
+  });
+
+  it("returns a non-empty sentence for every supported aspect type", () => {
+    for (const t of SUPPORTED_TYPES) {
+      const s = pairAspectInterpretation("Sonne", "Mond", t);
+      expect(s, `type ${t}`).toBeTruthy();
+      expect(s.length, `type ${t}`).toBeGreaterThan(20);
+    }
+  });
+
+  it("uses a distinct tone marker per supported aspect type", () => {
+    expect(pairAspectInterpretation("Sonne", "Mond", "Trigon")).toMatch(/Ressource/);
+    expect(pairAspectInterpretation("Sonne", "Mond", "Sextil")).toMatch(/Gelegenheit/);
+    expect(pairAspectInterpretation("Sonne", "Mond", "Konjunktion")).toMatch(/Bündelung|Aktivierung/);
+    expect(pairAspectInterpretation("Sonne", "Mond", "Quadrat")).toMatch(/Reibung|Wachstumskante/);
+    expect(pairAspectInterpretation("Sonne", "Mond", "Opposition")).toMatch(/Polarität|Spannungsachse/);
+  });
+
+  it("frames Quadrat as a Wachstumskante, never a defect or verdict", () => {
+    const s = pairAspectInterpretation("Sonne", "Mars", "Quadrat");
+    expect(s).toContain("Wachstumskante");
+    expect(s).not.toMatch(FORBIDDEN);
+  });
+
+  it("falls back to a safe generic interplay sentence for unknown type", () => {
+    const s = pairAspectInterpretation("Sonne", "Mond", "Quintil");
+    expect(s.length).toBeGreaterThan(20);
+    expect(s).toContain("Sonne (A)");
+    expect(s).toContain("Mond (B)");
+    expect(s).not.toMatch(FORBIDDEN);
+  });
+
+  it("uses the planet's own name as theme for unknown planets", () => {
+    const s = pairAspectInterpretation("Vesta", "Juno", "Trigon");
+    expect(s).toContain("Vesta (A)");
+    expect(s).toContain("Juno (B)");
+    expect(s).toContain("Vesta");
+    expect(s).toContain("Juno");
+  });
+
+  it("emits NONE of the forbidden anti-reification patterns across all type+sample combos", () => {
+    const samples: Array<[string, string]> = [
+      ["Sonne", "Mond"],
+      ["Venus", "Saturn"],
+      ["Mars", "Pluto"],
+      ["Merkur", "Jupiter"],
+      ["Vesta", "Juno"]
+    ];
+    const types = [...SUPPORTED_TYPES, "Quintil", "Quincunx", ""];
+    for (const [a, b] of samples) {
+      for (const t of types) {
+        const s = pairAspectInterpretation(a, b, t);
+        expect(s, `${a} ${t} ${b}`).not.toMatch(FORBIDDEN);
+      }
+    }
   });
 });
 

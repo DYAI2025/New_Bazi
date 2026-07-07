@@ -28,6 +28,7 @@ const LABEL_CLASS =
 export default function InputForm({ birthData, onCalculate, timeError = null }: InputFormProps) {
   const [formData, setFormData] = React.useState<BirthData>({ ...EMPTY, ...(birthData || {}) });
   const [submitting, setSubmitting] = React.useState(false);
+  const [timeKnown, setTimeKnown] = React.useState<boolean>(birthData?.timeKnown ?? true);
 
   const placeResolved = Boolean(
     formData.placeId &&
@@ -39,7 +40,7 @@ export default function InputForm({ birthData, onCalculate, timeError = null }: 
   const canSubmit =
     formData.name.trim().length >= 2 &&
     Boolean(formData.birthDate) &&
-    Boolean(formData.birthTime) &&
+    (timeKnown ? Boolean(formData.birthTime) : true) &&
     placeResolved;
 
   const handleResolved = (place: ResolvedPlace) => {
@@ -58,11 +59,18 @@ export default function InputForm({ birthData, onCalculate, timeError = null }: 
     setFormData((prev) => ({ ...prev, placeId: "", lat: undefined, lon: undefined, tz: undefined }));
   };
 
+  const handleTimeUnknownChange = (checked: boolean) => {
+    setTimeKnown(!checked);
+    if (checked) {
+      setFormData((prev) => ({ ...prev, birthTime: "" }));
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
     setSubmitting(true);
-    onCalculate(formData);
+    onCalculate({ ...formData, timeKnown });
     setTimeout(() => setSubmitting(false), 600);
   };
 
@@ -74,10 +82,11 @@ export default function InputForm({ birthData, onCalculate, timeError = null }: 
           <div className="absolute top-0 right-0 p-4 opacity-5">
             <Compass className="h-40 w-40 text-gold-muted" />
           </div>
-          <h2 className="font-serif text-3xl font-bold tracking-tight text-gold-light mb-4">Metaphysisches Portal</h2>
+          <h2 className="font-serif text-3xl font-bold tracking-tight text-gold-light mb-4">Bazodiac</h2>
           <p className="text-sm text-stone-400 leading-relaxed font-sans mb-4">
-            Willkommen bei <strong className="text-gold-muted font-medium">Bazodiac</strong>. Westliche Planetenpositionen
-            und BaZi-Säulen werden serverseitig über die FuFirE-Engine berechnet.
+            <strong className="text-gold-muted font-medium">Bazodiac</strong> verbindet westliche Astrologie und
+            chinesisches BaZi zu einem gemeinsamen Bild. Positionen und Säulen werden serverseitig über die
+            FuFirE-Engine berechnet.
           </p>
           <p className="text-xs text-stone-500 leading-relaxed">
             Geben Sie Ihre echten Geburtskoordinaten ein. Der Ort wird über die Vorschlagsliste serverseitig in
@@ -152,13 +161,37 @@ export default function InputForm({ birthData, onCalculate, timeError = null }: 
                 <input
                   id="input-time"
                   type="time"
-                  required
-                  value={formData.birthTime}
+                  required={timeKnown}
+                  disabled={!timeKnown}
+                  value={timeKnown ? formData.birthTime : ""}
                   onChange={(e) => setFormData({ ...formData, birthTime: e.target.value })}
                   aria-invalid={!!timeError}
                   aria-describedby={timeError ? "time-field-error" : undefined}
-                  className={`${FIELD_CLASS} font-mono`}
+                  className={`${FIELD_CLASS} font-mono disabled:opacity-45 disabled:cursor-not-allowed`}
                 />
+                <div className="mt-3 flex items-start gap-2.5">
+                  <input
+                    id="input-time-unknown"
+                    type="checkbox"
+                    checked={!timeKnown}
+                    onChange={(e) => handleTimeUnknownChange(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-gold-muted/30 bg-obsidian-deep/65 text-gold-muted focus:ring-gold-muted/40"
+                  />
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="input-time-unknown"
+                      className="cursor-pointer select-none text-xs font-sans font-medium text-stone-300"
+                    >
+                      Geburtszeit unbekannt
+                    </label>
+                    {!timeKnown && (
+                      <p className="text-[11px] text-stone-500 font-sans leading-relaxed">
+                        Wir verwenden Tagesmitte (12:00) als technischen Platzhalter und markieren zeitabhängige
+                        Deutungen als unsicher.
+                      </p>
+                    )}
+                  </div>
+                </div>
                 {timeError && (
                   <p
                     id="time-field-error"
@@ -195,17 +228,17 @@ export default function InputForm({ birthData, onCalculate, timeError = null }: 
                 className="w-full relative px-5 py-3.5 font-serif font-bold tracking-widest rounded-xl transition-all duration-300 transform active:scale-95 border flex items-center justify-center space-x-2 bg-gradient-to-r from-gold-muted to-gold-dark hover:from-gold-light hover:to-gold-muted text-stone-950 border-gold-light/20 glow-gold disabled:opacity-45 disabled:cursor-not-allowed disabled:pointer-events-none"
               >
                 {submitting ? (
-                  <span>PLANETENGRID WIRD SYNCHRONISIERT...</span>
+                  <span>PROFIL WIRD BERECHNET...</span>
                 ) : (
                   <>
                     <Sparkles className="h-5 w-5 p-0.5 text-stone-950" />
-                    <span>KOSMISCHES SPEKTRUM ERRECHNEN</span>
+                    <span>PROFIL BERECHNEN</span>
                   </>
                 )}
               </button>
               {!canSubmit && (
                 <p className="mt-3 text-[11px] text-stone-500 font-sans text-center">
-                  Name, Datum, Zeit und ein aufgelöster Ort (lat/lon/tz) sind erforderlich.
+                  Name, Datum, {timeKnown ? "Zeit und " : ""}ein aufgelöster Ort (lat/lon/tz) sind erforderlich.
                 </p>
               )}
             </div>

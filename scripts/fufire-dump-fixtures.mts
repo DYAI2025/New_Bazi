@@ -43,7 +43,8 @@ const BERLIN: ValidatedBirthInput = {
   lat: 52.52,
   lon: 13.405,
   tz: "Europe/Berlin",
-  gender: "Divers"
+  gender: "Divers",
+  timeKnown: true
 };
 
 const OUT_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "src", "__fixtures__", "fufire");

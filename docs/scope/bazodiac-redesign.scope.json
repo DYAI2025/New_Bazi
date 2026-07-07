@@ -1,0 +1,19 @@
+{
+  "feature": "bazodiac-redesign",
+  "allowed_change_scope": [
+    "src/index.css",
+    "src/styles/**",
+    "src/components/design/**",
+    "src/components/landing/**",
+    "src/utils/visual/**",
+    "src/App.tsx",
+    "index.html",
+    "src/components/PageShell.tsx",
+    "src/components/InputForm.tsx",
+    "src/components/wordingHonesty.test.ts",
+    "src/__tests__/**",
+    "tests/e2e/**",
+    "package.json",
+    "docs/**"
+  ]
+}

@@ -83,6 +83,7 @@ export interface BirthData {
   dayunDirection?: "forward" | "backward";
   gender?: "Weiblich" | "Männlich" | "Divers";
   timezone?: number;        // UTC offset (hours)
+  timeKnown?: boolean;      // false = user unknown; 12:00 placeholder used internally, never displayed
 }
 
 export interface AstrologyFusionChart {

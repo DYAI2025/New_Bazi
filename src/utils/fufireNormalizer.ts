@@ -225,6 +225,18 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
     gender: input.gender || "Divers"
   };
 
+  // P4: provisional_fields per endpoint — response-driven degradation
+  const timeKnown: boolean = input.timeKnown !== false;
+  const westernProvisionalFields: string[] = Array.isArray(raw.western?.precision?.provisional_fields) ? raw.western.precision.provisional_fields : [];
+  const fusionProvisionalFields: string[] = Array.isArray(raw.fusion?.precision?.provisional_fields) ? raw.fusion.precision.provisional_fields : [];
+  // Honesty invariant (BIRTH-TIME-01): no user-given birth time → time-dependent
+  // fields are ALWAYS provisional. The engine's provisional_fields is an ADDITIONAL
+  // trigger, never the sole one — a response without precision.provisional_fields
+  // (engine version skew / an endpoint ignoring birth_time_known) must not leak a
+  // 12:00-computed ascendant or houses as fact.
+  const ascendantProvisional = !timeKnown || westernProvisionalFields.includes("ascendant");
+  const housesProvisional = !timeKnown || westernProvisionalFields.includes("houses");
+
   // B. WESTERN ASTROLOGY
   const rawWest = raw.western && typeof raw.western === "object" ? raw.western : {};
 
@@ -291,7 +303,7 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
         // Legacy/mock shape
         let degree = typeof p.degree === "number" ? p.degree : 0;
         if (typeof p.longitude === "number" && !p.degree) {
-          degree = p.longitude % 30;
+          degree = normalize360(p.longitude) % 30;
         }
         return {
           name: p.name || "Unbekannter Planet",
@@ -312,14 +324,32 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
     planets.find((p) => p.name === name)?.sign || null;
   const sunSign = rawWest.sunSign || rawWest.sun_sign || planetSign("Sonne") || "Unbekannt";
   const moonSign = rawWest.moonSign || rawWest.moon_sign || planetSign("Mond") || "Unbekannt";
-  const ascendant = rawWest.ascendant
-    || (typeof angles.Ascendant === "number" ? signNameDeFromLongitude(angles.Ascendant) : null)
-    || (houseCusps ? signNameDeFromLongitude(houseCusps[0]) : null)
-    || "Unbekannt";
+  // F-01: if ascendant is in provisional_fields, short-circuit the ENTIRE fallback chain.
+  // The engine may return angles.Ascendant with a 12:00-computed value — never use it.
+  const ascendant: string | null = ascendantProvisional
+    ? null
+    : (rawWest.ascendant
+        || (typeof angles.Ascendant === "number" ? signNameDeFromLongitude(angles.Ascendant) : null)
+        || (houseCusps ? signNameDeFromLongitude(houseCusps[0]) : null)
+        || "Unbekannt");
+
+  // P7-T1: absolute ascendant longitude — ONLY from a real source, never from
+  // the sign name. Provisional (unknown birth time) short-circuits to null,
+  // same F-01 rule as `ascendant` above (never use a 12:00-computed angle).
+  const ascendantLongitude: number | null = ascendantProvisional
+    ? null
+    : (typeof angles.Ascendant === "number" && Number.isFinite(angles.Ascendant)
+        ? normalize360(angles.Ascendant)
+        : houseCusps && Number.isFinite(houseCusps[0])
+          ? normalize360(houseCusps[0])
+          : null);
 
   // Map 12 Houses (with actual missing state fallback if there is zero house data)
+  // When houses are provisional (birth_time_known:false), return empty array — no 12:00-computed houses displayed.
   let houses: HouseMeaning[] = [];
-  if (houseCusps) {
+  if (housesProvisional) {
+    houses = [];
+  } else if (houseCusps) {
     // REAL cusp object: sign resonance straight from the server's cusp longitudes.
     houses = HOUSE_TEMPLATES.map((tmpl) => {
       const cusp = houseCusps[tmpl.number - 1];
@@ -411,6 +441,9 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
   // C. BAZI PILLARS
   const rawBazi = raw.bazi && typeof raw.bazi === "object" ? raw.bazi : {};
   const rawPillars: any = rawBazi.pillars && typeof rawBazi.pillars === "object" ? rawBazi.pillars : {};
+  const baziProvisionalFields: string[] = Array.isArray(rawBazi.precision?.provisional_fields) ? rawBazi.precision.provisional_fields : [];
+  // BIRTH-TIME-01: same local backstop — unknown birth time always suppresses the hour pillar.
+  const hourProvisional = !timeKnown || baziProvisionalFields.includes("hour");
 
   // REAL shapes use English pillar keys (BaziPillarsResponse/BaziSection:
   // year/month/day/hour); legacy mocks use German keys (Jahr/Monat/...).
@@ -455,7 +488,8 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
     { title: "Kopf/Urahnen", pillarKey: "Jahr", data: getPillarData("Jahr", rawBazi.year || { stem: defaultStem, branch: defaultBranch }) },
     { title: "Familie/Monat", pillarKey: "Monat", data: getPillarData("Monat", rawBazi.month || { stem: defaultStem, branch: defaultBranch }) },
     { title: "Partner/Tag", pillarKey: "Tag", data: getPillarData("Tag", rawBazi.day || { stem: defaultStem, branch: defaultBranch }) },
-    { title: "Träume/Stunde", pillarKey: "Stunde", data: getPillarData("Stunde", rawBazi.hour || { stem: defaultStem, branch: defaultBranch }) }
+    // F-02: if hour is in provisional_fields, pass null — do NOT fall through to rawPillars["hour"] (12:00-computed)
+    { title: "Träume/Stunde", pillarKey: "Stunde", data: hourProvisional ? null : getPillarData("Stunde", rawBazi.hour ?? null) }
   ].map((p) => {
     const real = resolveRealPillar(p.data);
     const stem = real ? real.stem : (p.data && typeof p.data === "object" && p.data.stem) || defaultStem;
@@ -498,8 +532,9 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
   };
 
   // D. WU XING DISTRIBUTION
-  // Never fabricate a distribution for a real FuFirE source that did not provide one.
-  const wuxingAvail = isFallback || Boolean(raw.wuxing);
+  // Never fabricate a distribution for a real FuFirE source that did not provide
+  // a usable positive vector. A present-but-empty `{}` is an error/missing state,
+  // not five real 0% "Defizit" bars.
   const rawWuxing = raw.wuxing && typeof raw.wuxing === "object" ? raw.wuxing : {};
   // REAL shapes: WxResponse.wu_xing_vector (German keys, 0..1 weights) or the
   // chart's WuXingSection.from_planets (raw weights). Legacy: distribution
@@ -521,6 +556,10 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
   };
   const weightTotal = Object.values(rawWeights).reduce(
     (acc, v) => acc + (typeof v === "number" && Number.isFinite(v) && v > 0 ? v : 0), 0);
+  const wuxingAvail = Boolean(raw.wuxing) && weightTotal > 0;
+  if (raw.wuxing && weightTotal === 0) {
+    warnings.push("Wu-Xing-Daten wurden ohne nutzbaren Elementvektor geliefert.");
+  }
 
   // Percentage shares; absent section stays at zero (rendered as missing-state).
   const distribution: Record<ElementType, number> = Object.fromEntries(
@@ -557,7 +596,9 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
 
   const vectorExplanation = wuxingAvail
     ? (rawWuxing.vectorExplanation || `Ihre Elementenverteilung verweist auf dominante ${maxElement}-Frequenzen (${distribution[maxElement]}%), während ${minElement} (${distribution[minElement]}%) Ergänzungsimpulse verträgt.`)
-    : "Wu-Xing-Wandlungsphasen wurden von FuFirE nicht geliefert (missing).";
+    : raw.wuxing
+      ? "Wu-Xing-Wandlungsphasen wurden ohne nutzbaren Elementvektor geliefert (error)."
+      : "Wu-Xing-Wandlungsphasen wurden von FuFirE nicht geliefert (missing).";
 
   // E. FUSION MATRIX — never fabricate a coherence index for a missing section.
   const rawFusion = raw.fusion && typeof raw.fusion === "object" ? raw.fusion : {};
@@ -607,6 +648,9 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
     // level from h_calibrated thirds instead (<0.33 leise, <0.66 spuerbar,
     // else dominant) — a coarse bucketing, not a statistical statement.
     signalLevel = hCalibrated < 0.33 ? "leise" : hCalibrated < 0.66 ? "spuerbar" : "dominant";
+  }
+  if (coherenceIndex === null) {
+    signalLevel = null;
   }
 
   // Custom label rating — NIE aus einem fehlenden Wert ableiten (null < 60 wäre sonst true).
@@ -671,7 +715,12 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
     // New required fields
     label: rawFusion.label || coherenceRating,
     explanation: "Der Kohärenzindex ist kein Gut-Schlecht-Wert, sondern ein Resonanzmaß zwischen westlichen Signalen, BaZi-Struktur und Wu-Xing-Verteilung.",
-    westernContributors: rawFusion.westernContributors || [ `Sonne in ${sunSign}`, `Mond in ${moonSign}`, `Aszendent in ${ascendant}` ],
+    signalLevelSuffix: (!timeKnown || fusionProvisionalFields.includes("hour") || fusionProvisionalFields.includes("signature")) ? "(ohne Stundensäule)" : null,
+    westernContributors: rawFusion.westernContributors || [
+      `Sonne in ${sunSign}`,
+      `Mond in ${moonSign}`,
+      ...(ascendant !== null ? [`Aszendent in ${ascendant}`] : [])
+    ],
     baziContributors: rawFusion.baziContributors || pillarsList.map(p => `${p.pillarKey}: ${p.stemPinyin}/${p.branchAnimal}`),
     wuxingContributors: rawFusion.wuxingContributors || (wuxingAvail ? sortedWuXing.slice(0, 2).map(([el, pct]) => `${el} (${pct}%)`) : []),
     supports: rawFusion.supports || [ `${maxElement} stärkt Willenskraft`, "Häuser-Trigon-Harmonien" ],
@@ -732,17 +781,21 @@ export function normalizeFuFireProfile(raw: any, input: any, source: ProfileSour
   ];
 
   return {
+    timeKnown,
     identity,
     western: {
       sunSign,
       moonSign,
       ascendant,
+      ascendantLongitude,
+      housesAvailable: !housesProvisional,
       planets,
       aspects,
       houses
     },
     bazi: {
       available: isFallback || Boolean(raw.bazi),
+      hourAvailable: !hourProvisional,
       pillars: pillarsList,
       dayMaster: baziDayMaster,
       dayun: {
@@ -802,4 +855,3 @@ export function getRawSimulatedProfileFromLocal(birthData: any) {
     fusion: {}
   };
 }
-

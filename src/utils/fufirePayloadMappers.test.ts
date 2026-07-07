@@ -29,7 +29,8 @@ const INPUT: ValidatedBirthInput = {
   lat: 52.37,
   lon: 9.73,
   tz: "Europe/Berlin",
-  gender: "Weiblich"
+  gender: "Weiblich",
+  timeKnown: true
 };
 
 describe("buildWesternPayload (WesternRequest)", () => {
@@ -158,6 +159,47 @@ describe("buildDailyPayload (DailyRequest)", () => {
   it("defaults target_date to today's YYYY-MM-DD", () => {
     const payload = buildDailyPayload(INPUT, SECTORS);
     expect(payload.target_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+// REQ-P4-003: timeKnown:false must propagate birth_time_known:false through all 4 mappers
+const INPUT_UNKNOWN_TIME: ValidatedBirthInput = {
+  ...INPUT,
+  birthTime: "12:00",
+  timeKnown: false
+};
+
+describe("birth_time_known propagation — timeKnown:false", () => {
+  it("buildWesternPayload: birth_time_known:false when timeKnown:false", () => {
+    expect(buildWesternPayload(INPUT_UNKNOWN_TIME).birth_time_known).toBe(false);
+  });
+
+  it("buildBaziPayload: birth_time_known:false when timeKnown:false", () => {
+    expect(buildBaziPayload(INPUT_UNKNOWN_TIME).birth_time_known).toBe(false);
+  });
+
+  it("buildFusionPayload: birth_time_known:false when timeKnown:false", () => {
+    expect(buildFusionPayload(INPUT_UNKNOWN_TIME).birth_time_known).toBe(false);
+  });
+
+  it("buildBootstrapPayload: birth_time_known:false in birth sub-object when timeKnown:false", () => {
+    expect(buildBootstrapPayload(INPUT_UNKNOWN_TIME).birth.birth_time_known).toBe(false);
+  });
+
+  it("buildDailyPayload: birth_time_known:false in birth sub-object when timeKnown:false", () => {
+    const SECTORS = [0.5, 0.3, 0.7, 0.2, 0.6, 0.4, 0.8, 0.1, 0.55, 0.35, 0.65, 0.45];
+    expect(buildDailyPayload(INPUT_UNKNOWN_TIME, SECTORS).birth.birth_time_known).toBe(false);
+  });
+
+  it("timeKnown:true (default) still maps birth_time_known:true — no regression", () => {
+    expect(buildWesternPayload({ ...INPUT, timeKnown: true }).birth_time_known).toBe(true);
+    expect(buildBaziPayload({ ...INPUT, timeKnown: true }).birth_time_known).toBe(true);
+    expect(buildFusionPayload({ ...INPUT, timeKnown: true }).birth_time_known).toBe(true);
+    expect(buildBootstrapPayload({ ...INPUT, timeKnown: true }).birth.birth_time_known).toBe(true);
+  });
+
+  it("INPUT without timeKnown defaults to birth_time_known:true (backward compat)", () => {
+    expect(buildWesternPayload(INPUT).birth_time_known).toBe(true);
   });
 });
 
