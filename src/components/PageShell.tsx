@@ -49,7 +49,7 @@ export default function PageShell({ children, activeTab, setActiveTab, hasBirthD
     { id: "western", label: "Western Zodiak", icon: Compass, disabled: !hasBirthData },
     { id: "bazi", label: "BaZi Säulen", icon: Columns, disabled: !hasBirthData },
     { id: "wuxing", label: "Wu Xing", icon: Flame, disabled: !hasBirthData },
-    { id: "fusion", label: "Fusions-Matrix", icon: Sparkles, disabled: !hasBirthData },
+    { id: "fusion", label: "Signatur", icon: Sparkles, disabled: !hasBirthData },
     { id: "daily", label: "Tagespuls", icon: Activity, disabled: !hasBirthData },
     { id: "synastry", label: "Synastrie", icon: Users, disabled: !hasBirthData },
     { id: "methode", label: "Methodik", icon: BookOpen },

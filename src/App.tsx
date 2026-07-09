@@ -10,7 +10,7 @@ import Overview from "./components/Overview";
 import WesternAstrology from "./components/WesternAstrology";
 import BaZiDetail from "./components/BaZiDetail";
 import WuXingDetail from "./components/WuXingDetail";
-import TensionNavigator from "./components/TensionNavigator";
+import SignatureView from "./components/SignatureView";
 import DailyPulse from "./components/DailyPulse";
 import Synastry from "./components/Synastry";
 import Methodology from "./components/Methodology";
@@ -138,7 +138,7 @@ export default function App() {
       case "western": return <WesternAstrology viewModel={viewModel} />;
       case "bazi": return <BaZiDetail viewModel={viewModel} />;
       case "wuxing": return <WuXingDetail viewModel={viewModel} />;
-      case "fusion": return <TensionNavigator viewModel={viewModel} />;
+      case "fusion": return <SignatureView viewModel={viewModel} />;
       case "daily": return <DailyPulse viewModel={viewModel} birthData={birthData} />;
       case "synastry": return <Synastry viewModel={viewModel} birthData={birthData} />;
       case "methode": return <Methodology viewModel={viewModel} />;

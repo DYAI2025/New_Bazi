@@ -7,6 +7,10 @@ const SHOT_DIR = "docs/qa/screenshots/spannungsnavigator";
 // top axis → structure_flow (Struktur ↔ Fluss), BaZi-Überschuss (Blau). The
 // second-strongest axis is Holz +0.222 → tradition_innovation. sigma_above
 // 1.015 → signalLevel "spuerbar".
+//
+// Natal-Modus: seit dem Signatur-Redesign (User-Entscheid 2026-07-08) zeigt der
+// Fusions-Tab die 3D-Signatur (SignatureView) statt der Frage-Mechanik. Die
+// Frage-Mechanik lebt weiter im Paar-Modus (Synastrie, TensionNavigator).
 
 async function fillNameDateTime(page: Page) {
   await page.fill("#input-name", "Test Persona");
@@ -30,93 +34,80 @@ async function computeProfile(page: Page) {
   await expect(page.getByText("Waage").first()).toBeVisible({ timeout: 15000 });
 }
 
-async function openNavigator(page: Page) {
+async function openSignature(page: Page) {
   await page.click("#nav-tab-fusion");
-  await expect(page.getByTestId("tension-navigator")).toBeVisible();
-  await expect(page.getByTestId("tension-question")).toBeVisible();
+  await expect(page.getByTestId("signature-view")).toBeVisible();
 }
 
-test("navigator card shows pole pair + question + honesty footer — and NO percent sign", async ({ page }) => {
+test("signature view shows pole-pair kicker + honesty footer — and NO percent sign", async ({ page }) => {
   await page.goto("/");
   await dismissLanding(page);
   await computeProfile(page);
-  await openNavigator(page);
+  await openSignature(page);
 
-  const nav = page.getByTestId("tension-navigator");
+  const view = page.getByTestId("signature-view");
 
   // Top axis from the mock: Metall → Struktur ↔ Fluss, Ausprägung spürbar (sprachlich, nie Zahl).
-  await expect(page.getByTestId("tension-kicker")).toContainText("Struktur ↔ Fluss");
-  await expect(page.getByTestId("tension-kicker")).toContainText("spürbar");
+  await expect(page.getByTestId("signature-kicker")).toContainText("Struktur ↔ Fluss");
+  await expect(page.getByTestId("signature-kicker")).toContainText("spürbar");
 
-  // The QUESTION is the output (Konzept-Regel 1) — never empty.
-  const question = (await page.getByTestId("tension-question").textContent()) ?? "";
-  expect(question.trim().length).toBeGreaterThan(10);
-  expect(question.trim()).toContain("?");
+  // 3D-Canvas ODER der ehrliche WebGL-Fallback — nie ein leerer Screen.
+  const canvasOrFallback = page
+    .getByTestId("signature-canvas")
+    .or(page.getByTestId("signature-webgl-fallback"));
+  await expect(canvasOrFallback.first()).toBeVisible();
 
-  // Every card carries the honesty footer.
-  await expect(page.getByTestId("tension-footer")).toHaveText("Modellergebnis, keine Eigenschaft.");
+  // Every view carries the honesty footer.
+  await expect(page.getByTestId("signature-footer")).toHaveText("Modellergebnis, keine Eigenschaft.");
 
-  // NO percent signs anywhere in the navigator container (Konzept-Regel 2:
-  // keine Prozente/Scores im Visual). Scoped on the container with the
-  // Herkunft layer CLOSED — the origin layer is the only place numbers live.
-  await expect(nav.getByTestId("tension-origin")).toHaveCount(0);
-  await expect(nav.locator("text=/%/")).toHaveCount(0);
+  // NO percent signs anywhere in the view (Konzept-Regel: keine Prozente/Scores
+  // im Visual). Scoped with the Herkunft layer CLOSED — the origin layer is the
+  // only place numbers live.
+  await expect(view.getByTestId("signature-origin")).toHaveCount(0);
+  await expect(view.locator("text=/%/")).toHaveCount(0);
 
-  await page.screenshot({ path: `${SHOT_DIR}/navigator-natal.png`, fullPage: true });
+  await page.screenshot({ path: `${SHOT_DIR}/signature-natal.png`, fullPage: true });
 });
 
-test("'Passt nicht' switches to the next-strongest pole pair", async ({ page }) => {
+test("Herkunft & Methode layer reveals the numbers — and only there", async ({ page }) => {
   await page.goto("/");
   await dismissLanding(page);
   await computeProfile(page);
-  await openNavigator(page);
+  await openSignature(page);
 
-  await expect(page.getByTestId("tension-kicker")).toContainText("Struktur ↔ Fluss");
-  const questionBefore = await page.getByTestId("tension-question").textContent();
+  await page.getByTestId("signature-origin-toggle").click();
+  const origin = page.getByTestId("signature-origin");
+  await expect(origin).toBeVisible();
+  await expect(origin).toContainText("Kohärenzindex");
+  // Element table carries the real West/BaZi weights from the mock.
+  await expect(origin).toContainText("Metall");
+  await expect(origin).toContainText("Holz");
 
-  await page.getByTestId("tension-reaction-passt_nicht").click();
-
-  // Rank 2 by |difference| is Holz (+0.222) → tradition_innovation.
-  await expect(page.getByTestId("tension-kicker")).toContainText("Innovation ↔ Tradition");
-  await expect(page.getByTestId("tension-kicker")).not.toContainText("Struktur ↔ Fluss");
-  await expect(page.getByTestId("tension-question")).not.toHaveText(questionBefore ?? "");
-
-  // Container-Screenshot statt fullPage: fullPage stitcht den Sticky-Header
-  // mehrfach über die Karte (Scroll-Stitching-Artefakt). Viewport vorher hoch
-  // genug, damit der Container OHNE Scroll-Stitching in einen Frame passt.
+  // Container-Screenshot statt fullPage (Sticky-Header-Stitching).
   await page.setViewportSize({ width: 1280, height: 1600 });
-  await page.getByTestId("tension-navigator").screenshot({ path: `${SHOT_DIR}/navigator-passt-nicht.png` });
+  await page.getByTestId("signature-view").screenshot({ path: `${SHOT_DIR}/signature-origin.png` });
+
+  await page.getByTestId("signature-origin-toggle").click();
+  await expect(page.getByTestId("signature-origin")).toHaveCount(0);
 });
 
-test("'Widerstand' shows the Gegenpol footnote (Gegenlesart)", async ({ page }) => {
+test("cosmic slider overrides the live source — Live button returns control", async ({ page }) => {
   await page.goto("/");
   await dismissLanding(page);
   await computeProfile(page);
-  await openNavigator(page);
+  await openSignature(page);
 
-  await page.getByTestId("tension-reaction-widerstand").click();
+  // Anfangsquelle ist nie OVERRIDE (STATISCH bis zum ersten Dynamik-Tick,
+  // danach LIVE (NOAA) oder SIMULIERT — jede Zahl trägt ihre Quelle).
+  await expect(page.getByTestId("signature-cosmic-source")).not.toHaveText("OVERRIDE");
 
-  await expect(page.getByTestId("tension-mode-note")).toBeVisible();
-  await expect(page.getByTestId("tension-mode-note")).toContainText("Gegenpol");
+  const slider = page.getByTestId("signature-cosmic-slider");
+  await slider.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByTestId("signature-cosmic-source")).toHaveText("OVERRIDE");
 
-  // Container-Screenshot statt fullPage (Sticky-Header-Stitching, s. o.).
-  await page.setViewportSize({ width: 1280, height: 1600 });
-  await page.getByTestId("tension-navigator").screenshot({ path: `${SHOT_DIR}/navigator-widerstand.png` });
-});
-
-test("question is deterministic: reload on the same day shows the same question", async ({ page }) => {
-  await page.goto("/");
-  await dismissLanding(page);
-  await computeProfile(page);
-  await openNavigator(page);
-  const firstQuestion = await page.getByTestId("tension-question").textContent();
-
-  await page.reload();
-  await dismissLanding(page);
-  await computeProfile(page);
-  await openNavigator(page);
-
-  await expect(page.getByTestId("tension-question")).toHaveText(firstQuestion ?? "");
+  await page.getByTestId("signature-live-btn").click();
+  await expect(page.getByTestId("signature-cosmic-source")).not.toHaveText("OVERRIDE");
 });
 
 test("pair mode: synastry renders the pair card with the pair question", async ({ page }) => {

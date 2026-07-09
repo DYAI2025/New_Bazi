@@ -7,6 +7,7 @@ import { motion } from "motion/react";
 import PlaceAutocomplete from "./PlaceAutocomplete";
 import TensionNavigator from "./TensionNavigator";
 import PartnerJourney from "./synastry/PartnerJourney";
+import SignatureMatch from "./synastry/SignatureMatch";
 
 interface SynastryProps {
   viewModel: ProfileViewModel;
@@ -288,6 +289,12 @@ export default function Synastry({ viewModel, birthData }: SynastryProps) {
             pairMode
             elementalA={synastryResult.elementalA}
             elementalB={synastryResult.elementalB}
+            nameA={synastryResult.userRef.name}
+            nameB={synastryResult.partnerRef.name}
+          />
+          <SignatureMatch
+            comparisonA={synastryResult.comparisonA}
+            comparisonB={synastryResult.comparisonB}
             nameA={synastryResult.userRef.name}
             nameB={synastryResult.partnerRef.name}
           />

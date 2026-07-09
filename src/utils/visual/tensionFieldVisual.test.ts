@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { missingPreview, previewFromTension, AXIS_QUESTION } from "./tensionFieldVisual";
-import type { TensionState } from "../tensionNavigator";
+import { missingPreview, AXIS_QUESTION } from "./tensionFieldVisual";
 
 describe("tensionFieldVisual — FusionHero preview state (RD-2)", () => {
   it("missingPreview is a neutral state — no axis, no fabricated value", () => {

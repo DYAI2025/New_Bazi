@@ -65,10 +65,10 @@ test("fusion tab renders the REAL calibrated FusionResponse path", async ({ page
   await dismissLanding(page);
   await computeProfile(page);
   await page.click("#nav-tab-fusion");
-  // The tab now renders the Spannungsnavigator; the technical view (gauge,
-  // band, bars) lives in the Herkunft layer and must be opened explicitly.
-  await expect(page.getByTestId("tension-question")).toBeVisible();
-  await page.getByTestId("tension-origin-toggle").click();
+  // The tab now renders the 3D-Signatur; the technical view (gauge, band,
+  // bars = OriginLayer) lives in the Herkunft layer and must be opened explicitly.
+  await expect(page.getByTestId("signature-view")).toBeVisible();
+  await page.getByTestId("signature-origin-toggle").click();
   await expect(page.getByText(/Kohärenzindex/).first()).toBeVisible();
   await expect(page.getByTestId("fusion-source")).toContainText("fufire");
   // CALIBRATED gauge value (h_calibrated 0.6144 -> 61.4%), not raw 90.8%.

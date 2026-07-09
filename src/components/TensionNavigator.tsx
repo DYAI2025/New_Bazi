@@ -612,7 +612,7 @@ export default function TensionNavigator({
 // statischer strokeDashoffset, Übergänge nur per CSS.
 // ---------------------------------------------------------------------------
 
-function OriginLayer({ fusion }: { fusion: FusionData }) {
+export function OriginLayer({ fusion }: { fusion: FusionData }) {
   const {
     coherenceIndex,
     coherenceCalibrated,

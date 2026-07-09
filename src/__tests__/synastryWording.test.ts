@@ -71,7 +71,7 @@ describe("P7 synastry wording — anti-reification (council C2/C3)", () => {
   });
 
   it("synastry component chrome (comment-stripped) carries no forbidden verdict copy", () => {
-    for (const rel of ["components/Synastry.tsx", "components/synastry/PartnerJourney.tsx"]) {
+    for (const rel of ["components/Synastry.tsx", "components/synastry/PartnerJourney.tsx", "components/synastry/SignatureMatch.tsx"]) {
       const src = stripComments(readFileSync(join(SRC_ROOT, rel), "utf8"));
       const hit = src.match(PAIR_FORBIDDEN);
       expect(hit, `Verbotenes Verdict-Wort "${hit?.[0]}" in ${rel}`).toBeNull();
