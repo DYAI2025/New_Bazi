@@ -49,10 +49,18 @@ describe("validateBirthInput", () => {
   });
 
   it("rejects barred demo / reference names case-insensitively", () => {
-    for (const name of ["Benjamin Pörsch", "benjamin poersch", "Goethe", "Johann Wolfgang von Goethe", "Marie Curie"]) {
+    for (const name of ["Goethe", "Johann Wolfgang von Goethe", "Marie Curie"]) {
       const r = validateBirthInput({ ...VALID, name });
       expect(r.valid).toBe(false);
       expect(fieldsOf(r.errors)).toContain("name");
+    }
+  });
+
+  it("accepts real user names that once collided with dev test data (regression)", () => {
+    // Der Guard darf nur fiktive Referenzprofile sperren — nie den echten
+    // Nutzer der App (Bug 2026-07-09: eigener Name → invalid_birth_input).
+    for (const name of ["Benjamin Pörsch", "benjamin poersch"]) {
+      expect(validateBirthInput({ ...VALID, name }).valid).toBe(true);
     }
   });
 

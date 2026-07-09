@@ -41,9 +41,10 @@ export interface ValidationResult {
 }
 
 // Demo / reference profiles must never be accepted as real birth data.
+// NUR fiktive/historische Referenznamen — niemals reale Nutzernamen sperren
+// (2026-07-09: "benjamin pörsch/poersch" entfernt; der Guard hatte den echten
+// Nutzer der App ausgesperrt, weil Dev-Testdaten seinen Namen verwendeten).
 const BARRED_NAMES = new Set([
-  "benjamin pörsch",
-  "benjamin poersch",
   "goethe",
   "johann wolfgang von goethe",
   "marie curie",

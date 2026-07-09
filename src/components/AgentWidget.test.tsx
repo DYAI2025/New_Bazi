@@ -30,6 +30,11 @@ function convaiEls(): NodeListOf<Element> {
 
 beforeEach(() => {
   vi.unstubAllEnvs();
+  // Basiszustand deterministisch machen: lokale .env-Dateien können echte
+  // Agent-IDs enthalten (Vite injiziert sie in import.meta.env) — jeder Test
+  // startet ohne konfigurierte Agenten und stubbt gezielt, was er braucht.
+  vi.stubEnv("VITE_ELEVENLABS_AGENT_ID_LEVI", "");
+  vi.stubEnv("VITE_ELEVENLABS_AGENT_ID_EVE", "");
 });
 
 afterEach(() => {

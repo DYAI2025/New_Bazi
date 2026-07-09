@@ -60,6 +60,10 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
   const overlayRef = useRef<SignatureOverlay | null>(null);
   const onStatusRef = useRef(onStatus);
   onStatusRef.current = onStatus;
+  // Letzter Status-Kern (ohne Overlay) — damit onOverlay auch dann einen
+  // frischen Status melden kann, wenn sich NUR das Overlay ändert (z. B.
+  // partnerInput-Wechsel im Match-Mode ohne neue Signatur/Cosmic-Werte).
+  const statusBasicsRef = useRef<Omit<SignatureStatus, "overlay"> | null>(null);
 
   const [sceneReady, setSceneReady] = useState(false);
   const [webglFailed, setWebglFailed] = useState(false);
@@ -72,7 +76,16 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
     let scene: SignatureScene | null = null;
     try {
       scene = new SignatureScene(container, {
-        onOverlay: (overlay) => { overlayRef.current = overlay; },
+        onOverlay: (overlay) => {
+          overlayRef.current = overlay;
+          // Overlay-Änderung sofort nach oben melden (Codex-Review-Finding:
+          // sonst bliebe status.overlay stale, wenn sich nur der Match-Mode
+          // ändert). Kein Loop-Risiko: Eltern memoisieren ihre Inputs, die
+          // signature-Identität bleibt stabil, der Status-Effect feuert nicht neu.
+          if (statusBasicsRef.current) {
+            onStatusRef.current?.({ ...statusBasicsRef.current, overlay });
+          }
+        },
       });
     } catch (err) {
       console.error("[SignatureCanvas] WebGL nicht verfügbar:", err);
@@ -118,6 +131,7 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
 
   // Signatur + Cosmic in die Szene spielen und Status nach oben melden.
   useEffect(() => {
+    statusBasicsRef.current = { signature, cosmic, cosmicSource };
     const scene = sceneRef.current;
     if (scene) {
       scene.applySignature(signature);
