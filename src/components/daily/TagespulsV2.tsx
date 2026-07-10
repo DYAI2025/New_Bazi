@@ -50,7 +50,8 @@ import Wochenbogen from "./Wochenbogen";
  *
  * Jede Karte trägt ihren Provenance-Chip (Beobachtung / Herleitung /
  * Interpretation). Fehlende Daten bleiben sichtbar leer — nichts wird
- * erfunden. Reflexionen bleiben auf diesem Gerät (localStorage) und sind
+ * erfunden. Reflexionen liegen lokal (localStorage), werden mit Konto
+ * zusätzlich synchronisiert (reflectionSync, updatedAt-wins) und sind
  * jederzeit löschbar.
  */
 
@@ -665,7 +666,8 @@ export default function TagespulsV2({ birthData }: TagespulsV2Props) {
 
           <div className="flex items-center justify-between flex-wrap gap-2">
             <p className="text-xs text-stone-500" data-testid="daily-footer">
-              Modellergebnis, keine Eigenschaft. Antworten bleiben auf diesem Gerät und sind jederzeit löschbar.
+              Modellergebnis, keine Eigenschaft. Antworten bleiben auf diesem Gerät — mit Konto zusätzlich in
+              deinem Profil gesichert. Beides jederzeit löschbar.
             </p>
             <button
               onClick={() => void loadPulse(true)}
