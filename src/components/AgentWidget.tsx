@@ -33,7 +33,7 @@ const AGENT_DEFS: AgentDef[] = [
     name: "Levi Bazi",
     envKey: "VITE_ELEVENLABS_AGENT_ID_LEVI",
     accent: "#d4af37",
-    tagline: "ruhig, verankert in deinen Profildaten",
+    tagline: "ruhig, bezieht vorhandene Profildaten ein",
   },
   {
     id: "eve",
@@ -44,6 +44,26 @@ const AGENT_DEFS: AgentDef[] = [
   },
 ];
 
+const CONVAI_SCRIPT_URL = "https://elevenlabs.io/convai-widget/index.js";
+
+/**
+ * Lädt das ElevenLabs-SDK erst beim ersten Agent-Start (idempotent).
+ * Bewusster Trade-off (Review-Finding, high): das SDK ist ein unversioniertes
+ * Dritt-Script mit vollem DOM-Zugriff — statisch in index.html liefe es für
+ * JEDEN Besucher (auch Landing, auch ohne konfigurierte Agenten). Dynamisch
+ * injiziert läuft es nur für Nutzer, die aktiv einen Sprach-Agenten starten.
+ * Das Custom Element wird nach Script-Registrierung automatisch upgegradet.
+ */
+function ensureConvaiScript(): void {
+  if (document.querySelector("script[data-convai-loader]")) return;
+  const s = document.createElement("script");
+  s.src = CONVAI_SCRIPT_URL;
+  s.async = true;
+  s.type = "text/javascript";
+  s.setAttribute("data-convai-loader", "");
+  document.head.appendChild(s);
+}
+
 function useConvaiWidget(agentId: string | undefined, dynamicVars: string) {
   // Ref statt querySelector: verhindert die Race beim Agent-Wechsel
   // (altes Widget entfernt + neues erzeugt im selben Render).
@@ -52,6 +72,7 @@ function useConvaiWidget(agentId: string | undefined, dynamicVars: string) {
   useEffect(() => {
     if (!agentId) return;
 
+    ensureConvaiScript();
     const widget = document.createElement("elevenlabs-convai");
     widget.setAttribute("agent-id", agentId);
     widget.setAttribute("always-expanded", "");
@@ -93,10 +114,12 @@ export const AgentWidget: React.FC<AgentWidgetProps> = ({ viewModel }) => {
 
   // Kompakte Profil-Anker als dynamic-variables — nur was berechnet vorliegt,
   // nichts wird erfunden (leere Strings, wenn kein Profil existiert).
+  // Datensparsamkeit (Review-Finding): nur der VORNAME geht an ElevenLabs,
+  // nie der volle Name; Geburtsdatum/-zeit/-ort werden nie übertragen.
   const dynamicVars = useMemo(
     () =>
       JSON.stringify({
-        user_name: viewModel?.identity?.name ?? "",
+        user_name: (viewModel?.identity?.name ?? "").trim().split(/\s+/)[0] ?? "",
         sun_sign: viewModel?.western?.sunSign ?? "",
         day_master: viewModel?.bazi?.dayMaster?.element ?? "",
       }),
@@ -134,8 +157,13 @@ export const AgentWidget: React.FC<AgentWidgetProps> = ({ viewModel }) => {
           </div>
           <div className="p-4 space-y-3">
             <p className="text-xs text-stone-400 leading-relaxed">
-              Sprich mit einem Agenten über dein berechnetes Profil. Aussagen bleiben
-              datenverankert und beschreibend — Reflexionsangebot, kein Urteil.
+              {viewModel
+                ? "Sprich mit einem Agenten über dein berechnetes Profil — Reflexionsangebot, kein Urteil."
+                : "Noch kein Profil berechnet — die Agenten können sprechen, aber keine Profildaten einbeziehen."}
+            </p>
+            <p className="text-[10px] text-stone-500 leading-relaxed" data-testid="agent-widget-disclosure">
+              Beim Start werden dein Mikrofon-Audio{viewModel ? " sowie Vorname, Sonnenzeichen und Tagesmeister-Element" : ""} an
+              ElevenLabs (Drittanbieter, Verarbeitung außerhalb der EU möglich) übertragen.
             </p>
             {agents.map((agent) => {
               const isActive = activeAgent === agent.id;

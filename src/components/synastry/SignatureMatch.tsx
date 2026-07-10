@@ -37,6 +37,13 @@ export const SignatureMatch: React.FC<SignatureMatchProps> = ({ comparisonA, com
   const inputB = useMemo(() => comparisonToSignatureInput(comparisonB), [comparisonB]);
 
   if (!inputA || !inputB) {
+    // Ehrlicher Missing-State benennt, WELCHE Seite keine auswertbare
+    // Elementverteilung liefert (Review-Hinweis: „beide" wäre falsch,
+    // wenn nur eine Seite fehlt).
+    const missingLabel =
+      !inputA && !inputB
+        ? `Beide Fusionsfelder (${nameA} und ${nameB}) liefern keine auswertbare Elementverteilung.`
+        : `Das Fusionsfeld von ${!inputA ? nameA : nameB} liefert keine auswertbare Elementverteilung.`;
     return (
       <div
         data-testid="signature-match-missing"
@@ -45,8 +52,7 @@ export const SignatureMatch: React.FC<SignatureMatchProps> = ({ comparisonA, com
         <Orbit className="h-6 w-6 text-gold-muted mx-auto" />
         <h4 className="font-serif text-lg font-bold text-gold-light">Paar-Signatur</h4>
         <p className="text-sm text-stone-400 max-w-xl mx-auto">
-          Für die Paar-Signatur fehlen auswertbare Elementverteilungen aus beiden
-          Fusionsfeldern. Es wird bewusst nichts erfunden — sobald beide Profile ein
+          {missingLabel} Es wird bewusst nichts erfunden — sobald beide Profile ein
           vollständiges Fusionsfeld liefern, erscheint hier die gemeinsame Szene.
         </p>
       </div>

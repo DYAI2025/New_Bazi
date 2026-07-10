@@ -176,8 +176,15 @@ export const SignatureView: React.FC<SignatureViewProps> = ({ viewModel }) => {
           <p className="text-xs text-stone-500 leading-relaxed border-t border-gold-muted/10 pt-4">
             Die 3D-Szene rechnet mit der Prototyp-Mathematik der Bazodiac-Signatur:
             fusionierte Elementstärke √(West·BaZi) + 0.3·max(West, BaZi), Spannung =
-            |West − BaZi| je Element (roter Halo ab 0.30), Wellenkohärenz aus dem
-            kalibrierten Kohärenzindex. Kosmischer Puls: {sourceLabel} — der
+            |West − BaZi| je Element (roter Halo ab 0.30).{" "}
+            {/* Provenienz ehrlich benennen (Review-Finding): der Index kann
+                unkalibriert sein oder ganz fehlen (dann lokaler Fallback). */}
+            {fusion.coherenceIndex !== null && Number.isFinite(fusion.coherenceIndex)
+              ? fusion.coherenceCalibrated
+                ? "Wellenkohärenz aus dem kalibrierten Kohärenzindex."
+                : "Wellenkohärenz aus dem unkalibrierten System-Kohärenzindex."
+              : "Wellenkohärenz lokal aus den Element-Differenzen abgeleitet (1 − mittlere Differenz × 0,5), da kein Kohärenzindex geliefert wurde."}{" "}
+            Kosmischer Puls: {sourceLabel} — der
             NOAA-Kp-Index moduliert nur das Animationstempo, nie die Deutung.
             Transit-Einflüsse sind derzeit simuliert und entsprechend markiert.
           </p>

@@ -26,10 +26,9 @@
   </head>
   <body>
     <div id="root"></div>
-    <!-- ElevenLabs ConvAI widget (Eve & Levi Sprach-Agenten). Global geladen wie
-         auf bazodiac.space; das Custom Element wird erst gemountet, wenn der
-         Nutzer einen Agenten startet (src/components/AgentWidget.tsx). -->
-    <script src="https://elevenlabs.io/convai-widget/index.js" async type="text/javascript"></script>
+    <!-- Das ElevenLabs-ConvAI-Script wird NICHT statisch geladen: AgentWidget.tsx
+         injiziert es erst, wenn der Nutzer einen Sprach-Agenten startet
+         (Supply-Chain-Exposure nur bei aktiver Nutzung, Review-Finding). -->
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
