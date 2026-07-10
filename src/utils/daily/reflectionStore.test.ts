@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
+  aggregateAll,
   aggregateByType,
   clearAllReflections,
   getReflection,
   lastReactionForType,
+  listReflectionsSince,
   saveReflection,
 } from "./reflectionStore";
 
@@ -53,5 +55,29 @@ describe("reflectionStore — geräte-lokaler Muster-Spiegel", () => {
     clearAllReflections();
     expect(getReflection("2026-07-01")).toBeNull();
     expect(aggregateByType("ausdruck").total).toBe(0);
+  });
+});
+
+describe("Wochenbogen-Erweiterungen", () => {
+  beforeEach(() => clearAllReflections());
+
+  it("listReflectionsSince liefert Einträge ab Datum (inklusive), chronologisch", () => {
+    saveReflection({ date: "2026-07-01", dayType: "ausdruck", reaction: "teils", encounterChoice: null, vetoChoice: null });
+    saveReflection({ date: "2026-07-08", dayType: "struktur", reaction: "kenne_ich", encounterChoice: "Sorgfalt", vetoChoice: null });
+    saveReflection({ date: "2026-07-10", dayType: "ausdruck", reaction: "gegenseite", encounterChoice: null, vetoChoice: null });
+    const week = listReflectionsSince("2026-07-08");
+    expect(week.map((r) => r.date)).toEqual(["2026-07-08", "2026-07-10"]);
+  });
+
+  it("aggregateAll liefert nur Typen mit Reaktions-Einträgen, reliable-Flag pro Typ", () => {
+    for (const d of ["2026-07-01", "2026-07-02", "2026-07-03"]) {
+      saveReflection({ date: d, dayType: "ausdruck", reaction: "kenne_ich", encounterChoice: null, vetoChoice: null });
+    }
+    saveReflection({ date: "2026-07-04", dayType: "struktur", reaction: "gegenseite", encounterChoice: null, vetoChoice: null });
+    saveReflection({ date: "2026-07-05", dayType: "einfluss", reaction: null, encounterChoice: "Initiative", vetoChoice: null });
+    const all = aggregateAll();
+    expect(all.map((a) => a.dayType).sort()).toEqual(["ausdruck", "struktur"]);
+    expect(all.find((a) => a.dayType === "ausdruck")!.reliable).toBe(true);
+    expect(all.find((a) => a.dayType === "struktur")!.reliable).toBe(false);
   });
 });
