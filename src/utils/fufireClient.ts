@@ -6,6 +6,7 @@ import type {
   WuxingRequestPayload,
   FusionRequestPayload,
   TstRequestPayload,
+  DayunRequestPayload,
   BootstrapRequestPayload,
   DailyRequestPayload
 } from "./fufirePayloadMappers";
@@ -233,6 +234,10 @@ export class FuFirEClient {
 
   static postTst(payload: TstRequestPayload): Promise<any> {
     return request("POST", "/calculate/tst", payload);
+  }
+
+  static postBaziDayun(payload: DayunRequestPayload): Promise<any> {
+    return request("POST", "/calculate/bazi/dayun", payload);
   }
 
   static postExperienceBootstrap(payload: BootstrapRequestPayload): Promise<any> {

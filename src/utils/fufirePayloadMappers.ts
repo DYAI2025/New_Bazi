@@ -82,6 +82,15 @@ export interface TstRequestPayload {
   nonexistentTime: "error" | "shift_forward";
 }
 
+export interface DayunRequestPayload {
+  date: string; // "YYYY-MM-DDTHH:mm" lokale Geburtszeit
+  tz: string;
+  lat: number;
+  lon: number;
+  sex_at_birth: "male" | "female";
+  direction_method: "year_stem_yinyang_and_sex";
+}
+
 export interface BirthInputPayload {
   date: string; // YYYY-MM-DD
   time: string; // HH:MM:SS
