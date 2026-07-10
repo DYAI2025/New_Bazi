@@ -155,6 +155,7 @@ describe("Wording-Gate für daily/ (Top-Level-Scanner erfasst Unterverzeichnisse
     join(__dirname, "..", "..", "utils", "daily", "dayTypeSelector.ts"),
     join(__dirname, "..", "..", "utils", "daily", "encounterChoices.ts"),
     join(__dirname, "..", "..", "utils", "daily", "reflectionStore.ts"),
+    join(__dirname, "..", "..", "utils", "daily", "sectorLabels.ts"),
   ];
 
   for (const file of FILES) {
