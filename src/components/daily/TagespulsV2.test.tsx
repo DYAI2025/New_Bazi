@@ -19,7 +19,11 @@ vi.mock("../../api/bazodiacClient", async (importOriginal) => {
   };
 });
 
+// Sync ist Etappe-2-Beiwerk: hier nur als Trigger geprüft, nie als Netzwerk.
+vi.mock("../../utils/daily/reflectionSync", () => ({ syncReflections: vi.fn().mockResolvedValue("skipped") }));
+
 import TagespulsV2 from "./TagespulsV2";
+import { syncReflections } from "../../utils/daily/reflectionSync";
 
 // Pro Render ein frischer birthKey: TagespulsV2 cached Antworten modulweit
 // pro Geburtsdaten+Datum — gleiche Daten würden Test-Mocks gegenseitig maskieren.
@@ -153,6 +157,17 @@ describe("TagespulsV2 — Kernritual", () => {
   it("rendert die Sektor-Zeile NICHT, wenn kein Sektor ein bekanntes Label hat", async () => {
     await render(vmFixture({ westEvidence: { transitSectors: [99], natalFocus: ["sun"] } }));
     expect(q('[data-testid="daily-west-sectors"]')).toBeNull();
+  });
+
+  it("stößt den stillen Abgleich beim Mount und nach dem Wiedererkennungs-Tap an", async () => {
+    const sync = vi.mocked(syncReflections);
+    sync.mockClear();
+    await render(vmFixture());
+    expect(sync).toHaveBeenCalledTimes(1); // einmal beim Mount
+    await act(async () => {
+      (q('[data-testid="recognition-kenne_ich"]') as HTMLElement).click();
+    });
+    expect(sync).toHaveBeenCalledTimes(2); // fire-and-forget nach der Antwort
   });
 
   it("Wochenbogen ist aufklappbar (ruhiger Rückblick, kein Pflichtteil)", async () => {

@@ -32,6 +32,7 @@ import {
   lastReactionForType,
   saveReflection,
 } from "../../utils/daily/reflectionStore";
+import { syncReflections } from "../../utils/daily/reflectionSync";
 import { sectorLabel } from "../../utils/daily/sectorLabels";
 import Wochenbogen from "./Wochenbogen";
 
@@ -263,6 +264,13 @@ export default function TagespulsV2({ birthData }: TagespulsV2Props) {
     setFreitextOpen(false);
   }, [targetDate]);
 
+  // Stiller Abgleich einmal beim Öffnen des Tagespuls — bewusst leeres
+  // Dep-Array: der Sync gehört zum Betreten der Ansicht, nicht zu Re-Renders.
+  // Ohne Session ist er ein No-op; Fehler bleiben unsichtbar (Konsole).
+  React.useEffect(() => {
+    void syncReflections();
+  }, []);
+
   const available = pulseData?.available && pulseData.source === "fufire";
   const eastern = pulseData?.eastern ?? null;
   const natal = pulseData?.natal ?? null;
@@ -297,6 +305,7 @@ export default function TagespulsV2({ birthData }: TagespulsV2Props) {
         vetoChoice: reflection?.vetoChoice ?? null,
       }),
     );
+    void syncReflections(); // fire-and-forget: localStorage ist bereits die Wahrheit
   };
 
   const chooseEncounter = (choice: string | null) => {
@@ -311,6 +320,7 @@ export default function TagespulsV2({ birthData }: TagespulsV2Props) {
       }),
     );
     setFreitextOpen(false);
+    void syncReflections(); // fire-and-forget: localStorage ist bereits die Wahrheit
   };
 
   const chooseVeto = (veto: string | null) => {
@@ -324,6 +334,7 @@ export default function TagespulsV2({ birthData }: TagespulsV2Props) {
         vetoChoice: veto,
       }),
     );
+    void syncReflections(); // fire-and-forget: localStorage ist bereits die Wahrheit
   };
 
   return (
