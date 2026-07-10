@@ -877,5 +877,59 @@ export function createApp(): Express {
     res.status(204).send();
   });
 
+  // --- Tages-Reflexionen (Sync-Layer; localStorage bleibt Primärquelle) ---
+
+  app.get("/api/me/reflections", requireUserAuth, async (req, res) => {
+    const supabase = getServerSupabase()!;
+    const { data, error } = await supabase
+      .from("nb_daily_reflections")
+      .select("date, day_type, reaction, encounter_choice, veto_choice, updated_at_ms")
+      .eq("user_id", req.userId!)
+      .order("date", { ascending: true });
+    if (error) { sendError(res, { code: "db_error", httpStatus: 502, message: "Datenbankfehler." }); return; }
+    res.json(data ?? []);
+  });
+
+  app.put("/api/me/reflections", requireUserAuth, async (req, res) => {
+    const items = Array.isArray(req.body?.reflections) ? req.body.reflections : null;
+    if (!items || items.length === 0 || items.length > 400) {
+      res.status(400).json({ error: "invalid_input", message: "reflections (1–400 Einträge) erforderlich." });
+      return;
+    }
+    const DAY_TYPES = ["ressource", "ausdruck", "einfluss", "struktur", "gleichrang"];
+    const REACTIONS = [null, "kenne_ich", "teils", "gegenseite"];
+    const rows = [];
+    for (const r of items) {
+      if (typeof r?.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(r.date)) { res.status(400).json({ error: "invalid_input", message: "date muss YYYY-MM-DD sein." }); return; }
+      if (!DAY_TYPES.includes(r.dayType)) { res.status(400).json({ error: "invalid_input", message: "unbekannter dayType." }); return; }
+      if (!REACTIONS.includes(r.reaction ?? null)) { res.status(400).json({ error: "invalid_input", message: "unbekannte reaction." }); return; }
+      rows.push({
+        user_id: req.userId!,
+        date: r.date,
+        day_type: r.dayType,
+        reaction: r.reaction ?? null,
+        encounter_choice: typeof r.encounterChoice === "string" ? r.encounterChoice.slice(0, 120) : null,
+        veto_choice: typeof r.vetoChoice === "string" ? r.vetoChoice.slice(0, 120) : null,
+        updated_at_ms: Number.isFinite(r.updatedAt) ? r.updatedAt : Date.now()
+      });
+    }
+    const supabase = getServerSupabase()!;
+    const { error } = await supabase
+      .from("nb_daily_reflections")
+      .upsert(rows, { onConflict: "user_id,date" });
+    if (error) { sendError(res, { code: "db_error", httpStatus: 502, message: "Datenbankfehler." }); return; }
+    res.status(204).send();
+  });
+
+  app.delete("/api/me/reflections", requireUserAuth, async (req, res) => {
+    const supabase = getServerSupabase()!;
+    const { error } = await supabase
+      .from("nb_daily_reflections")
+      .delete()
+      .eq("user_id", req.userId!);
+    if (error) { sendError(res, { code: "db_error", httpStatus: 502, message: "Datenbankfehler." }); return; }
+    res.status(204).send();
+  });
+
   return app;
 }
