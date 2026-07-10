@@ -12,6 +12,13 @@ ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_ANON_KEY
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
 ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
+# ElevenLabs-Agent-IDs (Eve & Levi) — öffentliche Kennungen, kein Secret.
+# Ohne diese ARGs erreichen die Railway-Vars den Vite-Build nie und das
+# AgentWidget bleibt im (ehrlichen) Hidden-State.
+ARG VITE_ELEVENLABS_AGENT_ID_LEVI
+ARG VITE_ELEVENLABS_AGENT_ID_EVE
+ENV VITE_ELEVENLABS_AGENT_ID_LEVI=$VITE_ELEVENLABS_AGENT_ID_LEVI
+ENV VITE_ELEVENLABS_AGENT_ID_EVE=$VITE_ELEVENLABS_AGENT_ID_EVE
 RUN npm run build
 
 # ---- runner: production deps + built artifacts only ----
