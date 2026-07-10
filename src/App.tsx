@@ -137,7 +137,7 @@ export default function App() {
     switch (activeTab) {
       case "overview": return <Overview viewModel={viewModel} onNavigate={setActiveTab} />;
       case "western": return <WesternAstrology viewModel={viewModel} />;
-      case "bazi": return <BaZiDetail viewModel={viewModel} />;
+      case "bazi": return <BaZiDetail viewModel={viewModel} birthData={birthData} />;
       case "wuxing": return <WuXingDetail viewModel={viewModel} />;
       case "fusion": return <SignatureView viewModel={viewModel} />;
       case "daily": return <DailyPulse viewModel={viewModel} birthData={birthData} />;
