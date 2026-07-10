@@ -18,6 +18,7 @@ import {
   buildFusionPayload,
   buildBootstrapPayload,
   buildDailyPayload,
+  buildDayunPayload,
   extractSoulprintSectors
 } from "../utils/fufirePayloadMappers";
 import {
@@ -441,7 +442,7 @@ export function createApp(): Express {
         { feature: "fusion", appEndpoint: "/api/azodiac/fusion", upstream: "/v1/calculate/fusion", status: fufire.url && fufire.key ? "server-used" : "missing", source: "fufire" },
         { feature: "daily", appEndpoint: "/api/azodiac/daily", upstream: "/v1/experience/bootstrap + /v1/experience/daily", status: fufire.url && fufire.key ? "server-used" : "missing", source: "fufire" },
         { feature: "synastry", appEndpoint: "/api/azodiac/synastry", upstream: "2× /chart + lokaler Vergleich", status: fufire.url && fufire.key ? "server-used" : "missing", source: "fufire-profiles-local-comparison" },
-        { feature: "dayun", appEndpoint: "/api/azodiac/bazi/dayun", upstream: "—", status: "missing-capability", source: "missing" },
+        { feature: "dayun", appEndpoint: "/api/azodiac/bazi/dayun", upstream: "/v1/calculate/bazi/dayun", status: fufire.url && fufire.key ? "server-used" : "missing", source: "fufire" },
         { feature: "places", appEndpoint: "/api/places/*", upstream: "Photon (OSM) + tz-lookup (offline)", status: "server-used", source: "photon" }
       ]
     });
@@ -649,15 +650,64 @@ export function createApp(): Express {
     }
   });
 
-  // --- Dayun: honest missing-capability ---
+  // --- Dayun: echter FuFirE-Endpunkt (der frühere "nicht berechenbar"-Stub war faktisch falsch) ---
 
-  app.post("/api/azodiac/bazi/dayun", (_req, res) => {
-    res.json({
-      available: false,
-      status: "missing-capability",
-      source: "missing",
-      message: "Da Yun ist nicht berechenbar, weil FuFirE aktuell keinen stabilen Dayun-Endpunkt liefert."
-    });
+  app.post("/api/azodiac/bazi/dayun", async (req, res) => {
+    const { valid, errors, value } = validateBirthInput(req.body || {});
+    if (!valid || !value) {
+      logInvalidBirthInput(req.path, errors);
+      res.status(400).json({ error: "invalid_birth_input", fields: errors });
+      return;
+    }
+    const payload = buildDayunPayload(value);
+    if (!payload) {
+      // Ehrlich: ohne sex_at_birth keine Laufrichtung (Engine: 422 direction_basis_missing).
+      res.json({
+        available: false,
+        status: "missing-direction-basis",
+        source: "missing",
+        message: "Die Dekaden-Laufrichtung ist ohne Geburtsgeschlecht nicht ableitbar — es wird bewusst keine Richtung erfunden.",
+        cycles: []
+      });
+      return;
+    }
+    try {
+      const resp = await FuFirEClient.postBaziDayun(payload);
+      const d = resp?.dayun && typeof resp.dayun === "object" ? resp.dayun : null;
+      const cyclesRaw = Array.isArray(d?.cycles) ? d.cycles : [];
+      const cycles = cyclesRaw
+        .filter((c: any) => c && c.pillar && typeof c.pillar === "object")
+        .map((c: any) => ({
+          sequence: typeof c.sequence === "number" ? c.sequence : null,
+          ageLabel: Number.isFinite(c.age_start) && Number.isFinite(c.age_end)
+            ? `${Math.round(c.age_start)}–${Math.round(c.age_end)}`
+            : null,
+          dateStart: dailyText(c.date_start),
+          dateEnd: dailyText(c.date_end),
+          stem: dailyText(c.pillar.stem),
+          stemHanzi: dailyText(c.pillar.stem_cn),
+          branch: dailyText(c.pillar.branch),
+          branchHanzi: dailyText(c.pillar.branch_cn),
+          element: dailyText(c.pillar.element),
+          polarity: dailyText(c.pillar.polarity),
+          tenGodDe: dailyText(c.relation_to_day_master?.label_de),
+          isCurrent: Boolean(c.is_current)
+        }));
+      if (!d || cycles.length === 0) {
+        res.json({ available: false, status: "missing", source: "missing", message: "FuFirE lieferte keine auswertbaren Dekaden-Zyklen.", cycles: [] });
+        return;
+      }
+      res.json({
+        available: true,
+        source: "fufire",
+        labelDe: dailyText(d.display_label_de) || "Dekaden-Säule",
+        direction: dailyText(d.direction),
+        startAgeYears: Number.isFinite(d.start?.start_age?.decimal_years) ? d.start.start_age.decimal_years : null,
+        cycles
+      });
+    } catch (err) {
+      sendError(res, err);
+    }
   });
 
   // --- Optional Gemini poetic reading (server-side key only) ---

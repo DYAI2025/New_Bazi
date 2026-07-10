@@ -20,6 +20,7 @@ vi.mock("../utils/fufireClient", () => {
       postWuxing: vi.fn(),
       postFusion: vi.fn(),
       postTst: vi.fn(),
+      postBaziDayun: vi.fn(),
       getWuxingMapping: vi.fn(),
       getHealth: vi.fn(),
       postExperienceBootstrap: vi.fn(),
@@ -475,14 +476,52 @@ describe("POST /api/azodiac/synastry", () => {
 });
 
 describe("POST /api/azodiac/bazi/dayun", () => {
-  it("returns honest missing-capability without mystical language", async () => {
+  it("ruft den echten Dayun-Endpunkt und liefert normalisierte Zyklen mit label_de", async () => {
+    (FuFirEClient.postBaziDayun as any).mockResolvedValue({
+      dayun: {
+        display_label_de: "Dekaden-Säule", direction: "backward",
+        start: { start_age: { decimal_years: 3.26 } },
+        cycles: [{
+          sequence: 1, age_start: 3.26, age_end: 13.26,
+          date_start: "1988-08-31", date_end: "1998-07-10",
+          pillar: { stem: "Xin", branch: "Si", stem_cn: "辛", branch_cn: "巳", element: "metal", polarity: "yin" },
+          relation_to_day_master: { ten_god: "Qi Sha", label_de: "Druck / Struktur" },
+          is_current: false,
+        }],
+      },
+    });
+    const res = await request(app).post("/api/azodiac/bazi/dayun").send(VALID_BODY);
+    expect(res.status).toBe(200);
+    expect(res.body.available).toBe(true);
+    expect(res.body.source).toBe("fufire");
+    expect(res.body.labelDe).toBe("Dekaden-Säule");
+    expect(res.body.startAgeYears).toBe(3.26);
+    expect(res.body.cycles[0]).toMatchObject({
+      ageLabel: "3–13", stem: "Xin", stemHanzi: "辛", branch: "Si", branchHanzi: "巳",
+      element: "metal", tenGodDe: "Druck / Struktur", isCurrent: false,
+      dateStart: "1988-08-31",
+    });
+  });
+
+  it("liefert ehrlichen Missing-State bei Gender ohne sex_at_birth-Ableitung", async () => {
+    const res = await request(app).post("/api/azodiac/bazi/dayun").send({ ...VALID_BODY, gender: "Divers" });
+    expect(res.status).toBe(200);
+    expect(res.body.available).toBe(false);
+    expect(res.body.status).toBe("missing-direction-basis");
+    expect(FuFirEClient.postBaziDayun).not.toHaveBeenCalled();
+  });
+
+  it("liefert Missing-State wenn FuFirE keine auswertbaren Zyklen sendet", async () => {
+    (FuFirEClient.postBaziDayun as any).mockResolvedValue({ dayun: { cycles: [] } });
     const res = await request(app).post("/api/azodiac/bazi/dayun").send(VALID_BODY);
     expect(res.status).toBe(200);
     expect(res.body.available).toBe(false);
-    expect(res.body.status).toBe("missing-capability");
-    expect(res.body.source).toBe("missing");
-    expect(res.body.message.toLowerCase()).not.toContain("kaiser");
-    expect(res.body.message.toLowerCase()).not.toContain("kommende version");
+    expect(res.body.status).toBe("missing");
+  });
+
+  it("validiert die Geburtsdaten wie alle anderen Routen", async () => {
+    const res = await request(app).post("/api/azodiac/bazi/dayun").send({ name: "x" });
+    expect(res.status).toBe(400);
   });
 });
 
