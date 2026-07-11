@@ -20,7 +20,9 @@ vi.mock("../utils/fufireClient", () => {
       postWuxing: vi.fn(),
       postFusion: vi.fn(),
       postTst: vi.fn(),
+      postBaziDayun: vi.fn(),
       getWuxingMapping: vi.fn(),
+      getTransitNow: vi.fn(),
       getHealth: vi.fn(),
       postExperienceBootstrap: vi.fn(),
       postExperienceDaily: vi.fn(),
@@ -52,7 +54,7 @@ vi.mock("../utils/mapsService", () => {
 
 import { FuFirEClient } from "../utils/fufireClient";
 import { getPlaceDetails, getTimezone, getAutocompletePredictions } from "../utils/mapsService";
-import { clearBootstrapCache, createApp } from "./app";
+import { clearBootstrapCache, clearTransitCache, createApp } from "./app";
 
 const app = createApp();
 
@@ -81,6 +83,8 @@ beforeEach(() => {
   // Der Bootstrap-Cache lebt modulweit — ohne Reset maskieren sich die
   // Daily-Tests gegenseitig (Mock-Payloads/502-Fälle sähen gecachte Daten).
   clearBootstrapCache();
+  // Auch der Transit-Cache lebt modulweit — gleiche Maskierungsgefahr.
+  clearTransitCache();
   (FuFirEClient.probeHealth as any).mockResolvedValue("ok");
   (FuFirEClient.isConfigured as any).mockReturnValue({ url: true, key: true });
   (FuFirEClient.getPathPrefix as any).mockReturnValue("v1");
@@ -209,6 +213,44 @@ describe("POST /api/azodiac/daily", () => {
     expect(FuFirEClient.postExperienceDaily).toHaveBeenCalled();
     expect(res.body.source).toBe("fufire");
     expect(res.body.description).toBe("Von FuFirE geliefert.");
+  });
+
+  it("derives Day-Pulse mode/intensity from the bootstrap Harmony-Index and ships the Council of Six (FR-DP-001/002/008)", async () => {
+    (FuFirEClient.postExperienceBootstrap as any).mockResolvedValue({
+      soulprint_sectors: SECTORS,
+      profile: { sun_sign: "Zwillinge", moon_sign: "Stier", ascendant_sign: "Waage", day_master: "Yi", harmony_index: 0.7498 },
+      signature_blueprint: { elements: { Holz: 0.575, Feuer: 0.37, Erde: 0.41, Metall: 0.2, Wasser: 0.29 } }
+    });
+    (FuFirEClient.postExperienceDaily as any).mockResolvedValue({ description: "Tag." });
+    const res = await request(app).post("/api/azodiac/daily").send(VALID_BODY);
+    expect(res.status).toBe(200);
+    expect(res.body.mode).toBe("trace"); // H = 0.7498 >= 0.50
+    expect(res.body.intensity).toBeCloseTo((0.7498 - 0.45) / 0.55, 8);
+    expect(res.body.council).toHaveLength(6);
+    expect(res.body.council.map((c: any) => c.key)).toEqual(["sun", "moon", "ascendant", "day_master", "year_animal", "dominant_wuxing"]);
+    const moon = res.body.council.find((c: any) => c.key === "moon");
+    expect(moon.available).toBe(true);
+    expect(moon.value).toBe("Stier");
+    const yearAnimal = res.body.council.find((c: any) => c.key === "year_animal");
+    expect(yearAnimal.available).toBe(false);
+    expect(yearAnimal.unavailableReason).toMatch(/./);
+  });
+
+  it("without Harmony-Index mode/intensity stay honestly null (FR-DP-001/002)", async () => {
+    (FuFirEClient.postExperienceBootstrap as any).mockResolvedValue({ soulprint_sectors: SECTORS });
+    (FuFirEClient.postExperienceDaily as any).mockResolvedValue({ description: "Tag." });
+    const res = await request(app).post("/api/azodiac/daily").send(VALID_BODY);
+    expect(res.body.mode).toBeNull();
+    expect(res.body.intensity).toBeNull();
+    expect(res.body.council).toBeNull();
+  });
+
+  it("typed errors carry retryable + correlationId (API-DP-005)", async () => {
+    (FuFirEClient.postExperienceBootstrap as any).mockRejectedValue({ httpStatus: 502, code: "fufire_unavailable", message: "x" });
+    const res = await request(app).post("/api/azodiac/daily").send(VALID_BODY);
+    expect(res.status).toBe(502);
+    expect(res.body.retryable).toBe(true); // 502 = transient
+    expect(res.body.correlationId).toMatch(/^[0-9a-f-]{36}$/);
   });
 
   it("maps the FULL engine DailyResponse into the view model (no ghost metrics)", async () => {
@@ -384,6 +426,35 @@ describe("POST /api/azodiac/daily", () => {
   });
 });
 
+describe("GET /api/azodiac/transit/now", () => {
+  it("liefert Planeten mit rohem 0-Index-Sektor durch (Labeling ist Client-Sache)", async () => {
+    (FuFirEClient.getTransitNow as any).mockResolvedValue({
+      computed_at: "2026-07-10T18:17:09Z",
+      planets: { sun: { longitude: 108.5, sector: 3, sign: "cancer", speed: 0.95 } },
+    });
+    const res = await request(app).get("/api/azodiac/transit/now");
+    expect(res.status).toBe(200);
+    expect(res.body.planets.sun).toEqual({ longitude: 108.5, sector: 3, sign: "cancer", speed: 0.95 });
+    expect(res.body.computedAt).toBe("2026-07-10T18:17:09Z");
+  });
+
+  it("cached 10 Minuten (zweiter Call ohne zweiten Upstream-Call)", async () => {
+    (FuFirEClient.getTransitNow as any).mockResolvedValue({ computed_at: "t", planets: {} });
+    await request(app).get("/api/azodiac/transit/now");
+    await request(app).get("/api/azodiac/transit/now");
+    expect(FuFirEClient.getTransitNow).toHaveBeenCalledTimes(1);
+  });
+
+  it("mappt Upstream-Fehler auf den Standard-Fehlerpfad ohne zu cachen", async () => {
+    (FuFirEClient.getTransitNow as any).mockRejectedValue({ httpStatus: 502, code: "fufire_unavailable", message: "x" });
+    const res1 = await request(app).get("/api/azodiac/transit/now");
+    expect(res1.status).toBe(502);
+    (FuFirEClient.getTransitNow as any).mockResolvedValue({ computed_at: "t2", planets: {} });
+    const res2 = await request(app).get("/api/azodiac/transit/now");
+    expect(res2.status).toBe(200); // Fehler wurde NICHT gecacht
+  });
+});
+
 describe("POST /api/azodiac/synastry", () => {
   it("fetches both FuFirE profiles and labels local comparison", async () => {
     (FuFirEClient.postChart as any).mockResolvedValue(FULL_CHART);
@@ -475,14 +546,82 @@ describe("POST /api/azodiac/synastry", () => {
 });
 
 describe("POST /api/azodiac/bazi/dayun", () => {
-  it("returns honest missing-capability without mystical language", async () => {
+  it("ruft den echten Dayun-Endpunkt und liefert normalisierte Zyklen mit label_de", async () => {
+    (FuFirEClient.postBaziDayun as any).mockResolvedValue({
+      dayun: {
+        display_label_de: "Dekaden-Säule", direction: "backward",
+        start: { start_age: { decimal_years: 3.26 } },
+        cycles: [{
+          sequence: 1, age_start: 3.26, age_end: 13.26,
+          date_start: "1988-08-31", date_end: "1998-07-10",
+          pillar: { stem: "Xin", branch: "Si", stem_cn: "辛", branch_cn: "巳", element: "metal", polarity: "yin" },
+          relation_to_day_master: { ten_god: "Qi Sha", label_de: "Druck / Struktur" },
+          is_current: false,
+        }],
+      },
+    });
+    const res = await request(app).post("/api/azodiac/bazi/dayun").send(VALID_BODY);
+    expect(res.status).toBe(200);
+    expect(res.body.available).toBe(true);
+    expect(res.body.source).toBe("fufire");
+    expect(res.body.labelDe).toBe("Dekaden-Säule");
+    expect(res.body.startAgeYears).toBe(3.26);
+    expect(res.body.cycles[0]).toMatchObject({
+      ageLabel: "3–13", stem: "Xin", stemHanzi: "辛", branch: "Si", branchHanzi: "巳",
+      element: "metal", tenGodDe: "Druck / Struktur", isCurrent: false,
+      dateStart: "1988-08-31",
+    });
+  });
+
+  it("liefert ehrlichen Missing-State bei Gender ohne sex_at_birth-Ableitung", async () => {
+    const res = await request(app).post("/api/azodiac/bazi/dayun").send({ ...VALID_BODY, gender: "Divers" });
+    expect(res.status).toBe(200);
+    expect(res.body.available).toBe(false);
+    expect(res.body.status).toBe("missing-direction-basis");
+    expect(FuFirEClient.postBaziDayun).not.toHaveBeenCalled();
+  });
+
+  it("liefert ehrlichen Missing-State bei unbekannter Geburtszeit (keine 12:00-Fabrikation)", async () => {
+    const res = await request(app).post("/api/azodiac/bazi/dayun").send({ ...VALID_BODY, timeKnown: false });
+    expect(res.status).toBe(200);
+    expect(res.body.available).toBe(false);
+    expect(res.body.status).toBe("missing-birth-time");
+    expect(FuFirEClient.postBaziDayun).not.toHaveBeenCalled();
+  });
+
+  it("liefert Missing-State wenn FuFirE keine auswertbaren Zyklen sendet", async () => {
+    (FuFirEClient.postBaziDayun as any).mockResolvedValue({ dayun: { cycles: [] } });
     const res = await request(app).post("/api/azodiac/bazi/dayun").send(VALID_BODY);
     expect(res.status).toBe(200);
     expect(res.body.available).toBe(false);
-    expect(res.body.status).toBe("missing-capability");
-    expect(res.body.source).toBe("missing");
-    expect(res.body.message.toLowerCase()).not.toContain("kaiser");
-    expect(res.body.message.toLowerCase()).not.toContain("kommende version");
+    expect(res.body.status).toBe("missing");
+  });
+
+  it("mappt Upstream-Fehler auf den Standard-Fehlerpfad", async () => {
+    (FuFirEClient.postBaziDayun as any).mockRejectedValue({ httpStatus: 502, code: "fufire_unavailable", message: "x" });
+    const res = await request(app).post("/api/azodiac/bazi/dayun").send(VALID_BODY);
+    expect(res.status).toBe(502);
+    expect(res.body.error).toBe("fufire_unavailable");
+  });
+
+  it("droppt Zyklen ohne pillar-Objekt statt zu crashen", async () => {
+    (FuFirEClient.postBaziDayun as any).mockResolvedValue({
+      dayun: { cycles: [
+        null,
+        { sequence: 1, pillar: null },
+        { sequence: 2, age_start: 3, age_end: 13, pillar: { stem: "Xin", branch: "Si" }, is_current: true }
+      ] }
+    });
+    const res = await request(app).post("/api/azodiac/bazi/dayun").send(VALID_BODY);
+    expect(res.status).toBe(200);
+    expect(res.body.available).toBe(true);
+    expect(res.body.cycles).toHaveLength(1);
+    expect(res.body.cycles[0].isCurrent).toBe(true);
+  });
+
+  it("validiert die Geburtsdaten wie alle anderen Routen", async () => {
+    const res = await request(app).post("/api/azodiac/bazi/dayun").send({ name: "x" });
+    expect(res.status).toBe(400);
   });
 });
 

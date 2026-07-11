@@ -19,7 +19,11 @@ vi.mock("../../api/bazodiacClient", async (importOriginal) => {
   };
 });
 
+// Sync ist Etappe-2-Beiwerk: hier nur als Trigger geprüft, nie als Netzwerk.
+vi.mock("../../utils/daily/reflectionSync", () => ({ syncReflections: vi.fn().mockResolvedValue("skipped") }));
+
 import TagespulsV2 from "./TagespulsV2";
+import { syncReflections } from "../../utils/daily/reflectionSync";
 
 // Pro Render ein frischer birthKey: TagespulsV2 cached Antworten modulweit
 // pro Geburtsdaten+Datum — gleiche Daten würden Test-Mocks gegenseitig maskieren.
@@ -142,6 +146,38 @@ describe("TagespulsV2 — Kernritual", () => {
     await render(vmFixture({ available: false, source: "missing", western: null, eastern: null, description: null }));
     expect(q('[data-testid="daily-missing"]')).not.toBeNull();
   });
+
+  it("verortet die West-Sektoren mit Lebensbereich-Labels (0-Index normalisiert)", async () => {
+    await render(vmFixture()); // westEvidence.transitSectors: [2, 0]
+    const loc = q('[data-testid="daily-west-sectors"]');
+    expect(loc?.textContent).toContain("3 · Kommunikation & nahes Umfeld");
+    expect(loc?.textContent).toContain("1 · Selbst & Auftreten");
+  });
+
+  it("rendert die Sektor-Zeile NICHT, wenn kein Sektor ein bekanntes Label hat", async () => {
+    await render(vmFixture({ westEvidence: { transitSectors: [99], natalFocus: ["sun"] } }));
+    expect(q('[data-testid="daily-west-sectors"]')).toBeNull();
+  });
+
+  it("stößt den stillen Abgleich beim Mount und nach dem Wiedererkennungs-Tap an", async () => {
+    const sync = vi.mocked(syncReflections);
+    sync.mockClear();
+    await render(vmFixture());
+    expect(sync).toHaveBeenCalledTimes(1); // einmal beim Mount
+    await act(async () => {
+      (q('[data-testid="recognition-kenne_ich"]') as HTMLElement).click();
+    });
+    expect(sync).toHaveBeenCalledTimes(2); // fire-and-forget nach der Antwort
+  });
+
+  it("Wochenbogen ist aufklappbar (ruhiger Rückblick, kein Pflichtteil)", async () => {
+    await render(vmFixture());
+    expect(q('[data-testid="wochenbogen"]')).toBeNull();
+    await act(async () => {
+      (q('[data-testid="wochenbogen-toggle"]') as HTMLElement).click();
+    });
+    expect(q('[data-testid="wochenbogen"]')).not.toBeNull();
+  });
 });
 
 describe("Wording-Gate für daily/ (Top-Level-Scanner erfasst Unterverzeichnisse nicht)", () => {
@@ -155,6 +191,11 @@ describe("Wording-Gate für daily/ (Top-Level-Scanner erfasst Unterverzeichnisse
     join(__dirname, "..", "..", "utils", "daily", "dayTypeSelector.ts"),
     join(__dirname, "..", "..", "utils", "daily", "encounterChoices.ts"),
     join(__dirname, "..", "..", "utils", "daily", "reflectionStore.ts"),
+    join(__dirname, "..", "..", "utils", "daily", "reflectionSync.ts"),
+    join(__dirname, "..", "..", "utils", "daily", "sectorLabels.ts"),
+    join(__dirname, "..", "..", "utils", "daily", "weeklyObservations.ts"),
+    join(__dirname, "..", "..", "utils", "daily", "dayPulse.ts"),
+    join(__dirname, "Wochenbogen.tsx"),
   ];
 
   for (const file of FILES) {

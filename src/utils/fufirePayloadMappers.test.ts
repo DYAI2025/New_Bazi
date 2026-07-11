@@ -8,6 +8,7 @@ import {
   buildTstPayload,
   buildBootstrapPayload,
   buildDailyPayload,
+  buildDayunPayload,
   extractSoulprintSectors
 } from "./fufirePayloadMappers";
 
@@ -200,6 +201,31 @@ describe("birth_time_known propagation — timeKnown:false", () => {
 
   it("INPUT without timeKnown defaults to birth_time_known:true (backward compat)", () => {
     expect(buildWesternPayload(INPUT).birth_time_known).toBe(true);
+  });
+});
+
+describe("buildDayunPayload", () => {
+  const base = {
+    name: "X", birthDate: "1985-06-15", birthTime: "14:30",
+    placeId: "p", birthPlaceLabel: "Berlin", lat: 52.52, lon: 13.405,
+    tz: "Europe/Berlin", gender: "Männlich", timeKnown: true,
+  } as ValidatedBirthInput;
+
+  it("baut das live-verifizierte Dayun-Schema (sex_at_birth aus Gender)", () => {
+    expect(buildDayunPayload(base)).toEqual({
+      date: "1985-06-15T14:30",
+      tz: "Europe/Berlin",
+      lat: 52.52,
+      lon: 13.405,
+      sex_at_birth: "male",
+      direction_method: "year_stem_yinyang_and_sex",
+    });
+    expect(buildDayunPayload({ ...base, gender: "Weiblich" })!.sex_at_birth).toBe("female");
+  });
+
+  it("gibt für Divers/unbekannt ehrlich null zurück (Laufrichtung nicht ableitbar, 422 upstream)", () => {
+    expect(buildDayunPayload({ ...base, gender: "Divers" })).toBeNull();
+    expect(buildDayunPayload({ ...base, gender: "" })).toBeNull();
   });
 });
 

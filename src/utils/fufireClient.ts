@@ -6,6 +6,7 @@ import type {
   WuxingRequestPayload,
   FusionRequestPayload,
   TstRequestPayload,
+  DayunRequestPayload,
   BootstrapRequestPayload,
   DailyRequestPayload
 } from "./fufirePayloadMappers";
@@ -206,6 +207,10 @@ export class FuFirEClient {
     return request("GET", "/info/wuxing-mapping");
   }
 
+  static getTransitNow(): Promise<any> {
+    return request("GET", "/transit/now");
+  }
+
   static postChart(payload: FuFirePayload): Promise<any> {
     // The FuFirE engine mounts the chart router OUTSIDE /v1 by design
     // (internal surface; app.py: "chart and webhooks are internal — not
@@ -233,6 +238,10 @@ export class FuFirEClient {
 
   static postTst(payload: TstRequestPayload): Promise<any> {
     return request("POST", "/calculate/tst", payload);
+  }
+
+  static postBaziDayun(payload: DayunRequestPayload): Promise<any> {
+    return request("POST", "/calculate/bazi/dayun", payload);
   }
 
   static postExperienceBootstrap(payload: BootstrapRequestPayload): Promise<any> {

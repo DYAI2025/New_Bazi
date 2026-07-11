@@ -1,14 +1,25 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { ProfileViewModel } from "../viewmodels/profileViewModel";
 import { Columns, Award, Key, ShieldCheck, AlertCircle, Layers } from "lucide-react";
-import { ElementType } from "../types";
+import { BirthData, ElementType } from "../types";
 import { TimeDependencyNote } from "./TimeDependencyNote";
 import { getEntry } from "../content/registry";
 import { EARTHLY_BRANCHES } from "../utils/astrology";
+import { BazodiacClient, DayunResponse } from "../api/bazodiacClient";
 
 interface BaZiDetailProps {
   viewModel: ProfileViewModel;
+  birthData: BirthData;
 }
+
+/** Engine liefert englische Element-Keys ("metal") — Mapping auf die deutschen ElementType-Keys der Farbstile. */
+const DAYUN_ELEMENT_DE: Record<string, ElementType> = {
+  wood: ElementType.WOOD,
+  fire: ElementType.FIRE,
+  earth: ElementType.EARTH,
+  metal: ElementType.METAL,
+  water: ElementType.WATER,
+};
 
 /** Pinyin token (e.g. "Jiǎ", "Zǐ") → ASCII id-suffix (e.g. "jia", "zi"). Mirrors Overview.tsx:31. */
 function pinyinToken(pinyin: string | null | undefined): string {
@@ -45,7 +56,25 @@ function isPillarResolved(pillar: { stemPinyin: string; branchPinyin: string }):
   return pillar.branchPinyin !== "Unbekannt" && pillar.stemPinyin !== "Unbekannt";
 }
 
-export default function BaZiDetail({ viewModel }: BaZiDetailProps) {
+export default function BaZiDetail({ viewModel, birthData }: BaZiDetailProps) {
+  // Echte Dekaden-Zyklen vom BFF; null = noch nicht geladen ODER Ladefehler →
+  // der bestehende viewModel-Stub-Block bleibt dann unverändert sichtbar.
+  const [dayunLive, setDayunLive] = useState<DayunResponse | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    BazodiacClient.fetchDayun(birthData)
+      .then((resp) => {
+        if (!cancelled) setDayunLive(resp);
+      })
+      .catch((err) => {
+        console.error("Dekaden-Zyklen konnten nicht geladen werden:", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [birthData]);
+
   // Translate element names for German aesthetics
   const elementColors: { [key in ElementType]: { border: string; bg: string; text: string; glow: string } } = {
     [ElementType.WOOD]: {
@@ -348,7 +377,69 @@ export default function BaZiDetail({ viewModel }: BaZiDetailProps) {
               </span>
             </div>
 
-            {dayun.available ? (
+            {dayunLive?.available === true ? (
+              <div>
+                <div className="space-y-3 font-mono">
+                  {dayunLive.cycles.map((c, i) => {
+                    const mappedElement = c.element ? DAYUN_ELEMENT_DE[c.element.toLowerCase()] : undefined;
+                    const style = mappedElement ? getElementStyle(mappedElement) : null;
+                    return (
+                      <div
+                        key={c.sequence ?? i}
+                        data-testid={c.isCurrent ? "dayun-current" : undefined}
+                        className={`p-3 rounded-xl bg-obsidian-deep/50 border flex items-center justify-between gap-3 ${
+                          c.isCurrent
+                            ? "border-gold-light/60 shadow-[0_0_12px_rgba(212,175,55,0.2)]"
+                            : "border-gold-muted/10"
+                        }`}
+                      >
+                        <div>
+                          <span className="text-[10px] text-stone-500 block leading-tight">
+                            {c.ageLabel}
+                            {c.dateStart && <span className="text-stone-600"> · ab {c.dateStart.slice(0, 4)}</span>}
+                          </span>
+                          <span className="text-xs text-stone-200 block font-sans font-medium">
+                            {c.stem} {c.stemHanzi}
+                          </span>
+                          {c.tenGodDe && (
+                            <span className="mt-1 inline-block px-2 py-0.5 rounded bg-gold-muted/5 border border-gold-muted/15 text-gold-light text-[9px]">
+                              {c.tenGodDe}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded border block font-semibold ${
+                              style
+                                ? `${style.bg} ${style.border} ${style.text}`
+                                : "bg-gold-muted/5 border-gold-muted/15 text-stone-300"
+                            }`}
+                          >
+                            {c.branch} {c.branchHanzi}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <span className="font-mono text-[9px] text-stone-500 block mt-3">
+                  Quelle: {dayunLive.source}
+                  {dayunLive.labelDe ? ` · ${dayunLive.labelDe}` : ""}
+                </span>
+              </div>
+            ) : dayunLive && dayunLive.available === false ? (
+              <div className="p-5 rounded-xl border border-gold-muted/10 bg-gold-muted/5 flex flex-col items-center justify-center text-center space-y-4 my-auto">
+                <AlertCircle className="h-8 w-8 text-gold-muted animate-pulse" />
+                <div className="space-y-1">
+                  <span className="font-mono text-[10px] uppercase font-bold text-gold-light block tracking-wider">
+                    {dayunLive.status}
+                  </span>
+                  <p className="text-[11px] text-stone-400 font-sans leading-relaxed">
+                    {dayunLive.message}
+                  </p>
+                </div>
+              </div>
+            ) : dayun.available ? (
               <div className="space-y-3 font-mono">
                 {dayun.cycles.map((p) => {
                   const style = getElementStyle(p.element);

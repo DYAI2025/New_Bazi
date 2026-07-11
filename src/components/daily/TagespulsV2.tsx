@@ -13,6 +13,8 @@ import {
   Sparkles,
   Check,
   PenLine,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { motion } from "motion/react";
 import {
@@ -30,6 +32,9 @@ import {
   lastReactionForType,
   saveReflection,
 } from "../../utils/daily/reflectionStore";
+import { syncReflections } from "../../utils/daily/reflectionSync";
+import { sectorLabel } from "../../utils/daily/sectorLabels";
+import Wochenbogen from "./Wochenbogen";
 
 /**
  * TagespulsV2 — "Muster-Spiegel an der Signatur" (Etappe 1).
@@ -45,7 +50,8 @@ import {
  *
  * Jede Karte trägt ihren Provenance-Chip (Beobachtung / Herleitung /
  * Interpretation). Fehlende Daten bleiben sichtbar leer — nichts wird
- * erfunden. Reflexionen bleiben auf diesem Gerät (localStorage) und sind
+ * erfunden. Reflexionen liegen lokal (localStorage), werden mit Konto
+ * zusätzlich synchronisiert (reflectionSync, updatedAt-wins) und sind
  * jederzeit löschbar.
  */
 
@@ -216,6 +222,7 @@ export default function TagespulsV2({ birthData }: TagespulsV2Props) {
   const [reflection, setReflection] = React.useState<DailyReflection | null>(null);
   const [freitext, setFreitext] = React.useState("");
   const [freitextOpen, setFreitextOpen] = React.useState(false);
+  const [wochenbogenOpen, setWochenbogenOpen] = React.useState(false);
 
   const targetDate = localDateString(dayOffset);
   const birthKey = React.useMemo(() => JSON.stringify(toBirthInputPayload(birthData)), [birthData]);
@@ -258,6 +265,13 @@ export default function TagespulsV2({ birthData }: TagespulsV2Props) {
     setFreitextOpen(false);
   }, [targetDate]);
 
+  // Stiller Abgleich einmal beim Öffnen des Tagespuls — bewusst leeres
+  // Dep-Array: der Sync gehört zum Betreten der Ansicht, nicht zu Re-Renders.
+  // Ohne Session ist er ein No-op; Fehler bleiben unsichtbar (Konsole).
+  React.useEffect(() => {
+    void syncReflections();
+  }, []);
+
   const available = pulseData?.available && pulseData.source === "fufire";
   const eastern = pulseData?.eastern ?? null;
   const natal = pulseData?.natal ?? null;
@@ -292,6 +306,7 @@ export default function TagespulsV2({ birthData }: TagespulsV2Props) {
         vetoChoice: reflection?.vetoChoice ?? null,
       }),
     );
+    void syncReflections(); // fire-and-forget: localStorage ist bereits die Wahrheit
   };
 
   const chooseEncounter = (choice: string | null) => {
@@ -306,6 +321,7 @@ export default function TagespulsV2({ birthData }: TagespulsV2Props) {
       }),
     );
     setFreitextOpen(false);
+    void syncReflections(); // fire-and-forget: localStorage ist bereits die Wahrheit
   };
 
   const chooseVeto = (veto: string | null) => {
@@ -319,6 +335,7 @@ export default function TagespulsV2({ birthData }: TagespulsV2Props) {
         vetoChoice: veto,
       }),
     );
+    void syncReflections(); // fire-and-forget: localStorage ist bereits die Wahrheit
   };
 
   return (
@@ -472,6 +489,12 @@ export default function TagespulsV2({ birthData }: TagespulsV2Props) {
                 <p className="font-sans text-sm text-stone-300 leading-relaxed font-light">{pulseData.western.summary}</p>
               ) : (
                 <p className="text-sm text-stone-400">Für diesen Tag liegt keine westliche Färbung vor.</p>
+              )}
+              {/* Sektoren-Verortung: nur bekannte Labels — kein Label, keine Zeile */}
+              {(westEvidence?.transitSectors ?? []).some((s) => sectorLabel(s)) && (
+                <p className="font-mono text-[10px] text-stone-500" data-testid="daily-west-sectors">
+                  Aktivierte Bereiche: {(westEvidence!.transitSectors).map(sectorLabel).filter(Boolean).join(" · ")}
+                </p>
               )}
               {/* Ehrlichkeit als Interface: leerer Aszendent-Sitz bei fehlender Geburtszeit */}
               {natal && !natal.ascendantSign && (
@@ -628,9 +651,23 @@ export default function TagespulsV2({ birthData }: TagespulsV2Props) {
             )}
           </div>
 
+          {/* 7. Wochenbogen — ruhiger Rückblick, aufklappbar (kein Pflichtteil des Rituals) */}
+          <div className="text-center">
+            <button
+              onClick={() => setWochenbogenOpen((o) => !o)}
+              className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-stone-400 hover:text-gold-light transition-colors cursor-pointer"
+              data-testid="wochenbogen-toggle"
+            >
+              Dein Wochenbogen
+              {wochenbogenOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            </button>
+          </div>
+          {wochenbogenOpen && <Wochenbogen />}
+
           <div className="flex items-center justify-between flex-wrap gap-2">
             <p className="text-xs text-stone-500" data-testid="daily-footer">
-              Modellergebnis, keine Eigenschaft. Antworten bleiben auf diesem Gerät und sind jederzeit löschbar.
+              Modellergebnis, keine Eigenschaft. Antworten bleiben auf diesem Gerät — mit Konto zusätzlich in
+              deinem Profil gesichert. Beides jederzeit löschbar.
             </p>
             <button
               onClick={() => void loadPulse(true)}

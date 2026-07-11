@@ -82,6 +82,15 @@ export interface TstRequestPayload {
   nonexistentTime: "error" | "shift_forward";
 }
 
+export interface DayunRequestPayload {
+  date: string; // "YYYY-MM-DDTHH:mm" lokale Geburtszeit
+  tz: string;
+  lat: number;
+  lon: number;
+  sex_at_birth: "male" | "female";
+  direction_method: "year_stem_yinyang_and_sex";
+}
+
 export interface BirthInputPayload {
   date: string; // YYYY-MM-DD
   time: string; // HH:MM:SS
@@ -193,6 +202,30 @@ export function buildBootstrapPayload(input: ValidatedBirthInput): BootstrapRequ
   return {
     birth: buildBirthInput(input),
     locale: LOCALE
+  };
+}
+
+/**
+ * Dayun braucht sex_at_birth für die Laufrichtung (direction_method
+ * year_stem_yinyang_and_sex; ohne → 422 direction_basis_missing, live
+ * verifiziert 2026-07-10). "Divers"/unbekannt ⇒ null — die Route liefert
+ * dann einen ehrlichen Missing-State statt einer erfundenen Richtung.
+ */
+export function buildDayunPayload(input: ValidatedBirthInput): DayunRequestPayload | null {
+  const g = (input.gender || "").toLowerCase();
+  const sex = g === "männlich" || g === "male" ? "male"
+    : g === "weiblich" || g === "female" ? "female"
+    : null;
+  if (!sex) return null;
+  return {
+    // Live-verifiziertes Schema: Minutenpräzision "YYYY-MM-DDTHH:mm" —
+    // bewusst NICHT localIsoDatetime, das hängt ":00"-Sekunden an.
+    date: `${input.birthDate}T${input.birthTime}`,
+    tz: input.tz,
+    lat: input.lat,
+    lon: input.lon,
+    sex_at_birth: sex,
+    direction_method: "year_stem_yinyang_and_sex"
   };
 }
 

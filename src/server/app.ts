@@ -1,5 +1,6 @@
 import express, { Express, Request, Response, NextFunction } from "express";
 import rateLimit from "express-rate-limit";
+import { randomUUID } from "node:crypto";
 import { getServerSupabase } from "./supabase";
 import { requireUserAuth } from "./requireUserAuth";
 import { GoogleGenAI } from "@google/genai";
@@ -18,6 +19,7 @@ import {
   buildFusionPayload,
   buildBootstrapPayload,
   buildDailyPayload,
+  buildDayunPayload,
   extractSoulprintSectors
 } from "../utils/fufirePayloadMappers";
 import {
@@ -31,6 +33,7 @@ import { compareProfiles } from "../utils/synastry";
 import { fuseElementalWeights, derivePairAxes } from "../utils/tensionPair";
 import { computeInterAspects, bodyPositionsFromViewModel } from "../utils/interAspects";
 import { compareBaziPillars } from "../utils/baziCompare";
+import { CouncilEntry, DayPulseMode, councilOfSix, deriveIntensity, deriveMode } from "../utils/daily/dayPulse";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -92,9 +95,20 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 /** Send a typed error, never leaking secrets or stack traces to the browser. */
 function sendError(res: Response, err: any, fallbackStatus = 500): void {
   const status = err && typeof err.httpStatus === "number" ? err.httpStatus : fallbackStatus;
+  // API-DP-005 (PRD Day Pulse): typisierte Fehler tragen retryable + correlationId.
+  // retryable folgt der Status-Semantik (transiente Upstream-/Limit-Fehler),
+  // explizites err.retryable gewinnt. Die correlationId landet auch im Log,
+  // damit Nutzer-Reports serverseitig auffindbar sind — nie Stacktraces nach außen.
+  const retryable = typeof err?.retryable === "boolean"
+    ? err.retryable
+    : status === 429 || status === 502 || status === 503 || status === 504;
+  const correlationId = randomUUID();
+  console.error("api_error", { correlationId, status, code: (err && err.code) || "internal_error" });
   res.status(status).json({
     error: (err && err.code) || "internal_error",
-    message: err && err.message ? String(err.message) : "Unerwarteter Fehler."
+    message: err && err.message ? String(err.message) : "Unerwarteter Fehler.",
+    retryable,
+    correlationId
   });
 }
 
@@ -171,6 +185,10 @@ interface DailyPulseVM {
   westEvidence: DailyWestEvidenceVM | null;
   natal: DailyNatalVM | null;
   qualityFlags: Record<string, unknown> | null;
+  /** PRD Day Pulse Stufe 1 — FR-DP-001/002/008: serverseitig, deterministisch. */
+  mode: DayPulseMode | null;
+  intensity: number | null;
+  council: CouncilEntry[] | null;
 }
 
 function dailyText(v: unknown): string | null {
@@ -280,6 +298,7 @@ function normalizeDaily(daily: any, bootstrap?: unknown): DailyPulseVM {
 
   // Available = the engine delivered real user-facing content for the day.
   const available = Boolean(description || western || eastern);
+  const natal = extractNatal(bootstrap);
   return {
     date: dailyText(d.date) || dailyText(d.target_date) || new Date().toISOString().split("T")[0],
     western,
@@ -294,8 +313,22 @@ function normalizeDaily(daily: any, bootstrap?: unknown): DailyPulseVM {
     source: available ? "fufire" : "missing",
     available,
     westEvidence: westEvidence && (westEvidence.transitSectors.length || westEvidence.natalFocus.length) ? westEvidence : null,
-    natal: extractNatal(bootstrap),
-    qualityFlags
+    natal,
+    qualityFlags,
+    // FR-DP-001/002: Mode + Intensität deterministisch aus dem autoritativen
+    // Harmony-Index; FR-DP-008: Rat der Sechs als sechs stabile Sitze mit
+    // availability + Grund. Kein Index / kein Profil → ehrlich null.
+    mode: deriveMode(natal?.harmonyIndex),
+    intensity: deriveIntensity(natal?.harmonyIndex),
+    council: natal
+      ? councilOfSix({
+          sunSign: natal.sunSign,
+          moonSign: natal.moonSign,
+          ascendantSign: natal.ascendantSign,
+          dayMaster: natal.dayMaster,
+          elements: natal.elements
+        })
+      : null
   };
 }
 
@@ -331,6 +364,15 @@ async function getBootstrapCached(value: ValidatedBirthInput): Promise<unknown> 
 /** Für Tests: deterministischer Zustand ohne Prozess-Neustart. */
 export function clearBootstrapCache(): void {
   bootstrapCache.clear();
+}
+
+// --- Transit-Now: globaler Himmel (nicht profilspezifisch) — 10-min-Cache ---
+const TRANSIT_TTL_MS = 10 * 60 * 1000;
+let transitCache: { at: number; data: unknown } | null = null;
+
+/** Für Tests: deterministischer Zustand ohne Prozess-Neustart. */
+export function clearTransitCache(): void {
+  transitCache = null;
 }
 
 /**
@@ -441,7 +483,7 @@ export function createApp(): Express {
         { feature: "fusion", appEndpoint: "/api/azodiac/fusion", upstream: "/v1/calculate/fusion", status: fufire.url && fufire.key ? "server-used" : "missing", source: "fufire" },
         { feature: "daily", appEndpoint: "/api/azodiac/daily", upstream: "/v1/experience/bootstrap + /v1/experience/daily", status: fufire.url && fufire.key ? "server-used" : "missing", source: "fufire" },
         { feature: "synastry", appEndpoint: "/api/azodiac/synastry", upstream: "2× /chart + lokaler Vergleich", status: fufire.url && fufire.key ? "server-used" : "missing", source: "fufire-profiles-local-comparison" },
-        { feature: "dayun", appEndpoint: "/api/azodiac/bazi/dayun", upstream: "—", status: "missing-capability", source: "missing" },
+        { feature: "dayun", appEndpoint: "/api/azodiac/bazi/dayun", upstream: "/v1/calculate/bazi/dayun", status: fufire.url && fufire.key ? "server-used" : "missing", source: "fufire" },
         { feature: "places", appEndpoint: "/api/places/*", upstream: "Photon (OSM) + tz-lookup (offline)", status: "server-used", source: "photon" }
       ]
     });
@@ -607,6 +649,26 @@ export function createApp(): Express {
     }
   });
 
+  // --- Transit-Now: aktueller Himmel für alle Nutzer gleich ---
+
+  app.get("/api/azodiac/transit/now", async (_req, res) => {
+    if (transitCache && Date.now() - transitCache.at < TRANSIT_TTL_MS) {
+      res.json(transitCache.data);
+      return;
+    }
+    try {
+      const raw: any = await FuFirEClient.getTransitNow();
+      // Ehrliche Durchreichung: Planet-Shapes (0-Index-Sektoren) bleiben roh,
+      // das Labeling ist Client-Sache. Fehler werden bewusst NICHT gecacht.
+      const planets = raw?.planets && typeof raw.planets === "object" && !Array.isArray(raw.planets) ? raw.planets : {};
+      const vm = { computedAt: dailyText(raw?.computed_at), planets };
+      transitCache = { at: Date.now(), data: vm };
+      res.json(vm);
+    } catch (err) {
+      sendError(res, err);
+    }
+  });
+
   // --- Synastry (two FuFirE profiles, local comparison) ---
 
   app.post("/api/azodiac/synastry", async (req, res) => {
@@ -649,15 +711,77 @@ export function createApp(): Express {
     }
   });
 
-  // --- Dayun: honest missing-capability ---
+  // --- Dayun: echter FuFirE-Endpunkt (der frühere "nicht berechenbar"-Stub war faktisch falsch) ---
 
-  app.post("/api/azodiac/bazi/dayun", (_req, res) => {
-    res.json({
-      available: false,
-      status: "missing-capability",
-      source: "missing",
-      message: "Da Yun ist nicht berechenbar, weil FuFirE aktuell keinen stabilen Dayun-Endpunkt liefert."
-    });
+  app.post("/api/azodiac/bazi/dayun", async (req, res) => {
+    const { valid, errors, value } = validateBirthInput(req.body || {});
+    if (!valid || !value) {
+      logInvalidBirthInput(req.path, errors);
+      res.status(400).json({ error: "invalid_birth_input", fields: errors });
+      return;
+    }
+    if (value.timeKnown === false) {
+      // Ehrlich: Dayun-Start hängt an der exakten Geburtszeit (Distanz zum Jieqi);
+      // mit der 12:00-Platzhalterzeit würde ein potenziell falscher Zyklus als echt
+      // ausgeliefert (BIRTH-TIME-01-Klasse). Lieber sichtbar leer als still falsch.
+      res.json({
+        available: false,
+        status: "missing-birth-time",
+        source: "missing",
+        message: "Die Dekaden-Säulen sind ohne belastbare Geburtszeit nicht seriös bestimmbar — der Startpunkt hängt an der exakten Zeit. Es wird bewusst nichts erfunden.",
+        cycles: []
+      });
+      return;
+    }
+    const payload = buildDayunPayload(value);
+    if (!payload) {
+      // Ehrlich: ohne sex_at_birth keine Laufrichtung (Engine: 422 direction_basis_missing).
+      res.json({
+        available: false,
+        status: "missing-direction-basis",
+        source: "missing",
+        message: "Die Dekaden-Laufrichtung ist ohne Geburtsgeschlecht nicht ableitbar — es wird bewusst keine Richtung erfunden.",
+        cycles: []
+      });
+      return;
+    }
+    try {
+      const resp = await FuFirEClient.postBaziDayun(payload);
+      const d = resp?.dayun && typeof resp.dayun === "object" ? resp.dayun : null;
+      const cyclesRaw = Array.isArray(d?.cycles) ? d.cycles : [];
+      const cycles = cyclesRaw
+        .filter((c: any) => c && c.pillar && typeof c.pillar === "object")
+        .map((c: any) => ({
+          sequence: typeof c.sequence === "number" ? c.sequence : null,
+          ageLabel: Number.isFinite(c.age_start) && Number.isFinite(c.age_end)
+            ? `${Math.round(c.age_start)}–${Math.round(c.age_end)}`
+            : null,
+          dateStart: dailyText(c.date_start),
+          dateEnd: dailyText(c.date_end),
+          stem: dailyText(c.pillar.stem),
+          stemHanzi: dailyText(c.pillar.stem_cn),
+          branch: dailyText(c.pillar.branch),
+          branchHanzi: dailyText(c.pillar.branch_cn),
+          element: dailyText(c.pillar.element),
+          polarity: dailyText(c.pillar.polarity),
+          tenGodDe: dailyText(c.relation_to_day_master?.label_de),
+          isCurrent: Boolean(c.is_current)
+        }));
+      if (!d || cycles.length === 0) {
+        res.json({ available: false, status: "missing", source: "missing", message: "FuFirE lieferte keine auswertbaren Dekaden-Zyklen.", cycles: [] });
+        return;
+      }
+      res.json({
+        available: true,
+        source: "fufire",
+        labelDe: dailyText(d.display_label_de) || "Dekaden-Säule",
+        direction: dailyText(d.direction),
+        startAgeYears: Number.isFinite(d.start?.start_age?.decimal_years) ? d.start.start_age.decimal_years : null,
+        cycles
+      });
+    } catch (err) {
+      sendError(res, err);
+    }
   });
 
   // --- Optional Gemini poetic reading (server-side key only) ---
@@ -780,6 +904,60 @@ export function createApp(): Express {
       .from("nb_partner_profiles")
       .delete()
       .eq("id", req.params.id)
+      .eq("user_id", req.userId!);
+    if (error) { sendError(res, { code: "db_error", httpStatus: 502, message: "Datenbankfehler." }); return; }
+    res.status(204).send();
+  });
+
+  // --- Tages-Reflexionen (Sync-Layer; localStorage bleibt Primärquelle) ---
+
+  app.get("/api/me/reflections", requireUserAuth, async (req, res) => {
+    const supabase = getServerSupabase()!;
+    const { data, error } = await supabase
+      .from("nb_daily_reflections")
+      .select("date, day_type, reaction, encounter_choice, veto_choice, updated_at_ms")
+      .eq("user_id", req.userId!)
+      .order("date", { ascending: true });
+    if (error) { sendError(res, { code: "db_error", httpStatus: 502, message: "Datenbankfehler." }); return; }
+    res.json(data ?? []);
+  });
+
+  app.put("/api/me/reflections", requireUserAuth, async (req, res) => {
+    const items = Array.isArray(req.body?.reflections) ? req.body.reflections : null;
+    if (!items || items.length === 0 || items.length > 400) {
+      res.status(400).json({ error: "invalid_input", message: "reflections (1–400 Einträge) erforderlich." });
+      return;
+    }
+    const DAY_TYPES = ["ressource", "ausdruck", "einfluss", "struktur", "gleichrang"];
+    const REACTIONS = [null, "kenne_ich", "teils", "gegenseite"];
+    const rows = [];
+    for (const r of items) {
+      if (typeof r?.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(r.date)) { res.status(400).json({ error: "invalid_input", message: "date muss YYYY-MM-DD sein." }); return; }
+      if (!DAY_TYPES.includes(r.dayType)) { res.status(400).json({ error: "invalid_input", message: "unbekannter dayType." }); return; }
+      if (!REACTIONS.includes(r.reaction ?? null)) { res.status(400).json({ error: "invalid_input", message: "unbekannte reaction." }); return; }
+      rows.push({
+        user_id: req.userId!,
+        date: r.date,
+        day_type: r.dayType,
+        reaction: r.reaction ?? null,
+        encounter_choice: typeof r.encounterChoice === "string" ? r.encounterChoice.slice(0, 120) : null,
+        veto_choice: typeof r.vetoChoice === "string" ? r.vetoChoice.slice(0, 120) : null,
+        updated_at_ms: Number.isFinite(r.updatedAt) ? r.updatedAt : Date.now()
+      });
+    }
+    const supabase = getServerSupabase()!;
+    const { error } = await supabase
+      .from("nb_daily_reflections")
+      .upsert(rows, { onConflict: "user_id,date" });
+    if (error) { sendError(res, { code: "db_error", httpStatus: 502, message: "Datenbankfehler." }); return; }
+    res.status(204).send();
+  });
+
+  app.delete("/api/me/reflections", requireUserAuth, async (req, res) => {
+    const supabase = getServerSupabase()!;
+    const { error } = await supabase
+      .from("nb_daily_reflections")
+      .delete()
       .eq("user_id", req.userId!);
     if (error) { sendError(res, { code: "db_error", httpStatus: 502, message: "Datenbankfehler." }); return; }
     res.status(204).send();

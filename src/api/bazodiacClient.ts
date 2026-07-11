@@ -81,6 +81,44 @@ export interface DailyPulseResponse {
   westEvidence?: DailyWestEvidence | null;
   natal?: DailyNatal | null;
   qualityFlags?: Record<string, unknown> | null;
+  /** PRD Day Pulse Stufe 1 — Mode/Intensität aus Harmony-Index + Rat der Sechs mit availability. */
+  mode?: "spannung" | "pulse" | "trace" | null;
+  intensity?: number | null;
+  council?: {
+    key: "sun" | "moon" | "ascendant" | "day_master" | "year_animal" | "dominant_wuxing";
+    label: string;
+    value: string | null;
+    available: boolean;
+    unavailableReason: string | null;
+  }[] | null;
+}
+
+/** Ein 10-Jahres-Zyklus (Dekaden-Säule) aus dem BFF /api/azodiac/bazi/dayun. Alle Felder honest-nullable. */
+export interface DayunCycle {
+  sequence: number | null;
+  ageLabel: string | null;
+  dateStart: string | null;
+  dateEnd: string | null;
+  stem: string | null;
+  stemHanzi: string | null;
+  branch: string | null;
+  branchHanzi: string | null;
+  /** Englischer Element-Key der Engine ("wood" | "fire" | "earth" | "metal" | "water"). */
+  element: string | null;
+  polarity: string | null;
+  tenGodDe: string | null;
+  isCurrent: boolean;
+}
+
+export interface DayunResponse {
+  available: boolean;
+  source: string;
+  status?: string;
+  message?: string;
+  labelDe?: string;
+  direction?: string | null;
+  startAgeYears?: number | null;
+  cycles: DayunCycle[];
 }
 
 export interface PlacePrediction {
@@ -280,6 +318,11 @@ export class BazodiacClient {
       "/api/azodiac/daily",
       targetDate ? { ...payload, targetDate } : payload
     );
+  }
+
+  /** Echte Dekaden-Zyklen (Da Yun) aus dem BFF; gleiches POST-/Fehler-Muster wie fetchDailyPulse. */
+  static async fetchDayun(data: BirthData): Promise<DayunResponse> {
+    return postJson<DayunResponse>("/api/azodiac/bazi/dayun", toBirthInputPayload(data));
   }
 
   static async searchPlaces(input: string): Promise<PlacePrediction[]> {
