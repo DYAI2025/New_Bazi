@@ -5,7 +5,7 @@ import { getServerSupabase } from "./supabase";
 import { requireUserAuth } from "./requireUserAuth";
 import { GoogleGenAI } from "@google/genai";
 
-import { FuFirEClient } from "../utils/fufireClient";
+import { FuFirEClient, isFuFirEConfigGap } from "../utils/fufireClient";
 import {
   getAutocompletePredictions,
   getPlaceDetails,
@@ -103,7 +103,17 @@ function sendError(res: Response, err: any, fallbackStatus = 500): void {
     ? err.retryable
     : status === 429 || status === 502 || status === 503 || status === 504;
   const correlationId = randomUUID();
-  console.error("api_error", { correlationId, status, code: (err && err.code) || "internal_error" });
+  // Die Ursache NUR serverseitig loggen (nie in die Response) — sonst zeigt die
+  // correlationId auf einen Log-Eintrag ohne jede Ursacheninformation (z.B. DB-Fehler,
+  // die als { code:"db_error", cause } gemeldet werden). Nach außen bleibt es bei
+  // code + generischer message; kein Stacktrace, kein Postgres-Detail.
+  const cause = err && (err.cause ?? (err.code ? undefined : err));
+  console.error("api_error", {
+    correlationId,
+    status,
+    code: (err && err.code) || "internal_error",
+    detail: cause && (cause.message || cause.details || String(cause))
+  });
   res.status(status).json({
     error: (err && err.code) || "internal_error",
     message: err && err.message ? String(err.message) : "Unerwarteter Fehler.",
@@ -127,8 +137,7 @@ async function resolveProfile(value: ValidatedBirthInput): Promise<ProfileServic
   try {
     return await buildProfile(value);
   } catch (err: any) {
-    const isConfigGap = err?.code === "missing_fufire_url" || err?.code === "missing_fufire_key";
-    if (isConfigGap && localFallbackEnabled()) {
+    if (isFuFirEConfigGap(err) && localFallbackEnabled()) {
       return buildLocalFallbackProfile(value);
     }
     throw err;
@@ -846,10 +855,13 @@ export function createApp(): Express {
     }
     const { data, error } = await supabase
       .from("nb_profiles")
-      .insert({ user_id: userId, label, birth_data, is_default: !!makeDefault })
+      // DB-INTEGRITY-01: das kanonisierte validation.value persistieren, nicht den rohen
+      // Request-Body — sonst landen ungetrimmte Werte + beliebige Zusatzschlüssel im JSONB
+      // und die Normalisierung des Validators (Trim, gender-Default, gecastete lat/lon) geht verloren.
+      .insert({ user_id: userId, label, birth_data: validation.value, is_default: !!makeDefault })
       .select()
       .single();
-    if (error) { sendError(res, { code: "db_error", httpStatus: 502, message: "Datenbankfehler." }); return; }
+    if (error) { sendError(res, { code: "db_error", httpStatus: 502, message: "Datenbankfehler.", cause: error }); return; }
     res.status(201).json(data);
   });
 
@@ -890,10 +902,11 @@ export function createApp(): Express {
     const supabase = getServerSupabase()!;
     const { data, error } = await supabase
       .from("nb_partner_profiles")
-      .insert({ user_id: req.userId!, label, birth_data })
+      // DB-INTEGRITY-01: kanonisiertes validation.value persistieren, nicht den rohen Body.
+      .insert({ user_id: req.userId!, label, birth_data: validation.value })
       .select()
       .single();
-    if (error) { sendError(res, { code: "db_error", httpStatus: 502, message: "Datenbankfehler." }); return; }
+    if (error) { sendError(res, { code: "db_error", httpStatus: 502, message: "Datenbankfehler.", cause: error }); return; }
     res.status(201).json(data);
   });
 
