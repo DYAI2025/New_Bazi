@@ -12,7 +12,10 @@ vi.mock("./fufireClient", () => {
       postFusion: vi.fn(),
       postTst: vi.fn(),
       getWuxingMapping: vi.fn()
-    }
+    },
+    // Spiegelt die echte Klassifikation (real getestet in fufireClient.test.ts).
+    isFuFirEConfigGap: (err: any) =>
+      err?.code === "missing_fufire_url" || err?.code === "missing_fufire_key"
   };
 });
 
