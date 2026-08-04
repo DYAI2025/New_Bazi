@@ -146,6 +146,23 @@ describe("buildProfile", () => {
     const { viewModel, source } = await buildProfile(INPUT);
     expect(source).toBe("fufire-orchestrated");
     expect(viewModel).toBeTruthy();
+    // Die gescheiterte Sektion rendert ehrlich als Missing-State, nicht als Fabrikat.
+    expect(viewModel.fusion.coherenceIndex).toBeNull();
+  });
+
+  // Config-Lücken sind nicht transient: sie müssen propagieren (nicht degradieren),
+  // damit resolveProfile den opt-in Local-Fallback auslösen kann — auch dann, wenn
+  // andere Sektionen bereits vorliegen (haveAnySection === true).
+  it("wirft Config-Lücken weiter statt zu degradieren, auch bei vorhandenen Sektionen", async () => {
+    (FuFirEClient.postChart as any).mockResolvedValue({
+      western: FULL_CHART.western,
+      bazi: FULL_CHART.bazi,
+      wuxing: FULL_CHART.wuxing
+    }); // nur fusion fehlt -> genau eine Orchestrierung
+    const configGap: any = Object.assign(new Error("kein Key"), { code: "missing_fufire_key", httpStatus: 503 });
+    (FuFirEClient.postFusion as any).mockRejectedValue(configGap);
+
+    await expect(buildProfile(INPUT)).rejects.toMatchObject({ code: "missing_fufire_key" });
   });
 
   // Totalausfall aller orchestrierten Sektionen bleibt ein (retrybarer) Fehler,
