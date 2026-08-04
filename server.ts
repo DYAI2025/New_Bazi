@@ -43,4 +43,7 @@ async function startServer() {
 
 startServer().catch((err) => {
   console.error("Failed to start server:", err);
+  // DEPLOY-BOOT-02: ohne exit(1) endet ein fehlgeschlagener Boot mit Code 0 und
+  // der Orchestrator (Railway/Cloud Run ON_FAILURE) startet den toten Dienst nie neu.
+  process.exit(1);
 });

@@ -130,6 +130,36 @@ describe("buildProfile", () => {
 
     await expect(buildProfile(INPUT)).rejects.toMatchObject({ code: "fufire_auth_failed" });
   });
+
+  // FUFIRE-ORCH-01: eine einzelne scheiternde Sektion darf das Profil nicht töten.
+  it("degradiert einzelne scheiternde Sektionen statt das ganze Profil zu 502en", async () => {
+    (FuFirEClient.postChart as any).mockResolvedValue({}); // alles fehlt -> orchestrieren
+    (FuFirEClient.postWestern as any).mockResolvedValue({ western: FULL_CHART.western });
+    (FuFirEClient.postBazi as any).mockResolvedValue({ bazi: FULL_CHART.bazi });
+    (FuFirEClient.postWuxing as any).mockResolvedValue({ wuxing: FULL_CHART.wuxing });
+    const transient: any = new Error("fusion upstream 503");
+    transient.code = "fufire_upstream_error";
+    transient.httpStatus = 503;
+    (FuFirEClient.postFusion as any).mockRejectedValue(transient);
+
+    // Wirft NICHT — western/bazi/wuxing liegen vor, fusion wird zum Missing-State.
+    const { viewModel, source } = await buildProfile(INPUT);
+    expect(source).toBe("fufire-orchestrated");
+    expect(viewModel).toBeTruthy();
+  });
+
+  // Totalausfall aller orchestrierten Sektionen bleibt ein (retrybarer) Fehler,
+  // damit kein hohles Profil ausgeliefert wird.
+  it("wirft den ersten Fehler, wenn KEINE Sektion verfügbar ist", async () => {
+    (FuFirEClient.postChart as any).mockResolvedValue({});
+    const boom = (code: string): any => Object.assign(new Error(code), { code, httpStatus: 503 });
+    (FuFirEClient.postWestern as any).mockRejectedValue(boom("w_down"));
+    (FuFirEClient.postBazi as any).mockRejectedValue(boom("b_down"));
+    (FuFirEClient.postWuxing as any).mockRejectedValue(boom("x_down"));
+    (FuFirEClient.postFusion as any).mockRejectedValue(boom("f_down"));
+
+    await expect(buildProfile(INPUT)).rejects.toHaveProperty("code");
+  });
 });
 
 describe("buildLocalFallbackProfile", () => {
