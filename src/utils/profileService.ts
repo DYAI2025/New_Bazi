@@ -1,4 +1,4 @@
-import { FuFirEClient, FuFirePayload } from "./fufireClient";
+import { FuFirEClient, FuFirePayload, isFuFirEConfigGap } from "./fufireClient";
 import {
   buildWesternPayload,
   buildBaziPayload,
@@ -83,9 +83,9 @@ export async function buildProfile(input: ValidatedBirthInput): Promise<ProfileS
         raw[section] = pickSection(result.value, section);
       } else {
         const reason = result.reason;
-        // Config-Lücke (fehlende FuFirE-URL/-Key) ist nicht transient: sofort weiterwerfen,
-        // damit resolveProfile den opt-in Local-Fallback auslösen kann.
-        if (reason?.code === "missing_fufire_url" || reason?.code === "missing_fufire_key") throw reason;
+        // Config-Lücke ist nicht transient: sofort weiterwerfen, damit resolveProfile
+        // den opt-in Local-Fallback auslösen kann (statt zu degradieren).
+        if (isFuFirEConfigGap(reason)) throw reason;
         if (!firstError) firstError = reason;
       }
     });

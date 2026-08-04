@@ -30,7 +30,10 @@ vi.mock("../utils/fufireClient", () => {
       isConfigured: vi.fn(() => ({ url: true, key: true })),
       getPathPrefix: vi.fn(() => "v1"),
       getReleaseVersion: vi.fn(() => null)
-    }
+    },
+    // Spiegelt die echte Klassifikation (real getestet in fufireClient.test.ts).
+    isFuFirEConfigGap: (err: any) =>
+      err?.code === "missing_fufire_url" || err?.code === "missing_fufire_key"
   };
 });
 

@@ -77,6 +77,18 @@ export class FuFirEError extends Error {
   }
 }
 
+/**
+ * Config-Lücken (fehlende FuFirE-URL/-Key) sind NICHT transient: sie werden vor
+ * jedem Netzwerkzugriff geworfen und müssen den opt-in Local-Fallback auslösen,
+ * statt zu einem Missing-State zu degradieren. Zentrale Klassifikation, damit
+ * Orchestrierung (profileService) und Fallback-Entscheidung (resolveProfile)
+ * dieselbe Definition teilen und neue Codes an einer Stelle gepflegt werden.
+ */
+export function isFuFirEConfigGap(err: unknown): boolean {
+  const code = (err as { code?: string } | null | undefined)?.code;
+  return code === "missing_fufire_url" || code === "missing_fufire_key";
+}
+
 const PLACEHOLDER_VALUES = new Set(["", "YOUR_FUFIRE_API_URL", "replace_me", "MY_FUFIRE_API_KEY"]);
 
 function getBaseUrl(): string {

@@ -5,7 +5,7 @@ import { getServerSupabase } from "./supabase";
 import { requireUserAuth } from "./requireUserAuth";
 import { GoogleGenAI } from "@google/genai";
 
-import { FuFirEClient } from "../utils/fufireClient";
+import { FuFirEClient, isFuFirEConfigGap } from "../utils/fufireClient";
 import {
   getAutocompletePredictions,
   getPlaceDetails,
@@ -137,8 +137,7 @@ async function resolveProfile(value: ValidatedBirthInput): Promise<ProfileServic
   try {
     return await buildProfile(value);
   } catch (err: any) {
-    const isConfigGap = err?.code === "missing_fufire_url" || err?.code === "missing_fufire_key";
-    if (isConfigGap && localFallbackEnabled()) {
+    if (isFuFirEConfigGap(err) && localFallbackEnabled()) {
       return buildLocalFallbackProfile(value);
     }
     throw err;

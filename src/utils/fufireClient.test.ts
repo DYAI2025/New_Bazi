@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { FuFirEClient, FuFirEError } from "./fufireClient";
+import { FuFirEClient, FuFirEError, isFuFirEConfigGap } from "./fufireClient";
 
 const ORIGINAL_ENV = { ...process.env };
 
@@ -203,5 +203,24 @@ describe("FuFirEClient error mapping", () => {
       code: "invalid_fufire_payload",
       httpStatus: 502
     });
+  });
+});
+
+describe("isFuFirEConfigGap", () => {
+  it("erkennt fehlende URL/Key als (nicht-transiente) Config-Lücke", () => {
+    expect(isFuFirEConfigGap(new FuFirEError("missing_fufire_url"))).toBe(true);
+    expect(isFuFirEConfigGap(new FuFirEError("missing_fufire_key"))).toBe(true);
+  });
+
+  it("behandelt transiente Upstream-Fehler NICHT als Config-Lücke", () => {
+    expect(isFuFirEConfigGap(new FuFirEError("fufire_unavailable"))).toBe(false);
+    expect(isFuFirEConfigGap(new FuFirEError("fufire_rate_limited"))).toBe(false);
+    expect(isFuFirEConfigGap({ code: "db_error" })).toBe(false);
+  });
+
+  it("ist robust gegen null/undefined/untypisierte Fehler", () => {
+    expect(isFuFirEConfigGap(null)).toBe(false);
+    expect(isFuFirEConfigGap(undefined)).toBe(false);
+    expect(isFuFirEConfigGap(new Error("boom"))).toBe(false);
   });
 });
